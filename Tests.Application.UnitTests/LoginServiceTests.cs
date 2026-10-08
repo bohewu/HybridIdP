@@ -96,7 +96,7 @@ public class LoginServiceTests
     private void SetupDefaultPolicy(int maxAttempts = 5)
     {
         _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync())
-            .ReturnsAsync(new SecurityPolicy { MaxFailedAccessAttempts = maxAttempts, LockoutDurationMinutes = 15 });
+            .ReturnsAsync(new SecurityPolicy { MaxFailedAccessAttempts = maxAttempts, LockoutDurationMinutes = 15, PasswordExpirationDays = 0 });
     }
 
     #region Existing tests (no Person linked)
@@ -138,6 +138,26 @@ public class LoginServiceTests
 
         Assert.Equal(LoginStatus.PasswordChangeRequired, result.Status);
         Assert.Same(user, result.User);
+    }
+
+    [Theory]
+    [InlineData(30, true, LoginStatus.PasswordChangeRequired)]
+    [InlineData(0, true, LoginStatus.Success)]
+    [InlineData(30, false, LoginStatus.InvalidCredentials)]
+    public async Task AuthenticateAsync_LocalUser_UnknownPasswordDate_RequiresChangeOnlyAfterProof(
+        int expirationDays, bool validPassword, LoginStatus expected)
+    {
+        var user = new ApplicationUser { UserName = "unknown-age", PasswordHash = "local-hash" };
+        _mockUserManager.Setup(manager => manager.FindByEmailAsync(user.UserName)).ReturnsAsync(user);
+        _mockUserManager.Setup(manager => manager.CheckPasswordAsync(user, "password")).ReturnsAsync(validPassword);
+        _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync())
+            .ReturnsAsync(new SecurityPolicy { PasswordExpirationDays = expirationDays, MaxFailedAccessAttempts = 0 });
+
+        var result = await _loginService.AuthenticateAsync(user.UserName, "password");
+
+        Assert.Equal(expected, result.Status);
+        Assert.Null(user.LastPasswordChangeDate);
+        _mockLegacyAuthService.Verify(service => service.ValidateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]

@@ -5,6 +5,8 @@ using Core.Application;
 using Core.Domain;
 using Core.Domain.Entities;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
+using Infrastructure;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -25,7 +27,7 @@ public class RegisterModel : PageModel
     private readonly ITurnstileService _turnstileService;
     private readonly TurnstileOptions _turnstileOptions; // Changed
     private readonly ILogger<RegisterModel> _logger;
-    private readonly IApplicationDbContext _context;
+    private readonly ApplicationDbContext _context;
     private readonly IAuditService _auditService;
     private readonly ISettingsService _settingsService;
     private readonly ITurnstileStateService _turnstileStateService;
@@ -39,7 +41,7 @@ public class RegisterModel : PageModel
         ITurnstileService turnstileService,
         IOptions<TurnstileOptions> turnstileOptions,
         ILogger<RegisterModel> logger,
-        IApplicationDbContext context,
+        ApplicationDbContext context,
         IAuditService auditService,
         ISettingsService settingsService,
         ITurnstileStateService turnstileStateService,
@@ -194,9 +196,6 @@ public class RegisterModel : PageModel
                 FirstName = Input.Email.Split('@')[0], // Default from email
                 CreatedAt = DateTime.UtcNow
             };
-            _context.Persons.Add(person);
-            await _context.SaveChangesAsync(cancellationToken);
-
             var user = new ApplicationUser
             {
                 UserName = Input.Email,
@@ -205,7 +204,27 @@ public class RegisterModel : PageModel
                 PersonId = person.Id  // Phase 10.5: Link to Person
             };
 
-            var result = await _userManager.CreateAsync(user, Input.Password);
+            IdentityResult result;
+            await using (var transaction = await _context.Database.BeginTransactionAsync(cancellationToken))
+            {
+                _context.Persons.Add(person);
+                await _context.SaveChangesAsync(cancellationToken);
+                result = await _userManager.CreateAsync(user, Input.Password);
+                if (result.Succeeded)
+                {
+                    // Initial validation must run without a date, even when minimum age is enabled.
+                    user.LastPasswordChangeDate = DateTime.UtcNow;
+                    result = await _userManager.UpdateAsync(user);
+                }
+                if (result.Succeeded)
+                {
+                    await transaction.CommitAsync(cancellationToken);
+                }
+                else
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                }
+            }
 
             if (result.Succeeded)
             {
@@ -236,7 +255,7 @@ public class RegisterModel : PageModel
                 {
                     return RedirectToPage("./Login");
                 }
-                AuthenticationMethodSession.Replace(HttpContext.Session, AuthConstants.Amr.Password);
+                AuthenticationMethodSession.Replace(HttpContext.Session, user, AuthConstants.Amr.Password);
                 if (CurrentPolicy?.EnforceMandatoryMfaEnrollment == true)
                 {
                     var now = DateTime.UtcNow;
@@ -255,7 +274,8 @@ public class RegisterModel : PageModel
                     }
                 }
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
-                    AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+                    AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 
                 return this.SafeRedirect(returnUrl);
             }

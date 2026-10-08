@@ -93,6 +93,7 @@ public class ExternalSignInCoordinatorTests
         var result = await harness.Coordinator.CompleteAsync(harness.HttpContext, user);
 
         Assert.True(result.IsSucceeded);
+        Assert.DoesNotContain(AuthenticationMethodSession.SessionKey, harness.Session.Keys);
         var methods = Assert.IsAssignableFrom<IEnumerable<Claim>>(harness.FullSignInClaims)
             .Where(claim => claim.Type == AuthConstants.ClaimTypes.Amr)
             .Select(claim => claim.Value)
@@ -126,7 +127,7 @@ public class ExternalSignInCoordinatorTests
         Assert.Equal(expectedStatus, result.Status);
         Assert.Equal(
             [AuthConstants.Amr.External],
-            AuthenticationMethodSession.Get(harness.Session));
+            AuthenticationMethodSession.Get(harness.Session, user));
         harness.SignInManager.Verify(
             manager => manager.SignInWithClaimsAsync(
                 It.IsAny<ApplicationUser>(),
@@ -201,7 +202,7 @@ public class ExternalSignInCoordinatorTests
         var result = await harness.Coordinator.CompleteAsync(harness.HttpContext, user);
 
         Assert.Equal(ExternalSignInCompletionStatus.Blocked, result.Status);
-        Assert.Empty(AuthenticationMethodSession.Get(harness.Session));
+        Assert.Empty(AuthenticationMethodSession.Get(harness.Session, user));
         harness.VerifyNoCookieCreated();
     }
 

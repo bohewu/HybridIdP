@@ -195,32 +195,6 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
             identity.AddClaim(new Claim("permission", permission));
         }
 
-        // Phase: AMR Claims
-        // Read AMR from session (populated during Login/MFA pages)
-        var session = _httpContextAccessor.HttpContext?.Session;
-        if (session != null)
-        {
-            var amrJson = session.GetString("AuthenticationMethods");
-            if (!string.IsNullOrEmpty(amrJson))
-            {
-                try
-                {
-                    var amrValues = JsonSerializer.Deserialize<List<string>>(amrJson);
-                    if (amrValues != null)
-                    {
-                        foreach (var amr in amrValues)
-                        {
-                            identity.AddClaim(new Claim("amr", amr));
-                        }
-                    }
-                }
-                catch (JsonException)
-                {
-                    _logger.LogWarning("Failed to deserialize AMR from session.");
-                }
-            }
-        }
-
         return identity;
     }
 }

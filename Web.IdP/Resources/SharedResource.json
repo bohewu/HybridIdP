@@ -1,4 +1,5 @@
 {
+  "EmailMfaAddressChangeRequiresRemoval": "Remove email MFA using the authorized security settings or administrator MFA reset before changing the email address or its confirmation status, then enroll again.",
   "Recovery.Identity.Identifier.Label": "Identity document number",
   "Recovery.Identity.Identifier.Help": "Enter your identity document number if required for your account. It is used only for this verification.",
   "Recovery.ReadyToSend": "Send a verification code to:",

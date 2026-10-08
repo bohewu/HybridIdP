@@ -297,7 +297,7 @@ public partial class LoginModel : PageModel
                 }
 
                 AuthenticationMethodSession.Replace(
-                    HttpContext.Session,
+                    HttpContext.Session, result.User!,
                     AuthConstants.Amr.Password);
                 AccountSecurityOperationSession.MarkVerified(HttpContext, result.User, "password");
 
@@ -385,7 +385,7 @@ public partial class LoginModel : PageModel
                             
                             // Normal flow or Grace Period Active
                             // Issue cookie with amr claim
-                            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User!);
                             
                             // Note: SignInAsync below merges these claims into the principal
                             if (!await _lifecycleEligibility.IsEligibleAsync(result.User!.Id, cancellationToken))
@@ -394,13 +394,14 @@ public partial class LoginModel : PageModel
                                 return Page();
                             }
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
+                            AuthenticationMethodSession.Consume(HttpContext.Session);
                             await _userManagementService.UpdateLastLoginAsync(result.User.Id, cancellationToken);
                             return this.SafeRedirect(returnUrl);
                         }
                     }
                 }
 
-                var amrClaimsList = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                var amrClaimsList = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User!);
 
                 // Sign in user (role claims are automatically added by Identity)
                 if (!await _lifecycleEligibility.IsEligibleAsync(result.User!.Id, cancellationToken))
@@ -409,6 +410,7 @@ public partial class LoginModel : PageModel
                     return Page();
                 }
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(result.User!.Id, cancellationToken);
                 LogUserSignedIn(result.User!.UserName);
                 

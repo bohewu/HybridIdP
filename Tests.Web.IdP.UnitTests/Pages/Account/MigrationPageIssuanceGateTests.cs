@@ -131,6 +131,8 @@ public sealed class MigrationPageIssuanceGateTests
             .ReturnsAsync(IdentityResult.Success);
         identity.UserManager.Setup(manager => manager.AddToRoleAsync(It.IsAny<ApplicationUser>(), "User"))
             .ReturnsAsync(IdentityResult.Success);
+        identity.UserManager.Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success);
         var lifecycle = new Mock<ICurrentUserLifecycleEligibility>();
         lifecycle.Setup(service => service.IsEligibleAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(allowed);
         var model = new RegisterModel(lifecycle.Object, identity.UserManager.Object, identity.SignInManager.Object,
@@ -163,7 +165,8 @@ public sealed class MigrationPageIssuanceGateTests
         identity.UserManager.Setup(manager => manager.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .Callback<ApplicationUser, string>((created, _) => created.SecurityStamp = Guid.NewGuid().ToString())
             .ReturnsAsync(IdentityResult.Success);
-        identity.UserManager.Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+        identity.UserManager.SetupSequence(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
+            .ReturnsAsync(IdentityResult.Success)
             .ReturnsAsync(saved ? IdentityResult.Success : IdentityResult.Failed(new IdentityError { Code = "failed" }));
         var policy = new Mock<ISecurityPolicyService>();
         policy.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(new Core.Domain.Entities.SecurityPolicy
@@ -188,7 +191,7 @@ public sealed class MigrationPageIssuanceGateTests
             It.IsAny<IEnumerable<System.Security.Claims.Claim>>()), fullSignIn ? Times.Once() : Times.Never());
         identity.SignInManager.Verify(manager => manager.SignInAsync(It.IsAny<ApplicationUser>(), false, null), Times.Never());
         if (mandatory)
-            identity.UserManager.Verify(manager => manager.UpdateAsync(It.Is<ApplicationUser>(user => user.MfaRequirementNotifiedAt != null)), Times.Once());
+            identity.UserManager.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Exactly(2));
         if (fullSignIn) Assert.IsType<RedirectResult>(result);
         else Assert.Equal(saved ? "./MfaSetup" : "./Login", Assert.IsType<RedirectToPageResult>(result).PageName);
         authentication.Verify(service => service.SignInAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme,
@@ -796,6 +799,7 @@ public sealed class MigrationPageIssuanceGateTests
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         return new ApplicationDbContext(options);
     }

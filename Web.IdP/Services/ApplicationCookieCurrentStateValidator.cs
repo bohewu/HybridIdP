@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using Web.IdP.Helpers;
 using Microsoft.AspNetCore.Authentication.Cookies;
 
 namespace Web.IdP.Services;
@@ -56,6 +57,12 @@ public sealed class ApplicationCookieCurrentStateValidator
     {
         return async context =>
         {
+            // Reject pre-fix assurance before Identity can refresh and bless it.
+            if (!AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(context.Principal))
+            {
+                context.RejectPrincipal();
+                return;
+            }
             if (securityStampValidator is not null)
             {
                 await securityStampValidator(context);

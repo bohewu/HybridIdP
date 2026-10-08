@@ -225,7 +225,12 @@ public class UsersController : ControllerBase
             {
                 if (errors.Any(e => e.Contains("not found")))
                     return NotFound(new { errors });
-                return BadRequest(new { errors });
+                return BadRequest(new
+                {
+                    errors = errors.Select(error => error == "EmailMfaAddressChangeRequiresRemoval"
+                        ? _localizer[error].Value
+                        : error).ToArray()
+                });
             }
 
             var updatedUser = await _userManagementService.GetUserByIdAsync(id, cancellationToken);

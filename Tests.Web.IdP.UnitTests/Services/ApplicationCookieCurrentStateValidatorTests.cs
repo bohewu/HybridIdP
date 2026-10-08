@@ -1,3 +1,4 @@
+using Web.IdP.Helpers;
 using System.Security.Claims;
 using Core.Application;
 using Core.Domain;
@@ -214,6 +215,27 @@ public class ApplicationCookieCurrentStateValidatorTests
             cookieContext.Principal.FindFirst(AuthConstants.Claims.ImpersonatorId)?.Value);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("old")]
+    public async Task Compose_ShouldRejectLegacyAssuranceBeforeStampRefresh(string? version)
+    {
+        var principal = new ClaimsPrincipal(new ClaimsIdentity(
+            [new Claim(ClaimTypes.NameIdentifier, Guid.NewGuid().ToString()), new Claim("amr", "mfa")],
+            IdentityConstants.ApplicationScheme));
+        if (version != null) ((ClaimsIdentity)principal.Identity!).AddClaim(
+            new Claim(AuthorizationAuthenticationSession.AssuranceVersionClaim, version));
+        var context = CreateCookieContext(principal);
+        var stampValidatorCalled = false;
+        await ApplicationCookieCurrentStateValidator.Compose(_ =>
+        {
+            stampValidatorCalled = true;
+            return Task.CompletedTask;
+        })(context);
+        Assert.False(stampValidatorCalled);
+        Assert.Null(context.Principal);
+    }
+
     private static ApplicationDbContext CreateDatabase()
     {
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -234,7 +256,8 @@ public class ApplicationCookieCurrentStateValidatorTests
 
     private static ClaimsPrincipal CreatePrincipal(Guid userId) =>
         new(new ClaimsIdentity(
-            [new Claim(ClaimTypes.NameIdentifier, userId.ToString())],
+            [new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+             new Claim(AuthorizationAuthenticationSession.AssuranceVersionClaim, AuthorizationAuthenticationSession.AssuranceVersion)],
             IdentityConstants.ApplicationScheme));
 
     private static IMigrationIssuanceGuard CreateMigrationIssuanceGuard(bool allowed = true)

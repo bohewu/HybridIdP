@@ -148,9 +148,13 @@ public class MfaSetupModel : PageModel
 
         MfaEnrollmentSession.Consume(HttpContext.Session);
         PendingExternalLoginLink.Cancel(HttpContext);
-        AuthorizationAuthenticationSession.PreserveTime(HttpContext, User);
+        // Skipping enrollment proves no new credential; retain only this subject's pending primary ceremony time.
+        HttpContext.Items[AuthorizationAuthenticationSession.PreserveTimeKey] =
+            AuthenticationMethodSession.GetAuthenticationTime(HttpContext.Session, user)?.ToUnixTimeSeconds()
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
         await _signInManager.SignInWithClaimsAsync(user, isPersistent: false,
-            AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+            AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+        AuthenticationMethodSession.Consume(HttpContext.Session);
         return this.SafeRedirect(ReturnUrl, "~/");
     }
 

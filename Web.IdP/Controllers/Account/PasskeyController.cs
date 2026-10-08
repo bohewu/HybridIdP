@@ -191,7 +191,7 @@ public partial class PasskeyController : ControllerBase
                 }
 
                 AuthenticationMethodSession.Add(
-                    HttpContext.Session,
+                    HttpContext.Session, user,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
@@ -199,7 +199,8 @@ public partial class PasskeyController : ControllerBase
                 await _signInManager.SignInWithClaimsAsync(
                     user,
                     isPersistent: false,
-                    AuthenticationMethodSession.CreateClaims(HttpContext.Session));
+                    AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
+                AuthenticationMethodSession.Consume(HttpContext.Session);
             }
 
             return Ok(new { success = true });
@@ -387,7 +388,7 @@ public partial class PasskeyController : ControllerBase
             if (result.UserVerified)
             {
                 AuthenticationMethodSession.Replace(
-                    HttpContext.Session,
+                    HttpContext.Session, result.User,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
@@ -395,13 +396,13 @@ public partial class PasskeyController : ControllerBase
             else
             {
                 AuthenticationMethodSession.Replace(
-                    HttpContext.Session,
+                    HttpContext.Session, result.User,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence);
             }
 
             // Issue cookie with amr claims
-            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User);
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, result.User.Id, hardware: true);
             if (result.UserVerified)
@@ -413,6 +414,7 @@ public partial class PasskeyController : ControllerBase
                 await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User, "passkey", credentialId);
             }
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
+            AuthenticationMethodSession.Consume(HttpContext.Session);
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });

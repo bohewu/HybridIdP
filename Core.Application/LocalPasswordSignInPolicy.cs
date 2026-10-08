@@ -11,6 +11,6 @@ public static class LocalPasswordSignInPolicy
         DateTime utcNow) =>
         user.RequiresPasswordChange ||
         (policy.PasswordExpirationDays > 0 &&
-         user.LastPasswordChangeDate.HasValue &&
-         user.LastPasswordChangeDate.Value.AddDays(policy.PasswordExpirationDays) < utcNow);
+         (!user.LastPasswordChangeDate.HasValue ||
+          user.LastPasswordChangeDate.Value.AddDays(policy.PasswordExpirationDays) < utcNow));
 }

@@ -94,7 +94,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         }
 
         await httpContext.Session.LoadAsync(cancellationToken);
-        AuthenticationMethodSession.Replace(httpContext.Session, AuthConstants.Amr.External);
+        AuthenticationMethodSession.Replace(httpContext.Session, user, AuthConstants.Amr.External);
 
         if (login != null)
         {
@@ -161,8 +161,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         }
 
         var claims = AuthenticationMethodSession.CreateClaims(
-            httpContext.Session,
-            AuthConstants.Amr.External);
+            httpContext.Session, user);
         if (!await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
         {
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
@@ -174,6 +173,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
                 return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
         }
         await _signInManager.SignInWithClaimsAsync(user, isPersistent: false, claims);
+        AuthenticationMethodSession.Consume(httpContext.Session);
 
         return ExternalSignInCompletionResult.Succeeded();
     }

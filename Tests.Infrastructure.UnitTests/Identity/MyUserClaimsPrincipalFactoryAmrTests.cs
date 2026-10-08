@@ -52,7 +52,7 @@ public class MyUserClaimsPrincipalFactoryAmrTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateClaimsAsync_AddsAmrClaimsFromSession()
+    public async Task GenerateClaimsAsync_ShouldIgnoreAmbientSessionAssurance()
     {
         // Arrange
         using var context = new ApplicationDbContext(_options);
@@ -110,9 +110,8 @@ public class MyUserClaimsPrincipalFactoryAmrTests : IDisposable
         // Assert
         Assert.NotNull(identity);
         var amrClaims = identity.FindAll("amr").Select(c => c.Value).ToList();
-        Assert.Contains("pwd", amrClaims);
-        Assert.Contains("mfa", amrClaims);
-        Assert.Contains("otp", amrClaims);
-        Assert.Equal(3, amrClaims.Count);
+        Assert.Empty(amrClaims);
+        Assert.Null(principal.FindFirst("auth_time"));
+        sessionMock.Verify(s => s.TryGetValue(It.IsAny<string>(), out sessionBytes), Times.Never);
     }
 }

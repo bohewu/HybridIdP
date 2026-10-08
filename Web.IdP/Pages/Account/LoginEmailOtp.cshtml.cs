@@ -160,15 +160,16 @@ public partial class LoginEmailOtpModel : PageModel
             }
 
             AuthenticationMethodSession.Add(
-                HttpContext.Session,
+                HttpContext.Session, user,
                 AuthConstants.Amr.Mfa,
                 AuthConstants.Amr.Otp);
-            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+            var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
             AccountSecurityOperationSession.MarkVerified(HttpContext, user, "email");
             await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "email");
             await _signInManager.SignInWithClaimsAsync(user, RememberMe, claims);
+            AuthenticationMethodSession.Consume(HttpContext.Session);
             await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
             _logger.LogInformation("User logged in with Email MFA.");
             

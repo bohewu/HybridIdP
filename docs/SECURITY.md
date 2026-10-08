@@ -95,6 +95,28 @@ retained in `Details.message`. Allowed/required client scope replacements and
 setting and security-policy updates also create durable records; setting and credential values
 are omitted. Existing historical records are not rewritten.
 
+## Local Password Age and History
+
+Successful self-service local password changes commit the password hash, bounded
+prior-hash history and actual `LastPasswordChangeDate` together. A failed metadata
+write or audit operation rolls back the change. History count N retains the
+existing validation meaning: compare the current password plus N-1 earlier
+passwords. Minimum-age rules, expired/forced-change exceptions and failed-current-
+password lockout accounting remain enforced by the existing server policy.
+
+Local self-registration records the initial password date only after successful
+initial password validation and account creation. Person, user and initial date
+commit atomically before sign-in; a positive minimum age does not reject first
+creation. Existing accounts receive no invented historical dates or bulk backfill.
+
+When local password expiration is enabled, an account with an unknown password
+date must change its password after its next successful local-password proof.
+Interactive login routes to the existing required-change flow; the password
+grant is denied until the change is completed. Disabling expiration removes this
+unknown-date requirement, while explicit forced-change requirements still apply.
+External, passkey and directory authentication do not acquire a local password-age
+requirement; directory password policy remains directory-owned.
+
 ## Supported Multi-Factor Authentication (MFA)
 
 We support three primary MFA methods to ensure account security:
@@ -111,6 +133,13 @@ We support three primary MFA methods to ensure account security:
 - **Generation and storage**: Codes use a cryptographically secure random-number generator and are stored only as password hashes.
 - **Verification budget**: Each pending code permits at most five verification attempts. The fifth failed attempt invalidates that code; sending a replacement code starts a new budget.
 - **Features**: Background queue processing (non-blocking), send rate-limiting, and a 10-minute expiry.
+
+Generic user updates reject an enrolled Email MFA account's email-address or
+confirmation-state change before writing any user or Person changes. Successful
+generic updates commit their related writes together. JIT and Stage 1 binding
+refresh preserve that enrolled ApplicationUser factor destination and confirmation
+state while continuing ordinary identity metadata and Person contact updates.
+Factor changes continue through the existing authorized security workflows.
 
 ### 3. Passkey (WebAuthn)
 
@@ -140,6 +169,33 @@ activation cannot redeem afterward, even during enrollment grace. Password
 grants cannot perform a passkey assertion: an active passkey enrollment does
 not satisfy mandatory MFA, so enrolled accounts must use an interactive flow.
 The existing enrollment grace for accounts without active factors is retained.
+
+### Authentication assurance and cookie rollout
+
+Principal generation does not import browser-session AMR. Pending ceremony
+methods are bound to the verified account ID and current security stamp, expire
+within the existing Identity temporary two-factor cookie's five-minute lifetime,
+and are consumed after successful full sign-in. Missing, malformed, legacy,
+expired or mismatched pending state contributes no inherited methods. A direct
+factor-only reauthentication records the performed factor without inventing a
+password method; recovery codes do not invent OTP proof.
+
+Application cookies carry the internal `idp_assurance_version=1` marker. On the
+first request to the updated application, cookies without exactly that version
+are rejected before security-stamp refresh. Those sessions must authenticate
+again; this includes previously issued cookies whose AMR may be contaminated.
+The rollout boundary is each old cookie's next validation, and completion for a
+session is replacement by a new ceremony or a deliberate no-assurance account
+transition. Deploy this check consistently on all IdP instances sharing cookies.
+Already-issued tokens retain their existing lifetimes; this is not token revocation.
+
+Automatic refresh and external-login removal preserve the validated same-account
+cookie's complete AMR and original `auth_time`; they grant no new ceremony or
+factor-management authority. Only the existing authorized enrollment stamp
+transition carries matching pending methods to the new stamp. Account switching,
+impersonation and impersonation revert create no inherited AMR or `auth_time`:
+being the same Person or a recorded actor is not authentication proof for the new
+subject. Subsequent assurance requirements require a real ceremony.
 
 ### Factor removal and one-time proof consumption
 

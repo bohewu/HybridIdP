@@ -1,3 +1,4 @@
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
@@ -81,6 +82,74 @@ public class AuthorizationAuthenticationSessionTests
         Assert.Null(context.Principal.FindFirst("auth_time"));
     }
 
+    [Theory]
+    [InlineData(true, true)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public void CopyAssurance_ShouldReplaceAllMethodsOnlyForCurrentVersionSameSubject(bool sameSubject, bool currentVersion)
+    {
+        var source = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, "source"), new Claim("AspNet.Identity.SecurityStamp", "stamp"), new Claim("amr", "ext"), new Claim("amr", "otp"),
+            new Claim("amr", "mfa"), new Claim(ClaimTypes.AuthenticationMethod, "custom"), new Claim("auth_time", "123")], "cookie"));
+        if (currentVersion) ((ClaimsIdentity)source.Identity!).AddClaim(new Claim(
+            AuthorizationAuthenticationSession.AssuranceVersionClaim, AuthorizationAuthenticationSession.AssuranceVersion));
+        var target = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, sameSubject ? "source" : "target"), new Claim("AspNet.Identity.SecurityStamp", "stamp"), new Claim("amr", "hwk"),
+            new Claim("auth_time", "999")], "cookie"));
+        AuthorizationAuthenticationSession.CopyAssurance(source, target);
+        if (sameSubject && currentVersion)
+        {
+            Assert.Equal(["ext", "otp", "mfa"], target.FindAll("amr").Select(claim => claim.Value));
+            Assert.Equal("custom", target.FindFirstValue(ClaimTypes.AuthenticationMethod));
+            Assert.Equal("123", target.FindFirstValue("auth_time"));
+        }
+        else
+        {
+            Assert.Empty(target.FindAll("amr"));
+            Assert.Null(target.FindFirst("auth_time"));
+            Assert.Null(target.FindFirst(ClaimTypes.AuthenticationMethod));
+        }
+    }
+
+    [Fact]
+    public void CopyAssurance_ShouldRejectUnapprovedSecurityStampTransition()
+    {
+        var source = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, "subject"), new Claim("AspNet.Identity.SecurityStamp", "old"),
+            new Claim(AuthorizationAuthenticationSession.AssuranceVersionClaim, AuthorizationAuthenticationSession.AssuranceVersion),
+            new Claim("amr", "mfa"), new Claim("auth_time", "123")], "cookie"));
+        var target = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, "subject"), new Claim("AspNet.Identity.SecurityStamp", "new")], "cookie"));
+        AuthorizationAuthenticationSession.CopyAssurance(source, target);
+        Assert.Empty(target.FindAll("amr"));
+        Assert.Null(target.FindFirst("auth_time"));
+    }
+
+    [Fact]
+    public void ManualRefresh_ShouldPreserveEveryCookieMethodAndTimeWithoutPendingAuthority()
+    {
+        var session = new MemorySession();
+        session.SetString(AuthenticationMethodSession.SessionKey, "[\"hwk\",\"mfa\"]");
+        var request = new OpenIddictRequest { ClientId = "client", MaxAge = 0 };
+        AuthorizationAuthenticationSession.Begin(session, request, new FixedClock());
+        var context = SigningContext(session);
+        var source = Principal();
+        var identity = (ClaimsIdentity)source.Identity!;
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, "same-subject"));
+        identity.AddClaim(new Claim("AspNet.Identity.SecurityStamp", "stamp"));
+        identity.AddClaim(new Claim(AuthorizationAuthenticationSession.AssuranceVersionClaim, AuthorizationAuthenticationSession.AssuranceVersion));
+        identity.AddClaim(new Claim("amr", "otp"));
+        identity.AddClaim(new Claim("amr", "mfa"));
+        identity.AddClaim(new Claim("auth_time", "123"));
+        ((ClaimsIdentity)context.Principal!.Identity!).AddClaim(new Claim(ClaimTypes.NameIdentifier, "same-subject"));
+        AuthorizationAuthenticationSession.PreserveAssurance(context.HttpContext, source);
+        AuthorizationAuthenticationSession.OnSigningIn(context);
+        Assert.Equal(["pwd", "otp", "mfa"], context.Principal.FindAll("amr").Select(claim => claim.Value));
+        Assert.Equal("123", context.Principal.FindFirstValue("auth_time"));
+        Assert.False(AuthorizationAuthenticationSession.TryConsume(session, context.Principal, request, new FixedClock()));
+        Assert.True(AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(context.Principal));
+    }
+
     private static ClaimsPrincipal Principal() => new(new ClaimsIdentity([new Claim("amr", "pwd")], "Identity.Application"));
 
     [Fact]
@@ -116,7 +185,7 @@ public class AuthorizationAuthenticationSessionTests
     }
 
     private static CookieSigningInContext SigningContext(ISession session) => new(
-        new DefaultHttpContext { Session = session }, new AuthenticationScheme("Identity.Application", null, typeof(CookieAuthenticationHandler)),
+        new DefaultHttpContext { Session = session, RequestServices = new Microsoft.Extensions.DependencyInjection.ServiceCollection().BuildServiceProvider() }, new AuthenticationScheme("Identity.Application", null, typeof(CookieAuthenticationHandler)),
         new CookieAuthenticationOptions { TimeProvider = new FixedClock() }, Principal(), new AuthenticationProperties(), new CookieOptions());
 
     private sealed class FixedClock : TimeProvider

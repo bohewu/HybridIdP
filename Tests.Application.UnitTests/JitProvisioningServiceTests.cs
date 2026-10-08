@@ -36,6 +36,75 @@ public class JitProvisioningServiceTests : IDisposable
     private readonly ApplicationDbContext _context;
     private readonly JitProvisioningService _service;
 
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task ProvisionExternalUser_ShouldPreserveEnrolledFactorAndSyncContact_WhenProviderEmailChanges(bool confirmed)
+    {
+        var person = new Person { Id = Guid.NewGuid(), Email = "contact@example.test" };
+        _context.Persons.Add(person);
+        await _context.SaveChangesAsync();
+        var user = new ApplicationUser
+        {
+            UserName = "existing", Email = "factor@example.test", EmailConfirmed = confirmed,
+            EmailMfaEnabled = true, PersonId = person.Id, SecurityStamp = "unchanged-stamp"
+        };
+        _userManagerMock.Setup(manager => manager.FindByLoginAsync("Legacy", "subject")).ReturnsAsync(user);
+        _userManagerMock.Setup(manager => manager.UpdateAsync(user)).ReturnsAsync(IdentityResult.Success);
+
+        var result = await _service.ProvisionExternalUserAsync(new ExternalAuthResult
+        {
+            Provider = "Legacy", ProviderKey = "subject", Email = "upstream@example.test",
+            EmailVerified = true, FirstName = "Updated", Department = "Updated department"
+        });
+
+        Assert.Equal("factor@example.test", result.Email);
+        Assert.Equal(confirmed, result.EmailConfirmed);
+        Assert.True(result.EmailMfaEnabled);
+        Assert.Equal("unchanged-stamp", result.SecurityStamp);
+        Assert.Equal("Updated", result.FirstName);
+        Assert.Equal("Updated department", result.Department);
+        _context.ChangeTracker.Clear();
+        var contact = await _context.Persons.SingleAsync();
+        Assert.Equal("upstream@example.test", contact.Email);
+        Assert.Equal("Updated", contact.FirstName);
+        Assert.Equal("Updated department", contact.Department);
+    }
+
+    [Fact]
+    public async Task ProvisionExternalUser_ShouldRejectFailedIdentityUpdateBeforeContactSync()
+    {
+        var person = new Person { Id = Guid.NewGuid(), Email = "contact@example.test", FirstName = "Original" };
+        var user = new ApplicationUser
+        {
+            UserName = "existing", Email = "factor@example.test", Person = person, PersonId = person.Id,
+            EmailMfaCode = "original-pending-hash", EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5),
+            EmailMfaVerificationAttempts = 2
+        };
+        _context.Users.Add(user);
+        await _context.SaveChangesAsync();
+        _userManagerMock.Setup(manager => manager.FindByLoginAsync("Legacy", "subject")).ReturnsAsync(user);
+        _userManagerMock.Setup(manager => manager.UpdateAsync(user))
+            .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "ConcurrencyFailure" }));
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.ProvisionExternalUserAsync(new ExternalAuthResult
+        {
+            Provider = "Legacy", ProviderKey = "subject", Email = "upstream@example.test",
+            EmailVerified = true, FirstName = "Changed"
+        }));
+
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+        var persisted = await _context.Users.SingleAsync();
+        Assert.Equal("factor@example.test", persisted.Email);
+        Assert.Equal("original-pending-hash", persisted.EmailMfaCode);
+        Assert.NotNull(persisted.EmailMfaCodeExpiry);
+        Assert.Equal(2, persisted.EmailMfaVerificationAttempts);
+        var contact = await _context.Persons.SingleAsync();
+        Assert.Equal("contact@example.test", contact.Email);
+        Assert.Equal("Original", contact.FirstName);
+    }
+
     public JitProvisioningServiceTests()
     {
         _userManagerMock = CreateUserManagerMock();

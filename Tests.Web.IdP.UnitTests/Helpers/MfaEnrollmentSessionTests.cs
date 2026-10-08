@@ -32,6 +32,7 @@ public class MfaEnrollmentSessionTests
         var users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
         users.Setup(manager => manager.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
         var session = new MemorySession();
+        AuthenticationMethodSession.Replace(session, user, "ext");
         var identity = TwoFactorAuthenticationSession.CreateIdentity(user, users.Object);
         if (partial) identity.AddClaim(MfaEnrollmentSession.BeginInitial(session, user.Id, securityStamp: user.SecurityStamp));
         else
@@ -55,6 +56,8 @@ public class MfaEnrollmentSessionTests
         await db.SaveChangesAsync();
         Assert.Equal(!revoked, await MfaEnrollmentSession.CarryAuthorizedStampAsync(context, user,
             revoked ? "unrelated-reset" : "before-seed", default));
+        if (revoked) Assert.Empty(AuthenticationMethodSession.Get(session, user));
+        else Assert.Equal(["ext"], AuthenticationMethodSession.Get(session, user));
         var passkeys = new Mock<Core.Application.Interfaces.IPasskeyService>();
         passkeys.Setup(service => service.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync([]);
         Assert.Equal(!revoked, await MfaEnrollmentSession.IsAuthorizedAsync(context, user, passkeys.Object));

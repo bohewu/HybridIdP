@@ -52,7 +52,7 @@ public static class AccountSecurityOperationSession
             var identity = TwoFactorAuthenticationSession.CreateIdentity(user,
                 http.RequestServices.GetRequiredService<UserManager<ApplicationUser>>());
             await http.SignInAsync(IdentityConstants.TwoFactorUserIdScheme, new ClaimsPrincipal(identity));
-            AuthenticationMethodSession.Replace(http.Session);
+            AuthenticationMethodSession.Replace(http.Session, user);
             return QueryHelpers.AddQueryString("/Account/LoginMfa", "returnUrl", returnUrl);
         }
         return QueryHelpers.AddQueryString("/Account/Login", "returnUrl", returnUrl);

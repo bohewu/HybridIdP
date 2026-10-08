@@ -529,7 +529,8 @@ public static class ServiceCollectionExtensions
         }
 
         // Configure SecurityStampValidatorOptions from configuration (e.g. for testing)
-        services.Configure<SecurityStampValidatorOptions>(options =>
+        services.AddOptions<SecurityStampValidatorOptions>()
+            .Configure<Microsoft.Extensions.Options.IOptions<IdentityOptions>>((options, identityOptions) =>
         {
             // Validate security stamp every 1 minute to ensure role/permission changes take effect quickly
             // but avoiding issues with Impersonation/Simulated Login where strict per-request validation can fail.
@@ -549,8 +550,8 @@ public static class ServiceCollectionExtensions
                 if (context.CurrentPrincipal?.Identity is ClaimsIdentity currentIdentity &&
                     context.NewPrincipal?.Identity is ClaimsIdentity newIdentity)
                 {
-                    foreach (var claim in currentIdentity.FindAll("auth_time"))
-                        newIdentity.AddClaim(claim);
+                    AuthorizationAuthenticationSession.CopyAssurance(context.CurrentPrincipal, context.NewPrincipal,
+                        identityOptions.Value.ClaimsIdentity.SecurityStampClaimType);
                     // 1. Restore Actor Identity
                     if (currentIdentity.Actor != null && newIdentity.Actor == null)
                     {

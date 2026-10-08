@@ -184,6 +184,9 @@ public static class MfaEnrollmentSession
             var identity = (ClaimsIdentity)principal.Identity!;
             foreach (var claim in identity.FindAll(stampType).ToArray()) identity.RemoveClaim(claim);
             identity.AddClaim(new Claim(stampType, user.SecurityStamp));
+            AuthenticationMethodSession.CarryAuthorizedStamp(context.Session, user, previousStamp);
+            if (scheme == IdentityConstants.ApplicationScheme)
+                AuthorizationAuthenticationSession.PreserveAssurance(context, authentication.Principal);
             await context.SignInAsync(scheme, principal, authentication.Properties);
             return true;
         }

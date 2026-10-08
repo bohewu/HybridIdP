@@ -151,15 +151,16 @@ public partial class LoginMfaModel : PageModel
                 }
 
                 AuthenticationMethodSession.Add(
-                    HttpContext.Session,
+                    HttpContext.Session, user,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa,
                     Core.Domain.Constants.AuthConstants.Amr.Otp);
-                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
                 AccountSecurityOperationSession.MarkVerified(HttpContext, user, "totp");
                 await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "totp");
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithTotp(_logger);
                 
@@ -200,14 +201,15 @@ public partial class LoginMfaModel : PageModel
                 }
 
                 AuthenticationMethodSession.Add(
-                    HttpContext.Session,
+                    HttpContext.Session, user,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
-                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session);
+                var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
                 AccountSecurityOperationSession.MarkVerified(HttpContext, user, "recovery");
                 await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "recovery");
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
+                AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 LogLoginWithRecovery(_logger);
                 

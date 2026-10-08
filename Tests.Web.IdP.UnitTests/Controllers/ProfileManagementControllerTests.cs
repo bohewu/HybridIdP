@@ -1,3 +1,6 @@
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Web.IdP.Helpers;
 using System;
 using System.Collections.Generic;
 using System.Security.Claims;
@@ -45,6 +48,7 @@ public class ProfileManagementControllerTests : IDisposable
         // Setup in-memory database
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .ConfigureWarnings(warnings => warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.InMemoryEventId.TransactionIgnoredWarning))
             .Options;
         _dbContext = new ApplicationDbContext(options);
 
@@ -74,7 +78,8 @@ public class ProfileManagementControllerTests : IDisposable
             Id = Guid.NewGuid(),
             UserName = "testuser@example.com",
             Email = "testuser@example.com",
-            EmailConfirmed = true
+            EmailConfirmed = true,
+            SecurityStamp = "current-stamp"
         };
 
         // Setup controller with mocked User context
@@ -97,12 +102,18 @@ public class ProfileManagementControllerTests : IDisposable
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
             new Claim(ClaimTypes.NameIdentifier, _testUser.Id.ToString()),
-            new Claim(ClaimTypes.Name, _testUser.UserName)
+            new Claim(ClaimTypes.Name, _testUser.UserName),
+            new Claim("AspNet.Identity.SecurityStamp", _testUser.SecurityStamp),
+            new Claim(AuthorizationAuthenticationSession.AssuranceVersionClaim, AuthorizationAuthenticationSession.AssuranceVersion)
         }, "mock"));
 
+        var authentication = new Mock<IAuthenticationService>();
+        authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+            .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(user, IdentityConstants.ApplicationScheme)));
+        var services = new ServiceCollection().AddSingleton(authentication.Object).BuildServiceProvider();
         _controller.ControllerContext = new ControllerContext
         {
-            HttpContext = new DefaultHttpContext { User = user }
+            HttpContext = new DefaultHttpContext { User = user, RequestServices = services }
         };
     }
 
@@ -512,6 +523,7 @@ public class ProfileManagementControllerTests : IDisposable
             .ReturnsAsync(true);
         _mockUserManager.Setup(m => m.ChangePasswordAsync(_testUser, "Old123!", "New123!"))
             .ReturnsAsync(IdentityResult.Success);
+        _mockUserManager.Setup(m => m.UpdateAsync(_testUser)).ReturnsAsync(IdentityResult.Success);
 
         var policy = new SecurityPolicy { AllowSelfPasswordChange = true };
         _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync())
@@ -578,6 +590,46 @@ public class ProfileManagementControllerTests : IDisposable
         _mockUserManager.Verify(manager => manager.RemoveLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
         _mockSignInManager.Verify(manager => manager.RefreshSignInAsync(It.IsAny<ApplicationUser>()), Times.Never);
         _mockAuditService.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("stamp")]
+    [InlineData("marker")]
+    [InlineData("subject")]
+    public async Task RemoveLogin_ShouldRejectInvalidCookieBindingBeforeMutation(string invalidClaim)
+    {
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        var identity = (ClaimsIdentity)_controller.User.Identity!;
+        var claimType = invalidClaim == "stamp" ? "AspNet.Identity.SecurityStamp" :
+            invalidClaim == "subject" ? ClaimTypes.NameIdentifier : AuthorizationAuthenticationSession.AssuranceVersionClaim;
+        identity.RemoveClaim(identity.FindFirst(claimType)!);
+        Assert.IsType<UnauthorizedResult>(await _controller.RemoveLogin(new RemoveLoginRequest { LoginProvider = "Google", ProviderKey = "google-id" }));
+        _mockUserManager.Verify(manager => manager.RemoveLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task RemoveLogin_ShouldPreserveFullValidatedCookieAssuranceAcrossAuthorizedStampChange()
+    {
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        var identity = (ClaimsIdentity)_controller.User.Identity!;
+        identity.AddClaims([new Claim("amr", "ext"), new Claim("amr", "otp"), new Claim("amr", "mfa"), new Claim("auth_time", "100")]);
+        _mockUserManager.Setup(manager => manager.RemoveLoginAsync(_testUser, "Google", "google-id"))
+            .Callback(() => _testUser.SecurityStamp = "after-removal").ReturnsAsync(IdentityResult.Success);
+        ClaimsPrincipal? refreshed = null;
+        _mockSignInManager.Setup(manager => manager.RefreshSignInAsync(_testUser)).Callback(() =>
+        {
+            // Identity's refresh copies only the first AMR; the signing event must restore the full set.
+            refreshed = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(ClaimTypes.NameIdentifier, _testUser.Id.ToString()), new Claim("amr", "ext"),
+                new Claim("AspNet.Identity.SecurityStamp", _testUser.SecurityStamp!)], IdentityConstants.ApplicationScheme));
+            AuthorizationAuthenticationSession.OnSigningIn(new CookieSigningInContext(_controller.HttpContext,
+                new AuthenticationScheme(IdentityConstants.ApplicationScheme, null, typeof(CookieAuthenticationHandler)),
+                new CookieAuthenticationOptions(), refreshed, new AuthenticationProperties(), new CookieOptions()));
+        }).Returns(Task.CompletedTask);
+        Assert.IsType<OkObjectResult>(await _controller.RemoveLogin(new RemoveLoginRequest { LoginProvider = "Google", ProviderKey = "google-id" }));
+        Assert.NotNull(refreshed);
+        Assert.Equal(["ext", "otp", "mfa"], refreshed.FindAll("amr").Select(claim => claim.Value));
+        Assert.Equal("100", refreshed.FindFirstValue("auth_time"));
     }
 
     [Fact]

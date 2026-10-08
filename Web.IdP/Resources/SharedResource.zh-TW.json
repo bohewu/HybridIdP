@@ -1,4 +1,5 @@
 {
+  "EmailMfaAddressChangeRequiresRemoval": "請先透過已授權的安全性設定移除電子郵件 MFA，或由管理員重設 MFA，再變更電子郵件地址或驗證狀態，並重新註冊 MFA。",
   "Recovery.Identity.Identifier.Label": "身分證件號碼",
   "Recovery.Identity.Identifier.Help": "若帳號需要身分核對，請輸入身分證件號碼。此資料僅用於本次核對。",
   "Recovery.ReadyToSend": "將驗證碼寄送至：",
