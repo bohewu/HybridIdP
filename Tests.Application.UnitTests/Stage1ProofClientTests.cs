@@ -88,7 +88,6 @@ public sealed class Stage1ProofClientTests
             .ReturnsAsync((ApplicationUser?)null);
         userManager.Setup(manager => manager.FindByNameAsync("account"))
             .ReturnsAsync((ApplicationUser?)null);
-        var legacy = new Mock<ILegacyAuthService>();
         var proof = new Mock<IProofProvider>();
         proof.Setup(provider => provider.ProveAsync(
                 It.IsAny<ProofRequest>(),
@@ -99,7 +98,6 @@ public sealed class Stage1ProofClientTests
         var login = new LoginService(
             userManager.Object,
             new Mock<ISecurityPolicyService>().Object,
-            legacy.Object,
             new Mock<IJitProvisioningService>().Object,
             CreateEmptyDbContext(),
             new Mock<ILogger<LoginService>>().Object,
@@ -112,10 +110,7 @@ public sealed class Stage1ProofClientTests
         var result = await login.AuthenticateAsync("account", "password");
 
         Assert.Equal(LoginStatus.InvalidCredentials, result.Status);
-        legacy.Verify(service => service.ValidateAsync(
-            It.IsAny<string>(),
-            It.IsAny<string>(),
-            It.IsAny<CancellationToken>()), Times.Never);
+        proof.Verify(provider => provider.ProveAsync(It.IsAny<ProofRequest>(), "password", It.IsAny<CancellationToken>()), Times.Once);
     }
 
     [Fact]
@@ -141,7 +136,6 @@ public sealed class Stage1ProofClientTests
         var login = new LoginService(
             userManager.Object,
             new Mock<ISecurityPolicyService>().Object,
-            new Mock<ILegacyAuthService>().Object,
             Mock.Of<IJitProvisioningService>(service =>
                 service.ProvisionExternalUserAsync(It.IsAny<ExternalAuthResult>(), It.IsAny<CancellationToken>()) ==
                 Task.FromResult(provisioned)),

@@ -370,6 +370,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("ConditionJson")
+                        .HasColumnType("text");
+
                     b.Property<string>("DataType")
                         .IsRequired()
                         .HasMaxLength(50)
@@ -394,6 +397,9 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<string>("ProviderProfileSource")
+                        .HasColumnType("text");
 
                     b.Property<string>("UserPropertyPath")
                         .IsRequired()
@@ -1086,6 +1092,10 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<string>("ProfileUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<string>("ProviderProfilesJson")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
 
                     b.Property<string>("ResidentCertificateNumber")
                         .HasMaxLength(64)

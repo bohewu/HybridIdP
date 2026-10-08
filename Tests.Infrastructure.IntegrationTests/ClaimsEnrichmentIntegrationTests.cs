@@ -171,6 +171,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
         user.Person = person;
 
         var password = Guid.NewGuid().ToString("N") + "aA1!";
+        user.LastPasswordChangeDate = DateTime.UtcNow;
         await _userManager.CreateAsync(user, password);
         // _db.Users.Add(user);
         // _db.Persons.Add(person); // Cascade or manual add. Add manually to be safe.
@@ -252,6 +253,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
                 RandomNumberGenerator.GetBytes(32))
         };
         var password = Guid.NewGuid().ToString("N") + "aA1!";
+        user.LastPasswordChangeDate = DateTime.UtcNow;
         await _userManager.CreateAsync(user, password);
 
         const string claimType = "test_security_sensitive_source";
@@ -346,6 +348,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             }
         };
         var password = Guid.NewGuid().ToString("N") + "aA1!";
+        user.LastPasswordChangeDate = DateTime.UtcNow;
         await _userManager.CreateAsync(user, password);
 
         const string scopeName = "test_approved_source_scope";

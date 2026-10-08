@@ -14,6 +14,9 @@ public class Person
     /// Unique identifier for the person
     /// </summary>
     public Guid Id { get; set; }
+
+    // Source-scoped, approved Profile snapshots; not a role or lifecycle authority.
+    public string? ProviderProfilesJson { get; set; }
     
     // Contact Information
     /// <summary>

@@ -89,4 +89,20 @@ describe('ClaimFormModal.vue', () => {
 
     expect(claimTypeInput.element.value).toBe('custom_claim')
   })
+  it('submits a typed profile condition and rejects malformed JSON', async () => {
+    const wrapper = mountModal()
+    await wrapper.find('[data-test-id="claim-profile-source-input"]').setValue('source')
+    await wrapper.find('[data-test-id="claim-condition-checkbox"]').setValue(true)
+    await wrapper.find('[data-test-id="claim-condition-input"]').setValue('{bad')
+    await wrapper.find('#claim-form').trigger('submit')
+    expect(wrapper.emitted('save')).toBeUndefined()
+    const rule = { operator: 'StartsWith', property: 'code', value: '4' }
+    await wrapper.find('[data-test-id="claim-condition-input"]').setValue(JSON.stringify(rule))
+    await wrapper.find('#claim-form').trigger('submit')
+    const saved = wrapper.emitted('save')[0][0]
+    expect(saved.providerProfileSource).toBe('source')
+    expect(saved.dataType).toBe('Boolean')
+    expect(saved.condition).toEqual(rule)
+  })
+
 })

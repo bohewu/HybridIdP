@@ -87,7 +87,14 @@
     "protectedNote": "Protected sensitive claims cannot be edited or deleted. NationalId fields are hashed for privacy.",
     "saving": "Saving...",
     "save": "Save",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "profileSource": "Provider Profile source (optional)",
+    "profileSourceHelp": "Enter a configured source name; leave empty for existing account/Person fields.",
+    "profilePropertyHelp": "Enter an approved property key from this source and select its configured data type.",
+    "useCondition": "Derive a Boolean claim with a condition",
+    "condition": "Condition (JSON)",
+    "conditionHelp": "Allowed operators: Equals, StartsWith, All, Any. Example: {\"operator\":\"StartsWith\",\"property\":\"student_id\",\"value\":\"4\"}. Groups use a children array; all inputs must be approved and available.",
+    "conditionInvalid": "Enter a valid condition JSON object."
   },
   "confirmDelete": "Are you sure you want to delete the claim \"{name}\"?",
   "deleteError": "Failed to delete claim",

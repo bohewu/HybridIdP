@@ -67,9 +67,6 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ITurnstileService, TurnstileService>();
         services.AddScoped<AdministrativeMfaResetService>();
         services.AddScoped<IJitProvisioningService, JitProvisioningService>();
-        services.AddScoped<ILegacyAuthService, LegacyAuthService>();
-        services.AddHttpClient(LegacyAuthService.HttpClientName)
-            .ConfigurePrimaryHttpMessageHandler(LegacyAuthService.CreatePrimaryHandler);
         services.AddHttpClient(MonitoringService.HttpClientName)
             .ConfigurePrimaryHttpMessageHandler(MonitoringService.CreatePrimaryHandler);
         services.AddHttpClient<IProofProvider, ProviderProofProvider>()
@@ -237,7 +234,6 @@ public static class ServiceCollectionExtensions
 
         // Options Configuration
         services.Configure<AppInfoOptions>(configuration.GetSection(AppInfoOptions.Section));
-        services.Configure<LegacyAuthOptions>(configuration.GetSection(LegacyAuthOptions.SectionName));
         services.Configure<EmailOptions>(configuration.GetSection(EmailOptions.SectionName));
         services.Configure<RateLimitingOptions>(configuration.GetSection(RateLimitingOptions.Section));
         services.Configure<OperationalAdminBootstrapOptions>(
@@ -257,6 +253,12 @@ public static class ServiceCollectionExtensions
         services.AddSingleton<IValidateOptions<DirectoryIntegrationOptions>, DirectoryIntegrationOptionsValidator>();
         services.AddSingleton<IValidateOptions<CredentialMigrationOptions>, CredentialMigrationOptionsValidator>();
         services.AddSingleton<IValidateOptions<ProviderProofOptions>, ProviderProofOptionsValidator>();
+        services.AddSingleton<IValidateOptions<ProviderProfileOptions>, ProviderProfileOptionsValidator>();
+        services.AddOptions<ProviderProfileOptions>()
+            .Bind(configuration.GetSection(ProviderProfileOptions.Section)).ValidateOnStart();
+        services.AddHttpClient<ProviderProfileClient>()
+            .ConfigurePrimaryHttpMessageHandler(ProviderProfileClient.CreatePrimaryHandler);
+        services.AddScoped<IProviderProfileService, ProviderProfileService>();
         services.AddSingleton<IValidateOptions<ProviderMetadataRefreshOptions>, ProviderMetadataRefreshOptionsValidator>();
         services.AddSingleton<IValidateOptions<LegacyPasswordSyncOptions>, LegacyPasswordSyncOptionsValidator>();
         services.AddSingleton<IValidateOptions<RecoveryVerificationPolicyOptions>, RecoveryVerificationPolicyOptionsValidator>();

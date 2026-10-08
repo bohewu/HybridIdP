@@ -1,4 +1,9 @@
 using System.Collections.Immutable;
+using System.Text.Json;
+using Core.Application.DTOs;
+using Core.Application.Ports;
+using Infrastructure.Options;
+using Microsoft.Extensions.Options;
 using System.Security.Claims;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -21,17 +26,23 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
     private readonly RoleManager<ApplicationRole> _roleManager;
     private readonly IApplicationDbContext _db;
     private readonly ILogger<ClaimsEnrichmentService> _logger;
+    private readonly IProviderProfileService? _profiles;
+    private readonly ProviderProfileOptions _profileOptions;
+    public const string ProfileClaimMarker = "oi_provider_profile_claims";
 
     public ClaimsEnrichmentService(
         UserManager<ApplicationUser> userManager,
         RoleManager<ApplicationRole> roleManager,
         IApplicationDbContext db,
-        ILogger<ClaimsEnrichmentService> logger)
+        ILogger<ClaimsEnrichmentService> logger,
+        IProviderProfileService? profiles = null, IOptions<ProviderProfileOptions>? profileOptions = null)
     {
         _userManager = userManager;
         _roleManager = roleManager;
         _db = db;
         _logger = logger;
+        _profiles = profiles;
+        _profileOptions = profileOptions?.Value ?? new ProviderProfileOptions();
     }
 
     public Task AddPermissionClaimsAsync(ClaimsIdentity identity, ApplicationUser user, string? clientId = null, CancellationToken cancellationToken = default)
@@ -43,6 +54,19 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
 
     public async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes, CancellationToken cancellationToken = default)
     {
+        // Private ticket metadata permits removal even after a mapping is deleted or renamed.
+        foreach (var marker in identity.FindAll(ProfileClaimMarker).ToList())
+        {
+            try
+            {
+                foreach (var type in JsonSerializer.Deserialize<string[]>(marker.Value) ?? [])
+                    if (!ClaimSourcePropertyPolicy.IsProtectedClaimType(type))
+                        foreach (var old in identity.FindAll(type).ToList()) identity.RemoveClaim(old);
+            }
+            catch (JsonException) { }
+            identity.RemoveClaim(marker);
+        }
+        var profileClaimTypes = new HashSet<string>(StringComparer.Ordinal);
         var requestedScopes = grantedScopes.ToImmutableArray();
         if (requestedScopes.IsDefaultOrEmpty)
         {
@@ -63,22 +87,43 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         {
             var def = map.ClaimDefinition;
             if (def == null) continue;
-            if (def.ClaimType is "permission" or "active_role" or "role" or "app_role" or
-                "idp_admin_application" or "sub" or "scope" or "scp" or "client_id" or "azp" or "amr" or "acr" or "auth_time" ||
-                def.ClaimType == ClaimTypes.Role) continue;
-
-            if (!ClaimSourcePropertyPolicy.TryResolve(
-                    user,
-                    def.UserPropertyPath,
-                    out var resolvedValue))
+            if (ClaimSourcePropertyPolicy.IsProtectedClaimType(def.ClaimType)) continue;
+            string? value;
+            if (def.ProviderProfileSource is { } source)
             {
-                LogRejectedClaimSource(def.ClaimType, def.UserPropertyPath);
-                continue;
+                if (ClaimSourcePropertyPolicy.IsProtectedProviderClaimType(def.ClaimType)) continue;
+                if (_profiles is null || !_profileOptions.Enabled ||
+                    !_profileOptions.Sources.TryGetValue(source, out var configured)) continue;
+                var properties = await _profiles.GetPropertiesAsync(user, source, cancellationToken);
+                if (def.ConditionJson is { } rule)
+                {
+                    ClaimCondition? condition;
+                    try { condition = JsonSerializer.Deserialize<ClaimCondition>(rule); }
+                    catch (JsonException) { continue; }
+                    if (def.DataType != "Boolean" || condition is null ||
+                        ClaimConditionPolicy.Evaluate(condition, configured.AllowedProperties, properties) is not { } known) continue;
+                    value = known ? "true" : "false";
+                }
+                else
+                {
+                    if (!configured.AllowedProperties.TryGetValue(def.UserPropertyPath, out var type) ||
+                        type != def.DataType || !properties.TryGetValue(def.UserPropertyPath, out var property) ||
+                        (type == "Boolean" ? property.ValueKind is not (JsonValueKind.True or JsonValueKind.False) :
+                            property.ValueKind != JsonValueKind.String)) continue;
+                    value = type == "Boolean" ? (property.GetBoolean() ? "true" : "false") : property.GetString();
+                }
             }
-
-            var value = def.ClaimType == OpenIddict.Abstractions.OpenIddictConstants.Claims.Name
-                ? NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName
-                : resolvedValue;
+            else
+            {
+                if (def.ConditionJson is not null || !ClaimSourcePropertyPolicy.TryResolve(user, def.UserPropertyPath, out var resolvedValue))
+                {
+                    LogRejectedClaimSource(def.ClaimType, def.UserPropertyPath);
+                    continue;
+                }
+                value = def.ClaimType == OpenIddict.Abstractions.OpenIddictConstants.Claims.Name
+                    ? NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName
+                    : resolvedValue;
+            }
             // Log only which claim is being resolved, not the value
             LogResolvingClaim(def.ClaimType, def.UserPropertyPath);
 
@@ -97,13 +142,16 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
             // Handle boolean types normalization if needed (e.g. email_verified)
             if (def.DataType == "Boolean" && bool.TryParse(value, out var boolVal))
             {
-                 identity.AddClaim(new Claim(def.ClaimType, boolVal.ToString().ToLower()));
+                 identity.AddClaim(new Claim(def.ClaimType, boolVal.ToString().ToLowerInvariant(), ClaimValueTypes.Boolean));
             }
             else
             {
                  identity.AddClaim(new Claim(def.ClaimType, value ?? string.Empty));
             }
+            if (def.ProviderProfileSource is not null) profileClaimTypes.Add(def.ClaimType);
         }
+        if (profileClaimTypes.Count > 0)
+            identity.AddClaim(new Claim(ProfileClaimMarker, JsonSerializer.Serialize(profileClaimTypes)));
     }
 
     public async Task AddAppSpecificRolesAsync(ClaimsIdentity identity, ApplicationUser user, string clientId, CancellationToken cancellationToken = default)

@@ -459,3 +459,17 @@ curl --location 'https://localhost:7035/connect/token' `
 
 ---
 **Last Updated**: 2025-12-19
+
+## Proof/Profile and conditional claims
+
+The historically named Tests.LegacyApi project now serves only Proof 1.0 at
+`/api/authenticate/login` and Profile 1.0 at `/api/authenticate/profile`. Configure
+its `FixtureSecret` outside Git, and explicitly enable ProviderProof with namespace
+`example.provider`. Synthetic password `password` succeeds; `lockout` reports Locked.
+Its Profile fields `example_flag` (Boolean) and `example_code` (String) are fixtures,
+not organization policy. Configure both as approved keys before testing mappings.
+
+Focused product tests cover shadow-account routing, exact binding and required
+Proof actions; Profile contract/limits, source association, local hashing, removal
+and failed confirmation; bounded typed conditions and Boolean UserInfo. These
+fixtures do not establish live producer implementation or production freshness.

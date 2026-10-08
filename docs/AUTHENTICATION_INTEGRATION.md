@@ -2,54 +2,40 @@
 
 ## Purpose and status
 
-This guide distinguishes the delivered, default-disabled credential-migration
-capability from the approved direction for a broader future upstream credential
-boundary.
-
-- With its default deployment switches disabled, standard password
-  authentication is Local plus the configurable LegacyAuth HTTP adapter.
-- The Stage 1 binding/profile and Stage 2 credential-migration and
-  completed-account directory-authentication paths are implemented, but remain
-  disabled until an approved staged deployment enables their switches.
-- Direct, deployment-configured AD/LDAP is the preferred future upstream
-  credential provider outside the delivered staged migration capability.
-- A provider-neutral authentication/profile API adapter is optional and may be
-  selected only when direct AD/LDAP cannot provide a documented required
-  capability. It is not an automatic conversion of LegacyAuth.
-- The implementation includes both the Stage 1 read-only binding/profile path
-  and Stage 2 migration/directory-authentication path. Until they are
-  explicitly enabled through deployment switches, Local plus LegacyAuth
-  behavior remains unchanged and LegacyAuth is not treated as an AD/LDAP
-  provider.
-
-This boundary is generic OSS. It has no dependency on, or data contract for,
-organization-specific identity synchronization systems, organization-specific
-identity data stores, private APIs, schemas, identifiers, databases, or organizational
-policy.
+HybridIdP has two upstream integration families: versioned contract API and
+future generic direct AD/LDAP. Local-password accounts remain independent.
+Provider Proof 1.0 API login is delivered and default-off; it does not require
+Stage 1 directory integration. The existing Stage 1/Stage 2 directory migration
+capabilities retain their independent switches and durable authority boundaries.
+There is no organization-specific or AuthProxy package dependency.
 
 ## Current behavior
 
-With the staged switches disabled, `LoginService` first finds a local user by
-email or username. If a local user is found, local credential and lifecycle
-checks determine the result. If no local user is found, it calls
-`ILegacyAuthService`; `LegacyAuthService` is the current configurable HTTP
-username/password compatibility adapter. Failed, malformed, and unsuccessful
-LegacyAuth responses are not authenticated.
+Enable `ProviderProof:Enabled` and configure `TrustedProviderNamespace`, the full
+endpoint and service secret to select API credential proof. Actual local-password
+accounts use local authentication. Upstream-linked accounts without a local
+password use the configured Proof authority and require the exact existing
+provider/key; denial never falls back to another credential authority. Successful
+Proof may provision a new durable account/Person link. An assured display email
+is not mailbox-ownership evidence and cannot silently link an existing account.
 
-LegacyAuth uses a no-redirect HTTP client and a fixed 64 KiB response-byte
-ceiling, including unknown-length bodies. Redirects, oversize and read failures
-cannot authenticate; ordinary in-limit `2xx` JSON retains existing parsing.
-`LegacyAuth:RequireHttps` (`LegacyAuth__RequireHttps`) defaults to `false`;
-`true` rejects non-HTTPS dispatch before credentials or the shared secret leave
-the service. HTTP compatibility is an explicit deployment choice. HTTPS uses
-normal certificate validation and does not require an internal CA. Proof and
-Metadata have independent no-redirect clients and fixed 64 KiB/16 KiB ceilings;
-their contract, timeout/cancellation and authority boundaries remain separate.
+The old flat `authenticated` HTTP response, `LegacyAuthService`, and `LegacyAuth`
+settings are retired. Historical `Legacy` provider/key rows are retained. Before
+switching a deployment, explicitly establish the new tuple through the protected
+account-linking/operator process; do not infer equivalence from login name or
+email, delete old rows, or enable format detection. Old settings no longer enable
+upstream login. Required Proof actions are not ignored: ordinary API/Stage 1 login
+currently denies responses with outstanding actions; the separate Stage 2
+ceremony retains its existing action handling.
 
-LegacyAuth is current compatibility behavior, not AD/LDAP support and not the
-future generic provider contract. In particular, it does not by itself declare
-the stable-key, matching-assurance, capability, or MFA-trust semantics required
-of a future upstream provider.
+Optional [Provider Profile 1.0](PROVIDER_PROFILE_CONTRACT.md) fetches approved typed
+properties after login and before applicable issuance when confirmation expires.
+Each contract has an independently configured endpoint and secret. Profile JSON
+and its local hash never become credential, lifecycle, role or recovery authority.
+The initial confirmation-age default is five minutes, configurable down to zero;
+choose the deployment policy before production activation. Conditional mappings
+use approved inputs and bounded Equals/StartsWith/All/Any rules, without code
+execution. Missing/stale/rejected inputs omit dependent claims.
 
 For browser-based federation, the repository also has external-login flows
 separate from password authentication. Existing durable external-login links
@@ -88,13 +74,10 @@ denied. It must never silently fall through to Local, AD/LDAP, LegacyAuth, or
 another provider. Local authentication is used only when Local was explicitly
 selected for that attempt.
 
-The preferred future provider is direct AD/LDAP, using deployment-configured
-directory endpoints, transport/authentication settings, credentials, searches, and attribute
-mappings. An optional standardized authentication/profile API adapter may be
-configured only after a documented required capability is unavailable through
-the selected direct directory. The API adapter has a provider-neutral contract
-and a deployment shape comparable to LegacyAuth, but is independently selected
-and follows the same fail-closed rule.
+Both integration families use deployment-configured authority. Generic direct
+AD/LDAP outside the staged migration capability is future work. Contract API is
+an independent supported choice, with no prerequisite to adopt AD or AuthProxy.
+Neither family supplies an automatic fallback for the other.
 
 ### Authority split
 
@@ -366,7 +349,7 @@ allow/deny category, and no credential logging. On success it returns an
 assured, stable, namespaced legacy subject plus an assured canonical account.
 Those values must confirm an existing immutable binding or resolve exactly one
 managed directory object from which the binding is created; ambiguity or
-insufficient assurance denies the ceremony. The current LegacyAuth adapter is
+insufficient assurance denies the ceremony. The retired LegacyAuth adapter was
 not presumed to satisfy this contract merely because it is configured today.
 
 Directory lookup, proof, reset, verification, timeout, malformed response,
@@ -510,7 +493,7 @@ work is the [native forgotten-password recovery source of truth](design_specs/hi
 
 | Migration requirement | Contract location |
 |---|---|
-| REQ-01 | Purpose and status plus this section state that current Local plus LegacyAuth behavior remains active until the completely implemented AD/LDAP and migration paths are enabled through staged deployment switches. |
+| REQ-01 | Local credential authority and completed migration records remain authoritative. Versioned Proof API login is independently selected; retired LegacyAuth wire responses are not accepted. |
 | REQ-02 | Complete delivery and deployment stages plus binding resolution require independently gated Stage 1 binding/profile behavior and Stage 2 migration/directory authentication with a distinct durable `Required`/completed record. |
 | REQ-03 | Binding resolution and Legacy proof require one selected password authority, exact managed-directory resolution before reset, and no authority fallback. |
 | REQ-04 | Binding resolution and Legacy proof require assured stable subject plus canonical account to immutable-directory-key/object mapping and reject mutable or raw-identifier substitutes. |

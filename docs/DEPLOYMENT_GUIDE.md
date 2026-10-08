@@ -233,7 +233,7 @@ To roll back, roll back the application image separately. Do not automatically r
 
 ### Optional Provider Contract Configuration
 
-LegacyAuth, Provider Proof and Provider Metadata do not follow HTTP redirects.
+Provider Proof, Profile and Metadata do not follow HTTP redirects.
 Their fixed response ceilings are 64 KiB, 64 KiB and 16 KiB respectively,
 including unknown-length/chunked bodies. Oversize cannot authenticate or supply
 usable refreshed metadata; metadata read failures invalidate prior evidence.
@@ -272,7 +272,7 @@ offline only; no live or production database migration was run. Never retry
 These instructions do not claim external interoperability, a connected
 password write or production deployment has been verified.
 
-### Optional LegacyAuth, SMTP and recovery-hint policies
+### Optional Proof, SMTP and recovery-hint policies
 
 The environment template and both wizards emit the actual defaults below.
 All five production compose modes pass them through their existing
@@ -281,7 +281,7 @@ Review the operator-managed values before enabling the corresponding integration
 
 | Environment key | Default | Behavior |
 | --- | --- | --- |
-| `LegacyAuth__RequireHttps` | `false` | `true` rejects an invalid or non-HTTPS LegacyAuth endpoint before sending credentials or `X-Internal-Secret`. `false` retains HTTP compatibility. |
+| `ProviderProof__AllowPrivateNetworkHttp` | `false` | HTTPS is required unless private-network HTTP is explicitly allowed. Endpoint, namespace and service secret must be configured before enabling Proof login. |
 | `EmailSettings__SmtpRequireTls` | `false` | Requires encryption in ordinary and test-send paths when `true`; cannot be overridden by stored mail settings or the test-send DTO. |
 | `EmailSettings__SmtpValidateServerCertificate` | `true` | Uses normal MailKit certificate/hostname validation. `false` explicitly accepts any server certificate when TLS is negotiated. |
 | `ForgotPasswordRecovery__PrecheckHintsEnabled` | `true` | ON/omitted preserves eligible guidance and the masked destination. OFF presents uniform public precheck, GET restoration and Send guidance without eligibility or a mask. |
@@ -667,3 +667,27 @@ If your IdP needs to connect to another service running in a different Docker Co
 ```
 
 
+
+## Unified API login and Profile upgrade
+
+The flat LegacyAuth wire reader and its settings are retired. Set
+`ProviderProof__Enabled=true`, `ProviderProof__TrustedProviderNamespace`, Endpoint
+and SharedSecret explicitly. Historical Legacy links are preserved; establish
+verified new provider/key links before switching existing accounts. Do not infer
+identity equivalence from username/email or delete legacy rows. Local accounts
+and completed directory migration records retain their credential authority.
+
+Apply the selected provider's `AddProviderProfilesAndClaimConditions` migration
+through the existing deployment process. It adds nullable Person profile JSON
+and nullable claim source/condition columns; no property values are backfilled.
+Profile is default-off. Configure its independent endpoint, secret and approved
+String/Boolean properties before activation. The source dictionary can be supplied
+with normal ASP.NET configuration (including environment keys in an env_file),
+without defining source-specific properties in OSS. See the configuration example
+in [Provider Profile 1.0](PROVIDER_PROFILE_CONTRACT.md) and deployment/.env.example.
+
+Select `ProviderProfile__MaximumAge` for the deployment; the initial default is
+five minutes, zero means re-confirm each applicable issuance request. An unchanged
+hash is not a freshness assertion. Profile failure omits dependent claims; existing
+JWTs remain valid until their ordinary expiration. Reverting the application may
+leave additive nullable columns in place; do not drop Person JSON for rollback.

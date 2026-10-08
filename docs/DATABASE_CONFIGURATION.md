@@ -1159,3 +1159,15 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 **最後更新:** 2025-12-11  
 **維護者:** HybridIdP Team  
 **版本:** 1.3
+
+## Provider Profile and conditional claim storage
+
+Both provider assemblies include `AddProviderProfilesAndClaimConditions`.
+The additive nullable columns are `Persons.ProviderProfilesJson`,
+`ClaimDefinitions.ProviderProfileSource` and `ClaimDefinitions.ConditionJson`.
+Existing rows remain null; no provider values or identity matches are inferred.
+Person JSON is an optimistic-concurrency token to avoid losing another source's
+snapshot during concurrent refresh. Tuple/account association is checked separately
+at projection and after the upstream await. Generate migration sources with the
+migration project as both --project and --startup-project; its design-time factory
+needs no live database. Applying a migration remains an operator deployment step.

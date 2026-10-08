@@ -94,8 +94,13 @@ services:
       # Serilog - Default to Warning to reduce noise (this is the actual logging framework)
       - "Serilog__MinimumLevel__Default=Warning"
       # Legacy Auth (optional) - set in .env if using legacy authentication
-      - LegacyAuth__LoginUrl=${LegacyAuth__LoginUrl:-}
-      - LegacyAuth__Secret=${LegacyAuth__Secret:-}
+      - ProviderProof__Enabled=${ProviderProof__Enabled:-false}
+      - ProviderProof__TrustedProviderNamespace=${ProviderProof__TrustedProviderNamespace:-}
+      - ProviderProof__Endpoint=${ProviderProof__Endpoint:-}
+      - ProviderProof__SharedSecret=${ProviderProof__SharedSecret:-}
+      - ProviderProof__AllowPrivateNetworkHttp=${ProviderProof__AllowPrivateNetworkHttp:-false}
+      - ProviderProfile__Enabled=${ProviderProfile__Enabled:-false}
+      - ProviderProfile__MaximumAge=${ProviderProfile__MaximumAge:-00:05:00}
       # Rate Limiting
       - RateLimiting__Enabled=${RateLimiting__Enabled:-true}
       - RateLimiting__LoginPermitLimit=${RateLimiting__LoginPermitLimit:-5}

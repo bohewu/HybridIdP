@@ -38,6 +38,9 @@ public class ClaimDefinition
     /// </summary>
     public required string UserPropertyPath { get; set; }
 
+    public string? ProviderProfileSource { get; set; }
+    public string? ConditionJson { get; set; }
+
     /// <summary>
     /// Data type of the claim value (String, Boolean, Integer, DateTime, JSON).
     /// </summary>

@@ -22,7 +22,6 @@ namespace Tests.Infrastructure.UnitTests
     {
         private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
         private readonly Mock<ISecurityPolicyService> _securityPolicyServiceMock;
-        private readonly Mock<ILegacyAuthService> _legacyAuthServiceMock;
         private readonly Mock<IJitProvisioningService> _jitProvisioningServiceMock;
         private readonly Mock<ILogger<LoginService>> _loggerMock;
         private readonly Mock<IOptions<Core.Application.Options.ExternalLoginOptions>> _externalLoginOptionsMock;
@@ -41,7 +40,6 @@ namespace Tests.Infrastructure.UnitTests
             _userManagerMock = new Mock<UserManager<ApplicationUser>>(userStoreMock.Object, null, null, null, null, null, null, null, null);
             
             _securityPolicyServiceMock = new Mock<ISecurityPolicyService>();
-            _legacyAuthServiceMock = new Mock<ILegacyAuthService>();
             _jitProvisioningServiceMock = new Mock<IJitProvisioningService>();
             _loggerMock = new Mock<ILogger<LoginService>>();
             _externalLoginOptionsMock = new Mock<IOptions<Core.Application.Options.ExternalLoginOptions>>();
@@ -60,7 +58,7 @@ namespace Tests.Infrastructure.UnitTests
             _service = new LoginService(
                 _userManagerMock.Object,
                 _securityPolicyServiceMock.Object,
-                _legacyAuthServiceMock.Object,
+
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
@@ -80,8 +78,7 @@ namespace Tests.Infrastructure.UnitTests
         {
             // Arrange
             var personId = Guid.NewGuid();
-            var user = new ApplicationUser 
-            { 
+            var user = new ApplicationUser { PasswordHash = "fixture-local", LastPasswordChangeDate = DateTime.UtcNow,
                 UserName = "testuser", 
                 Email = "test@example.com",
                 PersonId = personId,
@@ -117,8 +114,7 @@ namespace Tests.Infrastructure.UnitTests
         public async Task AuthenticateAsync_ShouldReturnUserInactive_WhenUserIsDeactivated()
         {
             // Arrange
-            var user = new ApplicationUser 
-            { 
+            var user = new ApplicationUser { PasswordHash = "fixture-local", LastPasswordChangeDate = DateTime.UtcNow,
                 UserName = "deactivated", 
                 Email = "deactivated@example.com",
                 IsActive = false // User is deactivated
@@ -142,8 +138,7 @@ namespace Tests.Infrastructure.UnitTests
         [Fact]
         public async Task ValidateExternalUserSignInAsync_ShouldReturnUserInactive_WhenUserIsDeleted()
         {
-            var user = new ApplicationUser
-            {
+            var user = new ApplicationUser { PasswordHash = "fixture-local", LastPasswordChangeDate = DateTime.UtcNow,
                 UserName = "deleted",
                 IsActive = true,
                 IsDeleted = true
@@ -166,8 +161,7 @@ namespace Tests.Infrastructure.UnitTests
                 Id = Guid.NewGuid(),
                 Status = PersonStatus.Suspended
             };
-            var user = new ApplicationUser
-            {
+            var user = new ApplicationUser { PasswordHash = "fixture-local", LastPasswordChangeDate = DateTime.UtcNow,
                 UserName = "suspended-person",
                 IsActive = true,
                 PersonId = person.Id
@@ -188,8 +182,7 @@ namespace Tests.Infrastructure.UnitTests
         public async Task AuthenticateAsync_ShouldSucceed_WhenUserIsActive()
         {
             // Arrange
-            var user = new ApplicationUser 
-            { 
+            var user = new ApplicationUser { PasswordHash = "fixture-local", LastPasswordChangeDate = DateTime.UtcNow,
                 UserName = "activeuser", 
                 Email = "active@example.com",
                 IsActive = true // User is active
@@ -220,7 +213,7 @@ namespace Tests.Infrastructure.UnitTests
             _service = new LoginService(
                 _userManagerMock.Object,
                 _securityPolicyServiceMock.Object,
-                _legacyAuthServiceMock.Object,
+
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
@@ -247,7 +240,7 @@ namespace Tests.Infrastructure.UnitTests
             _service = new LoginService(
                 _userManagerMock.Object,
                 _securityPolicyServiceMock.Object,
-                _legacyAuthServiceMock.Object,
+
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,
@@ -280,7 +273,7 @@ namespace Tests.Infrastructure.UnitTests
             _service = new LoginService(
                 _userManagerMock.Object,
                 _securityPolicyServiceMock.Object,
-                _legacyAuthServiceMock.Object,
+
                 _jitProvisioningServiceMock.Object,
                 _dbContext,
                 _loggerMock.Object,

@@ -682,7 +682,10 @@ Person (1) ─────┬───→ ApplicationUser (upstream-linked accou
 ### Upstream Authentication Boundary
 
 Current password authentication is Local first and otherwise uses the
-configurable LegacyAuth HTTP integration. Direct AD/LDAP is not implemented.
+independently enabled Provider Proof 1.0 API login, with optional Profile 1.0
+properties and bounded conditional claims. The flat LegacyAuth reader is retired.
+Generic standalone direct AD/LDAP is future work; staged directory migration
+capabilities remain separately controlled.
 
 The preferred future upstream credential source is deployment-configured direct
 AD/LDAP. A separately configured, standardized, provider-neutral

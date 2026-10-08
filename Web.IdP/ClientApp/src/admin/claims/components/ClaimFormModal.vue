@@ -49,10 +49,15 @@ const formData = ref({
   claimType: '',
   userPropertyPath: '',
   dataType: 'String',
-  isRequired: false
+  isRequired: false,
+  providerProfileSource: '',
+  condition: null
 })
 
 const useCustomPath = ref(false)
+const conditionText = ref('')
+const useCondition = ref(false)
+const conditionError = ref('')
 const customPathValue = ref('')
 const claimTypeManuallyEdited = ref(false)
 const autoClaimTypeSource = ref(null)
@@ -82,8 +87,13 @@ const resetForm = () => {
     claimType: '',
     userPropertyPath: '',
     dataType: 'String',
-    isRequired: false
+    isRequired: false,
+  providerProfileSource: '',
+  condition: null
   }
+  conditionText.value = ''
+  useCondition.value = false
+  conditionError.value = ''
   useCustomPath.value = false
   customPathValue.value = ''
   claimTypeManuallyEdited.value = false
@@ -104,8 +114,13 @@ watch(() => props.claim, (newClaim) => {
       claimType: newClaim.claimType,
       userPropertyPath: newClaim.userPropertyPath,
       dataType: newClaim.dataType,
-      isRequired: newClaim.isRequired
+      isRequired: newClaim.isRequired,
+      providerProfileSource: newClaim.providerProfileSource || '',
+      condition: newClaim.condition || null
     }
+    useCondition.value = !!newClaim.condition
+    conditionText.value = newClaim.condition ? JSON.stringify(newClaim.condition, null, 2) : ''
+    conditionError.value = ''
     claimTypeManuallyEdited.value = true
     autoClaimTypeSource.value = null
     // If existing claim has a custom path, show custom input
@@ -146,6 +161,8 @@ watch(useCustomPath, (val) => {
   }
 })
 
+watch(useCondition, value => { if (value) formData.value.dataType = 'Boolean' })
+
 watch(() => formData.value.name, (val) => {
   if (!val || claimTypeManuallyEdited.value) {
     return
@@ -168,6 +185,20 @@ watch(() => formData.value.userPropertyPath, (val) => {
 })
 
 const handleSubmit = async () => {
+  conditionError.value = ''
+  formData.value.condition = null
+  if (formData.value.providerProfileSource && useCondition.value) {
+    try {
+      const rule = JSON.parse(conditionText.value)
+      if (!rule || typeof rule !== 'object' || Array.isArray(rule)) throw new Error('Invalid rule')
+      formData.value.condition = rule
+      formData.value.dataType = 'Boolean'
+      formData.value.userPropertyPath = ''
+    } catch {
+      conditionError.value = t('claims.form.conditionInvalid')
+      return
+    }
+  }
   saving.value = true
   try {
     emit('save', formData.value)
@@ -254,13 +285,32 @@ const handleClose = () => {
           <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.claimTypeHelp') }}</p>
         </div>
 
+        <div v-if="!claim?.isStandard" class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5" for="profile-source">{{ t('claims.form.profileSource') }}</label>
+          <input id="profile-source" v-model="formData.providerProfileSource" maxlength="64" type="text"
+            class="block w-full rounded-md border-gray-300 shadow-sm sm:text-sm h-10 px-3"
+            data-test-id="claim-profile-source-input" />
+          <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.profileSourceHelp') }}</p>
+          <label v-if="formData.providerProfileSource" class="flex items-center mt-3 gap-2">
+            <input v-model="useCondition" type="checkbox" data-test-id="claim-condition-checkbox" />
+            {{ t('claims.form.useCondition') }}
+          </label>
+        </div>
+        <div v-if="formData.providerProfileSource && useCondition" class="mb-5">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5" for="claim-condition">{{ t('claims.form.condition') }}</label>
+          <textarea id="claim-condition" v-model="conditionText" rows="8" maxlength="16384" required
+            class="block w-full rounded-md border-gray-300 shadow-sm font-mono text-sm px-3 py-2"
+            data-test-id="claim-condition-input"></textarea>
+          <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.conditionHelp') }}</p>
+          <p v-if="conditionError" role="alert" class="text-sm text-red-700">{{ conditionError }}</p>
+        </div>
         <!-- User Property Path -->
-        <div class="mb-5">
+        <div v-if="!formData.providerProfileSource || !useCondition" class="mb-5">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.userPropertyPath') }} *</label>
           
           <!-- Select for common paths -->
           <select
-            v-if="!useCustomPath"
+            v-if="!useCustomPath && !formData.providerProfileSource"
             v-model="formData.userPropertyPath"
             :disabled="claim?.isStandard || isProtected"
             required
@@ -276,7 +326,7 @@ const handleClose = () => {
           <!-- Custom path input -->
           <input
             v-else
-            v-model="customPathValue"
+            v-model="formData.userPropertyPath"
             type="text"
             required
             :disabled="claim?.isStandard || isProtected"
@@ -296,7 +346,7 @@ const handleClose = () => {
             <span class="ml-2 text-xs text-gray-500">{{ t('claims.form.useCustomPath') }}</span>
           </label>
           
-          <p class="mt-1.5 text-xs text-gray-500">{{ t('claims.form.userPropertyPathHelp') }}</p>
+          <p class="mt-1.5 text-xs text-gray-500">{{ t(formData.providerProfileSource ? 'claims.form.profilePropertyHelp' : 'claims.form.userPropertyPathHelp') }}</p>
         </div>
 
         <!-- Data Type -->
@@ -304,7 +354,7 @@ const handleClose = () => {
           <label class="block text-sm font-medium text-gray-700 mb-1.5">{{ t('claims.form.dataType') }} *</label>
           <select
             v-model="formData.dataType"
-            :disabled="claim?.isStandard || isProtected"
+            :disabled="claim?.isStandard || isProtected || (formData.providerProfileSource && useCondition)"
             class="block w-full rounded-md border-gray-300 shadow-sm focus:ring-google-500 focus:border-google-500 sm:text-sm disabled:bg-gray-100 transition-colors h-10 px-3"
              data-test-id="claim-data-type-select"
           >

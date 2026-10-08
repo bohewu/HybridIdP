@@ -25,7 +25,7 @@ public class LoginServiceTests
 {
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<ISecurityPolicyService> _mockSecurityPolicyService;
-    private readonly Mock<ILegacyAuthService> _mockLegacyAuthService;
+    private readonly Mock<IProofProvider> _mockProofProvider;
     private readonly Mock<IJitProvisioningService> _mockJitProvisioningService;
     private readonly Mock<IApplicationDbContext> _mockDbContext;
     private readonly Mock<ICredentialMigrationStateStore> _mockMigrationStateStore;
@@ -50,7 +50,7 @@ public class LoginServiceTests
             store.Object, options.Object, hasher.Object, userValidators, passwordValidators, normalizer.Object, errors, services.Object, logger.Object);
 
         _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
-        _mockLegacyAuthService = new Mock<ILegacyAuthService>();
+        _mockProofProvider = new Mock<IProofProvider>();
         _mockJitProvisioningService = new Mock<IJitProvisioningService>();
         _mockLogger = new Mock<ILogger<LoginService>>();
         _mockExternalLoginOptions = new Mock<IOptions<Core.Application.Options.ExternalLoginOptions>>();
@@ -71,13 +71,54 @@ public class LoginServiceTests
         _loginService = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             _mockJitProvisioningService.Object,
             _mockDbContext.Object,
             _mockLogger.Object,
             _mockExternalLoginOptions.Object,
-            credentialMigrationStateStore: _mockMigrationStateStore.Object
+            credentialMigrationStateStore: _mockMigrationStateStore.Object,
+            proofProvider: _mockProofProvider.Object,
+            providerProofOptions: Options.Create(new ProviderProofOptions { Enabled = true, TrustedProviderNamespace = "example.provider" })
         );
+    }
+
+    [Theory]
+    [InlineData("other-subject", false)]
+    [InlineData("subject", true)]
+    public async Task AuthenticateAsync_ShouldUseProofForShadowAccountAndRequireExactBinding(string returnedSubject, bool expected)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "shadow", PasswordHash = null };
+        _mockUserManager.Setup(m => m.FindByEmailAsync("shadow")).ReturnsAsync(user);
+        _mockUserManager.Setup(m => m.GetLoginsAsync(user)).ReturnsAsync(new List<UserLoginInfo>
+        {
+            new("example.provider", "subject", "Provider")
+        });
+        _mockProofProvider.Setup(p => p.ProveAsync(It.IsAny<ProofRequest>(), "password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProofResult
+            {
+                Outcome = ProofOutcome.Authenticated, ProviderNamespace = "example.provider",
+                StableSubject = returnedSubject, CanonicalAccount = "shadow",
+                Assurance = new() { StableSubjectAssured = true, CanonicalAccountAssured = true }
+            });
+        _mockJitProvisioningService.Setup(j => j.ProvisionExternalUserAsync(It.IsAny<ExternalAuthResult>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(user);
+        var result = await _loginService.AuthenticateAsync("shadow", "password");
+        Assert.Equal(expected, result.IsSuccess);
+        _mockUserManager.Verify(m => m.CheckPasswordAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task AuthenticateAsync_ShouldRejectUnsatisfiedRequiredActionWithoutProvisioning()
+    {
+        _mockProofProvider.Setup(p => p.ProveAsync(It.IsAny<ProofRequest>(), "password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProofResult
+            {
+                Outcome = ProofOutcome.Authenticated, ProviderNamespace = "example.provider", StableSubject = "subject",
+                CanonicalAccount = "account", Assurance = new() { StableSubjectAssured = true, CanonicalAccountAssured = true },
+                RequiredActions = [ProofRequiredAction.EmailOtp]
+            });
+        Assert.False((await _loginService.AuthenticateAsync("account", "password")).IsSuccess);
+        _mockJitProvisioningService.VerifyNoOtherCalls();
     }
 
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
@@ -105,7 +146,7 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_LocalUser_CorrectPassword_ReturnsSuccess()
     {
         // Arrange - user without PersonId
-        var user = new ApplicationUser { UserName = "test", PersonId = null };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "test", PersonId = null };
         _mockUserManager.Setup(um => um.FindByEmailAsync("test")).ReturnsAsync(user);
         _mockUserManager.Setup(um => um.IsLockedOutAsync(user)).ReturnsAsync(false);
         _mockUserManager.Setup(um => um.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
@@ -123,8 +164,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_LocalUser_ExpiredPassword_ReturnsPasswordChangeRequired()
     {
-        var user = new ApplicationUser
-        {
+        var user = new ApplicationUser { PasswordHash = "fixture-local",
             UserName = "expired-password",
             LastPasswordChangeDate = DateTime.UtcNow.AddDays(-31)
         };
@@ -157,13 +197,13 @@ public class LoginServiceTests
 
         Assert.Equal(expected, result.Status);
         Assert.Null(user.LastPasswordChangeDate);
-        _mockLegacyAuthService.Verify(service => service.ValidateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockProofProvider.Verify(service => service.ProveAsync(It.IsAny<ProofRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
     [Fact]
     public async Task AuthenticateAsync_LocalUser_MustChangePassword_ReturnsPasswordChangeRequired()
     {
-        var user = new ApplicationUser { UserName = "must-change", RequiresPasswordChange = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "must-change", RequiresPasswordChange = true };
         _mockUserManager.Setup(um => um.FindByEmailAsync(user.UserName)).ReturnsAsync(user);
         _mockUserManager.Setup(um => um.IsLockedOutAsync(user)).ReturnsAsync(false);
         _mockUserManager.Setup(um => um.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
@@ -178,7 +218,7 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_LocalUser_IncorrectPassword_ReturnsInvalidCredentials()
     {
         // Arrange
-        var user = new ApplicationUser { UserName = "test", AccessFailedCount = 1, PersonId = null };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "test", AccessFailedCount = 1, PersonId = null };
         _mockUserManager.Setup(um => um.FindByEmailAsync("test")).ReturnsAsync(user);
         _mockUserManager.Setup(um => um.IsLockedOutAsync(user)).ReturnsAsync(false);
         _mockUserManager.Setup(um => um.CheckPasswordAsync(user, "wrong")).ReturnsAsync(false);
@@ -196,7 +236,7 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_LocalUser_IncorrectPassword_TriggersLockout_ReturnsLockedOut()
     {
         // Arrange
-        var user = new ApplicationUser { UserName = "test", AccessFailedCount = 4, PersonId = null };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "test", AccessFailedCount = 4, PersonId = null };
         _mockUserManager.Setup(um => um.FindByEmailAsync("test")).ReturnsAsync(user);
         _mockUserManager.Setup(um => um.IsLockedOutAsync(user)).ReturnsAsync(false);
         _mockUserManager.Setup(um => um.CheckPasswordAsync(user, "wrong")).ReturnsAsync(false);
@@ -216,7 +256,7 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_LocalUser_AlreadyLockedOut_ReturnsLockedOut()
     {
         // Arrange - user without PersonId bypasses Person check
-        var user = new ApplicationUser { UserName = "test", PersonId = null };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "test", PersonId = null };
         _mockUserManager.Setup(um => um.FindByEmailAsync("test")).ReturnsAsync(user);
         _mockUserManager.Setup(um => um.IsLockedOutAsync(user)).ReturnsAsync(true);
 
@@ -232,14 +272,13 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_LegacyUser_Success_ReturnsLegacySuccess()
     {
         // Arrange
-        var provisionedUser = new ApplicationUser 
-        { 
+        var provisionedUser = new ApplicationUser { PasswordHash = "fixture-local",
             UserName = "legacy",
             PersonId = null // No Person linked
         };
         _mockUserManager.Setup(um => um.FindByEmailAsync("legacy")).ReturnsAsync((ApplicationUser?)null);
-        _mockLegacyAuthService.Setup(las => las.ValidateAsync("legacy", "password", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegacyUserDto { IsAuthenticated = true });
+        _mockProofProvider.Setup(las => las.ProveAsync(It.Is<ProofRequest>(r => r.AccountName == "legacy"), "password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProofResult { Outcome = ProofOutcome.Authenticated, ProviderNamespace = "example.provider", StableSubject = "subject", CanonicalAccount = "legacy", Assurance = new ProofAssurance { StableSubjectAssured = true, CanonicalAccountAssured = true } });
         _mockJitProvisioningService.Setup(jps => jps.ProvisionExternalUserAsync(It.IsAny<ExternalAuthResult>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(provisionedUser);
 
@@ -256,8 +295,8 @@ public class LoginServiceTests
     {
         // Arrange
         _mockUserManager.Setup(um => um.FindByEmailAsync("nobody")).ReturnsAsync((ApplicationUser?)null);
-        _mockLegacyAuthService.Setup(las => las.ValidateAsync("nobody", "password", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegacyUserDto { IsAuthenticated = false });
+        _mockProofProvider.Setup(las => las.ProveAsync(It.Is<ProofRequest>(r => r.AccountName == "nobody"), "password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProofResult { Outcome = ProofOutcome.InvalidCredentials });
 
         // Act
         var result = await _loginService.AuthenticateAsync("nobody", "password");
@@ -269,7 +308,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_FinalizedMigrationWhenNewMigrationDisabled_UsesDirectoryNotLocalPassword()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("completed")).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(false);
         var state = new Mock<ICredentialMigrationStateStore>(MockBehavior.Strict);
@@ -287,7 +326,7 @@ public class LoginServiceTests
         var service = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             _mockJitProvisioningService.Object,
             _mockDbContext.Object,
             _mockLogger.Object,
@@ -302,8 +341,7 @@ public class LoginServiceTests
 
         Assert.Equal(LoginStatus.Success, result.Status);
         _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
-        _mockLegacyAuthService.Verify(service => service.ValidateAsync(
-            It.IsAny<string>(),
+        _mockProofProvider.Verify(service => service.ProveAsync(It.IsAny<ProofRequest>(),
             It.IsAny<string>(),
             It.IsAny<CancellationToken>()), Times.Never);
         stage2.VerifyAll();
@@ -317,7 +355,7 @@ public class LoginServiceTests
             new DbContextOptionsBuilder<Infrastructure.ApplicationDbContext>()
                 .UseInMemoryDatabase($"login-alias-{Guid.NewGuid():N}")
                 .Options);
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "provider-subject", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "provider-subject", IsActive = true };
         var directoryObjectId = Guid.NewGuid();
         context.Users.Add(user);
         context.ProviderSubjectDirectoryBindings.Add(new ProviderSubjectDirectoryBinding(
@@ -346,7 +384,7 @@ public class LoginServiceTests
         var service = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             _mockJitProvisioningService.Object,
             context,
             _mockLogger.Object,
@@ -361,7 +399,7 @@ public class LoginServiceTests
 
         Assert.Equal(LoginStatus.Success, result.Status);
         _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
-        _mockLegacyAuthService.Verify(service => service.ValidateAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _mockProofProvider.Verify(service => service.ProveAsync(It.IsAny<ProofRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         proof.VerifyNoOtherCalls();
         stage2.VerifyAll();
     }
@@ -373,7 +411,7 @@ public class LoginServiceTests
             new DbContextOptionsBuilder<Infrastructure.ApplicationDbContext>()
                 .UseInMemoryDatabase($"stage1-alias-{Guid.NewGuid():N}")
                 .Options);
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "opaque-subject", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "opaque-subject", IsActive = true };
         var directoryObjectId = Guid.NewGuid();
         context.Users.Add(user);
         context.ProviderSubjectDirectoryBindings.Add(new ProviderSubjectDirectoryBinding(
@@ -417,7 +455,7 @@ public class LoginServiceTests
         var service = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             jit.Object,
             context,
             _mockLogger.Object,
@@ -451,7 +489,7 @@ public class LoginServiceTests
             .ReturnsAsync((ApplicationUser?)null);
         _mockUserManager.Setup(manager => manager.FindByNameAsync("account"))
             .ReturnsAsync((ApplicationUser?)null);
-        var provisioned = new ApplicationUser { Id = Guid.NewGuid(), UserName = "account", IsActive = true };
+        var provisioned = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "account", IsActive = true };
         var proof = new Mock<IProofProvider>(MockBehavior.Strict);
         proof.Setup(provider => provider.ProveAsync(
                 It.Is<ProofRequest>(request => request.AccountName == "account"),
@@ -473,7 +511,7 @@ public class LoginServiceTests
         var service = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             Mock.Of<IJitProvisioningService>(jit =>
                 jit.ProvisionExternalUserAsync(It.IsAny<ExternalAuthResult>(), It.IsAny<CancellationToken>()) ==
                 Task.FromResult(provisioned)),
@@ -503,7 +541,7 @@ public class LoginServiceTests
             new DbContextOptionsBuilder<Infrastructure.ApplicationDbContext>()
                 .UseInMemoryDatabase($"legacy-alias-{Guid.NewGuid():N}")
                 .Options);
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "opaque-subject", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "opaque-subject", IsActive = true };
         context.Users.Add(user);
         context.ProviderSubjectDirectoryBindings.Add(new ProviderSubjectDirectoryBinding(
             user.Id,
@@ -520,14 +558,14 @@ public class LoginServiceTests
         var state = new Mock<ICredentialMigrationStateStore>(MockBehavior.Strict);
         state.Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync((CredentialMigrationRecord?)null);
-        var legacy = new Mock<ILegacyAuthService>(MockBehavior.Strict);
-        legacy.Setup(service => service.ValidateAsync("canonical-account", "legacy-password", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(new LegacyUserDto { IsAuthenticated = false });
+        var legacy = new Mock<IProofProvider>(MockBehavior.Strict);
+        legacy.Setup(service => service.ProveAsync(It.Is<ProofRequest>(r => r.AccountName == "canonical-account"), "legacy-password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProofResult { Outcome = ProofOutcome.InvalidCredentials });
         var jit = new Mock<IJitProvisioningService>(MockBehavior.Strict);
         var service = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            legacy.Object,
+
             jit.Object,
             context,
             _mockLogger.Object,
@@ -538,14 +576,14 @@ public class LoginServiceTests
 
         Assert.Equal(LoginStatus.InvalidCredentials, result.Status);
         _mockUserManager.Verify(manager => manager.CheckPasswordAsync(user, It.IsAny<string>()), Times.Never);
-        legacy.VerifyAll();
+        legacy.VerifyNoOtherCalls();
         jit.VerifyNoOtherCalls();
     }
 
     [Fact]
     public async Task AuthenticateAsync_UnmigratedAccountWhenMigrationEnabled_DeniesLocalPasswordFallback()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "unmigrated", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "unmigrated", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("unmigrated")).ReturnsAsync(user);
         var state = new Mock<ICredentialMigrationStateStore>(MockBehavior.Strict);
         state.Setup(store => store.FindAsync(user.Id, It.IsAny<CancellationToken>()))
@@ -553,7 +591,7 @@ public class LoginServiceTests
         var service = new LoginService(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             _mockJitProvisioningService.Object,
             _mockDbContext.Object,
             _mockLogger.Object,
@@ -571,7 +609,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_AllSwitchesDisabledWithoutMigrationRecord_PreservesLocalAuthentication()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "baseline", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "baseline", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("baseline")).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(false);
         _mockUserManager.Setup(manager => manager.CheckPasswordAsync(user, "local-password")).ReturnsAsync(true);
@@ -586,7 +624,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_AllSwitchesDisabledWithIncompleteMigration_DeniesLocalPassword()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "incomplete", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "incomplete", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("incomplete")).ReturnsAsync(user);
         var state = MigrationState(user, CredentialMigrationState.ProofValidated);
         var service = CreateMigrationAwareService(state.Object);
@@ -600,7 +638,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_AllSwitchesDisabledWithFinalizedMigration_DeniesLocalPassword()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "finalized", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "finalized", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("finalized")).ReturnsAsync(user);
         var state = MigrationState(user, CredentialMigrationState.LocalFinalized);
         var service = CreateMigrationAwareService(state.Object);
@@ -615,8 +653,7 @@ public class LoginServiceTests
     public async Task AuthenticateAsync_FinalizedDirectoryNormalBindWithRequiredFlag_RoutesRestrictedChange()
     {
         var directoryObjectId = Guid.NewGuid();
-        var user = new ApplicationUser
-        {
+        var user = new ApplicationUser { PasswordHash = "fixture-local",
             Id = Guid.NewGuid(),
             UserName = "operator-recovered",
             IsActive = true,
@@ -654,8 +691,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_FinalizedDirectoryRequiredFlagStillChecksLocalEligibility()
     {
-        var user = new ApplicationUser
-        {
+        var user = new ApplicationUser { PasswordHash = "fixture-local",
             Id = Guid.NewGuid(),
             UserName = "inactive-operator-recovered",
             IsActive = false,
@@ -684,7 +720,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_FinalizedMigrationDirectoryFailure_DeniesWithoutLocalFallback()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "directory-failure", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "directory-failure", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("directory-failure")).ReturnsAsync(user);
         var state = MigrationState(user, CredentialMigrationState.LocalFinalized);
         var stage2 = new Mock<IStage2CredentialMigrationService>(MockBehavior.Strict);
@@ -708,7 +744,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_FinalizedMigrationLockedUser_DoesNotRefreshMetadata()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "locked", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "locked", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("locked")).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(true);
         var state = MigrationState(user, CredentialMigrationState.LocalFinalized);
@@ -732,7 +768,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_MetadataRefreshDisabled_PreservesSuccessfulDirectoryLogin()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("completed")).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(false);
         var state = MigrationState(user, CredentialMigrationState.LocalFinalized);
@@ -757,7 +793,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_MetadataRefreshFailure_PreservesSuccessfulDirectoryLogin()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("completed")).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(false);
         var state = MigrationState(user, CredentialMigrationState.LocalFinalized);
@@ -782,7 +818,7 @@ public class LoginServiceTests
     [Fact]
     public async Task AuthenticateAsync_MetadataRefreshCallerCancellation_Propagates()
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", Id = Guid.NewGuid(), UserName = "completed", IsActive = true };
         _mockUserManager.Setup(manager => manager.FindByEmailAsync("completed")).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.IsLockedOutAsync(user)).ReturnsAsync(false);
         var state = MigrationState(user, CredentialMigrationState.LocalFinalized);
@@ -827,7 +863,7 @@ public class LoginServiceTests
         new(
             _mockUserManager.Object,
             _mockSecurityPolicyService.Object,
-            _mockLegacyAuthService.Object,
+
             _mockJitProvisioningService.Object,
             _mockDbContext.Object,
             _mockLogger.Object,
@@ -854,7 +890,7 @@ public class LoginServiceTests
         };
         _persons.Add(person);
 
-        var user = new ApplicationUser { UserName = "active.user", PersonId = personId };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "active.user", PersonId = personId };
         _mockUserManager.Setup(um => um.FindByEmailAsync("active.user")).ReturnsAsync(user);
         _mockUserManager.Setup(um => um.IsLockedOutAsync(user)).ReturnsAsync(false);
         _mockUserManager.Setup(um => um.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
@@ -885,7 +921,7 @@ public class LoginServiceTests
         };
         _persons.Add(person);
 
-        var user = new ApplicationUser { UserName = "inactive.user", PersonId = personId };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "inactive.user", PersonId = personId };
         _mockUserManager.Setup(um => um.FindByEmailAsync("inactive.user")).ReturnsAsync(user);
         SetupDefaultPolicy();
 
@@ -911,7 +947,7 @@ public class LoginServiceTests
         };
         _persons.Add(person);
 
-        var user = new ApplicationUser { UserName = "deleted.user", PersonId = personId };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "deleted.user", PersonId = personId };
         _mockUserManager.Setup(um => um.FindByEmailAsync("deleted.user")).ReturnsAsync(user);
         SetupDefaultPolicy();
 
@@ -937,7 +973,7 @@ public class LoginServiceTests
         };
         _persons.Add(person);
 
-        var user = new ApplicationUser { UserName = "future.user", PersonId = personId };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "future.user", PersonId = personId };
         _mockUserManager.Setup(um => um.FindByEmailAsync("future.user")).ReturnsAsync(user);
         SetupDefaultPolicy();
 
@@ -963,7 +999,7 @@ public class LoginServiceTests
         };
         _persons.Add(person);
 
-        var user = new ApplicationUser { UserName = "expired.user", PersonId = personId };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "expired.user", PersonId = personId };
         _mockUserManager.Setup(um => um.FindByEmailAsync("expired.user")).ReturnsAsync(user);
         SetupDefaultPolicy();
 
@@ -982,7 +1018,7 @@ public class LoginServiceTests
         var personId = Guid.NewGuid();
         // Don't add person to _persons list - simulating deleted or non-existent
 
-        var user = new ApplicationUser { UserName = "orphan.user", PersonId = personId };
+        var user = new ApplicationUser { PasswordHash = "fixture-local", UserName = "orphan.user", PersonId = personId };
         _mockUserManager.Setup(um => um.FindByEmailAsync("orphan.user")).ReturnsAsync(user);
         SetupDefaultPolicy();
 

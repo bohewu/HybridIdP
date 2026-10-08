@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Provider Profile 1.0 success",
+  "type": "object",
+  "required": ["contractVersion", "providerNamespace", "stableSubject", "extraProperties"],
+  "properties": {
+    "contractVersion": { "const": "1.0" },
+    "providerNamespace": { "type": "string", "minLength": 1, "maxLength": 200 },
+    "stableSubject": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "extraProperties": {
+      "type": "object",
+      "maxProperties": 32,
+      "propertyNames": { "pattern": "^[A-Za-z0-9_.-]{1,64}$" },
+      "additionalProperties": {
+        "oneOf": [{ "type": "boolean" }, { "type": "string", "maxLength": 1024 }]
+      }
+    }
+  }
+}

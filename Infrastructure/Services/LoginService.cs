@@ -19,7 +19,6 @@ public partial class LoginService : ILoginService
 {
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ISecurityPolicyService _securityPolicyService;
-    private readonly ILegacyAuthService _legacyAuthService;
     private readonly IJitProvisioningService _jitProvisioningService;
     private readonly IApplicationDbContext _dbContext;
     private readonly ILogger<LoginService> _logger;
@@ -33,11 +32,12 @@ public partial class LoginService : ILoginService
     private readonly IProviderMetadataRefreshService? _providerMetadataRefreshService;
     private readonly DirectoryIntegrationOptions _directoryIntegrationOptions;
     private readonly CredentialMigrationOptions _credentialMigrationOptions;
+    private readonly ProviderProofOptions _proofOptions;
+    private readonly IProviderProfileService? _providerProfileService;
 
     public LoginService(
         UserManager<ApplicationUser> userManager,
         ISecurityPolicyService securityPolicyService,
-        ILegacyAuthService legacyAuthService,
         IJitProvisioningService jitProvisioningService,
         IApplicationDbContext dbContext,
         ILogger<LoginService> logger,
@@ -50,11 +50,12 @@ public partial class LoginService : ILoginService
         IStage2CredentialMigrationService? stage2CredentialMigrationService = null,
         Microsoft.Extensions.Options.IOptions<CredentialMigrationOptions>? credentialMigrationOptions = null,
         ICredentialMigrationStateStore? credentialMigrationStateStore = null,
-        IProviderMetadataRefreshService? providerMetadataRefreshService = null)
+        IProviderMetadataRefreshService? providerMetadataRefreshService = null,
+        Microsoft.Extensions.Options.IOptions<ProviderProofOptions>? providerProofOptions = null,
+        IProviderProfileService? providerProfileService = null)
     {
         _userManager = userManager;
         _securityPolicyService = securityPolicyService;
-        _legacyAuthService = legacyAuthService;
         _jitProvisioningService = jitProvisioningService;
         _dbContext = dbContext;
         _logger = logger;
@@ -68,6 +69,8 @@ public partial class LoginService : ILoginService
         _credentialMigrationOptions = credentialMigrationOptions?.Value ?? new CredentialMigrationOptions();
         _credentialMigrationStateStore = credentialMigrationStateStore;
         _providerMetadataRefreshService = providerMetadataRefreshService;
+        _proofOptions = providerProofOptions?.Value ?? new ProviderProofOptions();
+        _providerProfileService = providerProfileService;
     }
 
     public async Task<LoginResult> AuthenticateAsync(string login, string password, CancellationToken cancellationToken = default)
@@ -125,6 +128,21 @@ public partial class LoginService : ILoginService
                 return LoginResult.InvalidCredentials();
             }
 
+            if (string.IsNullOrEmpty(user.PasswordHash))
+            {
+                if (_directoryIntegrationOptions.Enabled)
+                {
+                    var bindings = await _dbContext.ProviderSubjectDirectoryBindings.AsNoTracking()
+                        .Where(b => b.LocalAccountId == user.Id).Take(2).ToListAsync(cancellationToken);
+                    if (bindings.Count == 1)
+                        return await AuthenticateStage1ProviderUserAsync(login, password, user, bindings[0], cancellationToken);
+                }
+                var links = await _userManager.GetLoginsAsync(user);
+                var selected = links.Where(l => l.LoginProvider == _proofOptions.TrustedProviderNamespace).ToList();
+                if (!_proofOptions.Enabled || selected.Count != 1)
+                    return LoginResult.InvalidCredentials();
+                return await AuthenticateContractUserAsync(login, password, user, selected[0].ProviderKey, cancellationToken);
+            }
             return await AuthenticateLocalUserAsync(user, password, cancellationToken);
         }
 
@@ -156,7 +174,7 @@ public partial class LoginService : ILoginService
                 existingAliasUser,
                 existingAliasBinding,
                 cancellationToken)
-            : await AuthenticateLegacyUserAsync(login, password, cancellationToken);
+            : await AuthenticateContractUserAsync(login, password, null, null, cancellationToken);
     }
 
     /// <inheritdoc />
@@ -260,51 +278,57 @@ public partial class LoginService : ILoginService
         return LoginResult.InvalidCredentials();
     }
 
-    private async Task<LoginResult> AuthenticateLegacyUserAsync(string login, string password, CancellationToken cancellationToken)
+    private async Task<LoginResult> AuthenticateContractUserAsync(
+        string login, string password, ApplicationUser? existingUser, string? boundSubject,
+        CancellationToken cancellationToken)
     {
-        var legacyResult = await _legacyAuthService.ValidateAsync(login, password);
-        if (!legacyResult.IsAuthenticated)
+        if (!_proofOptions.Enabled || _proofProvider is null ||
+            string.IsNullOrWhiteSpace(_proofOptions.TrustedProviderNamespace)) return LoginResult.InvalidCredentials();
+        if (existingUser is not null)
         {
-            return LoginResult.InvalidCredentials();
+            var eligibility = await ValidateExternalUserSignInAsync(existingUser, cancellationToken);
+            if (!eligibility.IsSuccess) return eligibility;
+        }
+        ProofResult proof;
+        try { proof = await _proofProvider.ProveAsync(new ProofRequest { AccountName = login }, password, cancellationToken); }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch { return LoginResult.InvalidCredentials(); }
+        if (!proof.TryValidate(out _) || proof.Outcome != ProofOutcome.Authenticated ||
+            proof.RequiredActions.Count != 0 || proof.ProviderNamespace != _proofOptions.TrustedProviderNamespace ||
+            (boundSubject is not null && proof.StableSubject != boundSubject)) return LoginResult.InvalidCredentials();
+
+        var linked = await _userManager.FindByLoginAsync(proof.ProviderNamespace!, proof.StableSubject!);
+        if (linked is not null)
+        {
+            var links = await _userManager.GetLoginsAsync(linked);
+            if (!links.Any(l => l.LoginProvider == proof.ProviderNamespace && l.ProviderKey == proof.StableSubject) ||
+                _credentialMigrationStateStore is null ||
+                await _credentialMigrationStateStore.FindAsync(linked.Id, cancellationToken) is not null)
+                return LoginResult.InvalidCredentials();
+            var eligibility = await ValidateExternalUserSignInAsync(linked, cancellationToken);
+            if (!eligibility.IsSuccess) return eligibility;
         }
 
-        // Map LegacyUserDto to ExternalAuthResult
-        var externalAuth = new Core.Application.DTOs.ExternalAuthResult
+        // Mailbox ownership is separate from display-profile assurance. Never auto-link by this email.
+        var profile = proof.Profile;
+        var provisioned = await _jitProvisioningService.ProvisionExternalUserAsync(new ExternalAuthResult
         {
-             Provider = Core.Domain.Constants.AuthConstants.Providers.Legacy,
-             ProviderKey = legacyResult.ExternalId ?? login,
-             Email = legacyResult.Email,
-             EmailVerified = true,
-             DisplayName = legacyResult.FullName,
-             // Legacy API typically only provides FullName, use it as FirstName for Person
-             FirstName = legacyResult.FullName,
-             Department = legacyResult.Department,
-             JobTitle = legacyResult.JobTitle,
-             EmployeeId = legacyResult.EmployeeId,
-             PhoneNumber = legacyResult.Phone,
-             NationalId = legacyResult.NationalId,
-             PassportNumber = legacyResult.PassportNumber,
-             ResidentCertificateNumber = legacyResult.ResidentCertificateNumber
-        };
+            Provider = proof.ProviderNamespace!, ProviderKey = proof.StableSubject!,
+            DisplayName = profile?.DisplayName, FirstName = profile?.GivenName, LastName = profile?.Surname,
+            Department = profile?.Department, JobTitle = profile?.Title, EmployeeId = profile?.EmployeeId
+        }, cancellationToken);
+        if (existingUser is not null && provisioned.Id != existingUser.Id) return LoginResult.InvalidCredentials();
+        var result = await ValidateExternalUserSignInAsync(provisioned, cancellationToken);
+        if (!result.IsSuccess) return result;
+        await RefreshProviderProfileAsync(provisioned, proof.ProviderNamespace!, proof.StableSubject!, cancellationToken);
+        return LoginResult.LegacySuccess(provisioned);
+    }
 
-        var provisionedUser = await _jitProvisioningService.ProvisionExternalUserAsync(externalAuth, cancellationToken);
-
-        // Check if provisioned user account is active
-        if (!provisionedUser.IsActive)
-        {
-            LogUserDeactivated(provisionedUser.UserName);
-            return LoginResult.UserInactive();
-        }
-
-        // Phase 18: Check Person status after JIT provisioning
-        var personCheckResult = await ValidatePersonStatusAsync(provisionedUser, cancellationToken);
-        if (personCheckResult != null)
-        {
-            return personCheckResult;
-        }
-
-        LogLegacyUserAuthenticated(login);
-        return LoginResult.LegacySuccess(provisionedUser);
+    private async Task RefreshProviderProfileAsync(ApplicationUser user, string providerNamespace,
+        string stableSubject, CancellationToken cancellationToken)
+    {
+        if (_providerProfileService is null) return;
+        await _providerProfileService.RefreshAfterLoginAsync(user, providerNamespace, stableSubject, cancellationToken);
     }
 
     private async Task<LoginResult> AuthenticateStage1ProviderUserAsync(
@@ -337,7 +361,7 @@ public partial class LoginService : ILoginService
             return LoginResult.InvalidCredentials();
         }
 
-        if (!proof.TryValidate(out _) || proof.Outcome != ProofOutcome.Authenticated)
+        if (!proof.TryValidate(out _) || proof.Outcome != ProofOutcome.Authenticated || proof.RequiredActions.Count != 0)
         {
             return LoginResult.InvalidCredentials();
         }
@@ -351,6 +375,16 @@ public partial class LoginService : ILoginService
             return LoginResult.InvalidCredentials();
         }
 
+        var linkedUser = await _userManager.FindByLoginAsync(proof.ProviderNamespace!, proof.StableSubject!);
+        if (linkedUser is not null)
+        {
+            var exactLinks = await _userManager.GetLoginsAsync(linkedUser);
+            if (!exactLinks.Any(l => l.LoginProvider == proof.ProviderNamespace && l.ProviderKey == proof.StableSubject) ||
+                _credentialMigrationStateStore is null ||
+                await _credentialMigrationStateStore.FindAsync(linkedUser.Id, cancellationToken) is not null)
+                return LoginResult.InvalidCredentials();
+        }
+
         var provisionedUser = existingAliasUser ?? await _jitProvisioningService.ProvisionExternalUserAsync(
             new ExternalAuthResult
             {
@@ -359,7 +393,7 @@ public partial class LoginService : ILoginService
             },
             cancellationToken);
 
-        if (!provisionedUser.IsActive)
+        if (!provisionedUser.IsActive || provisionedUser.IsDeleted)
         {
             LogUserDeactivated(provisionedUser.UserName);
             return LoginResult.UserInactive();
@@ -419,6 +453,7 @@ public partial class LoginService : ILoginService
                 cancellationToken);
         }
 
+        await RefreshProviderProfileAsync(provisionedUser, proof.ProviderNamespace!, proof.StableSubject!, cancellationToken);
         return LoginResult.LegacySuccess(provisionedUser);
     }
 

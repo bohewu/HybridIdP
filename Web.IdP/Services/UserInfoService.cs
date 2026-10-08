@@ -64,6 +64,7 @@ public class UserInfoService : IUserInfoService
             if (userinfo.ContainsKey(claimType)) continue;
 
             var value = principal.GetClaim(claimType);
+            if (value is null && scopeClaim.ClaimDefinition.ProviderProfileSource is not null) continue;
 
             // Skip empty values unless AlwaysInclude is set
             if (string.IsNullOrEmpty(value) && !scopeClaim.AlwaysInclude)

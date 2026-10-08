@@ -4,12 +4,16 @@
 
 ## 🎯 快速導航
 
+- [Release readiness and upgrade notes](./RELEASE_READINESS.md)
+- [Unified provider contracts, profile properties and conditional claims](./design_specs/provider-contract-profile-claims.md)
+
 ### 上游整合契約
 
 - [Provider API Capability Inventory](./PROVIDER_API_CAPABILITIES.md)
 - [Provider Lifecycle Status 1.0 Review Draft](./PROVIDER_LIFECYCLE_CONTRACT.md)
 - [Provider Lifecycle Integration Handoff](./implementation_plans/provider-api-lifecycle-plan.md)
 - [`PROVIDER_PROOF_CONTRACT.md`](./PROVIDER_PROOF_CONTRACT.md)：Provider Proof Contract 1.0 的端點、驗證、失敗與實作者要求。
+- [Provider Profile Contract 1.0](./PROVIDER_PROFILE_CONTRACT.md): approved extra properties, exact identity binding, local hashes and claim mapping.
 - [`PROVIDER_METADATA_CONTRACT.md`](./PROVIDER_METADATA_CONTRACT.md)：第一個正式公開、無 affiliation 欄位的 Provider Metadata Contract 1.0，含 JSON Schema 與合成 fixture。
 - [`PASSWORD_SYNC_CONTRACT.md`](./PASSWORD_SYNC_CONTRACT.md)：未版本化、預設停用且只回傳 aggregate outcome 的 Legacy Password Sync wire contract 與 uncertain-write 規則。
 - [`AUTHENTICATION_INTEGRATION.md`](./AUTHENTICATION_INTEGRATION.md)：三個獨立邊界在 HybridIdP 內的整合、所有權與啟用條件。

@@ -6,6 +6,15 @@ optional `ProviderProof` HTTP adapter. It is independent of
 [Legacy Password Sync contract](PASSWORD_SYNC_CONTRACT.md). Configuring one
 boundary does not configure or authorize either of the others.
 
+Independent API login uses `ProviderProof:Enabled=true` and an explicit
+`TrustedProviderNamespace`. It works with directory integration disabled.
+Profile 1.0 is an independent optional capability, documented in
+[Provider Profile Contract 1.0](PROVIDER_PROFILE_CONTRACT.md). The old flat
+`authenticated` response and LegacyAuth configuration are no longer accepted.
+Existing historical links require explicit, verified transition to the Proof
+tuple. Ordinary API/Stage 1 login denies outstanding required actions; it does
+not claim those actions have completed MFA.
+
 ## Ownership and endpoint
 
 The proof producer validates a submitted account name and password against one
@@ -15,8 +24,8 @@ MFA, sessions, claims, tokens and consent. Proof does not make provider metadata
 authoritative, assign affiliation, group or role state, or authorize a password
 write.
 
-Configure the complete endpoint URI in `ProviderProof:Endpoint`; the existing
-producer route is `/api/authenticate/login`. HybridIdP sends an authenticated
+Configure the complete endpoint URI in `ProviderProof:Endpoint`; a producer may
+use any deployment-selected route (for example `/api/authenticate/login`). HybridIdP sends an authenticated
 `POST` with `Content-Type: application/json` and `X-Internal-Secret`. Provision
 the shared secret outside source control and never put it in the URI, body or
 logs. HTTPS is required unless `AllowPrivateNetworkHttp=true` explicitly permits

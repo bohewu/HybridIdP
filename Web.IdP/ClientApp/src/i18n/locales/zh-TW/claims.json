@@ -87,7 +87,14 @@
     "protectedNote": "受保護的敏感 claims 無法編輯或刪除。NationalId 欄位已經過雜湊處理以保護隱私。",
     "saving": "儲存中...",
     "save": "儲存",
-    "cancel": "取消"
+    "cancel": "取消",
+    "profileSource": "Provider Profile 來源（選填）",
+    "profileSourceHelp": "填入部署設定的來源名稱；留空使用既有帳號／Person 欄位。",
+    "profilePropertyHelp": "填入此來源核准的 property key，並選擇部署設定的資料型別。",
+    "useCondition": "使用條件產生布林 claim",
+    "condition": "條件（JSON）",
+    "conditionHelp": "支援 Equals、StartsWith、All、Any。範例：{\"operator\":\"StartsWith\",\"property\":\"student_id\",\"value\":\"4\"}。群組使用 children 陣列；所有輸入都必須已核准且有資料。",
+    "conditionInvalid": "請輸入有效的條件 JSON 物件。"
   },
   "confirmDelete": "確定要刪除 claim「{name}」嗎？",
   "deleteError": "刪除 claim 失敗",
