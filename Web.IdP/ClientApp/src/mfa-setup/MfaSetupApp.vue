@@ -110,7 +110,7 @@
     </div>
 
     <!-- TOTP Setup Modal -->
-    <div v-if="showTotpModal" class="modal-overlay" @click.self="showTotpModal = false">
+    <div v-if="showTotpModal" class="modal-overlay" @click.self="cancelTotpSetup">
       <div class="modal-content">
         <h2>{{ t('mfa.setupTitle') }}</h2>
         
@@ -124,12 +124,12 @@
           
           <div class="verify-section">
             <label>{{ t('mfa.enterCode') }}</label>
-            <input v-model="totpCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" @keyup.enter="verifyTotp" />
+            <input v-model="totpCode" type="text" inputmode="numeric" maxlength="6" placeholder="000000" :disabled="verifyingTotp" @keyup.enter="verifyTotp" />
           </div>
           
           <div class="modal-actions">
-            <button class="btn-cancel" @click="showTotpModal = false">{{ t('common.cancel') }}</button>
-            <button class="btn-primary" @click="verifyTotp" :disabled="totpCode.length !== 6">{{ t('mfa.verify') }}</button>
+            <button class="btn-cancel" @click="cancelTotpSetup" :disabled="verifyingTotp">{{ t('common.cancel') }}</button>
+            <button class="btn-primary" @click="verifyTotp" :disabled="verifyingTotp || !/^\d{6}$/.test(totpCode)">{{ t('mfa.verify') }}</button>
           </div>
         </div>
         
@@ -197,7 +197,7 @@
             <button
               type="submit"
               class="btn-primary"
-              :disabled="emailLoading || !/^\d{6}$/.test(emailCode)"
+              :disabled="emailLoading || !emailCodeSent || !/^\d{6}$/.test(emailCode)"
             >
               {{ emailLoading ? '...' : t('mfa.verifyAndEnable') }}
             </button>
@@ -257,6 +257,7 @@ const policy = ref({ requireMfaForPasskey: false })
 
 // UI State
 const settingUp = ref(false)
+const verifyingTotp = ref(false)
 const emailLoading = ref(false)
 const passkeyLoading = ref(false)
 const successMessage = ref('')
@@ -331,6 +332,7 @@ async function loadData() {
 }
 
 async function startTotpSetup() {
+  if (settingUp.value) return
   settingUp.value = true
   errorMessage.value = ''
   
@@ -352,6 +354,8 @@ async function startTotpSetup() {
 }
 
 async function verifyTotp() {
+  if (verifyingTotp.value || !/^\d{6}$/.test(totpCode.value)) return
+  verifyingTotp.value = true
   errorMessage.value = ''
   
   try {
@@ -375,7 +379,13 @@ async function verifyTotp() {
     }
   } catch (err) {
     errorMessage.value = t('mfa.errors.verifyFailed')
-  }
+  } finally { verifyingTotp.value = false }
+}
+
+function cancelTotpSetup() {
+  if (verifyingTotp.value) return
+  showTotpModal.value = false
+  totpCode.value = ''
 }
 
 function finishTotpSetup() {
@@ -435,7 +445,7 @@ async function sendEmailMfaCode() {
 }
 
 async function verifyEmailMfa() {
-  if (!/^\d{6}$/.test(emailCode.value)) return
+  if (emailLoading.value || !emailCodeSent.value || !/^\d{6}$/.test(emailCode.value)) return
 
   emailLoading.value = true
   emailError.value = ''

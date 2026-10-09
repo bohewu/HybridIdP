@@ -22,11 +22,13 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 public class MfaControllerFactorRemovalTests
 {
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(true, false)]
-    [InlineData(false, true)]
-    [InlineData(true, true)]
-    public async Task BeginReauthentication_ShouldKeepDefaultEnrollmentAndFixedRemovalReturn(bool forRemoval, bool bearer)
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, false)]
+    [InlineData(true, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    public async Task BeginReauthentication_ShouldKeepDefaultEnrollmentAndFixedRemovalReturn(bool forRemoval, bool bearer, bool returnToProfile)
     {
         var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, SecurityStamp = "stamp", EmailMfaEnabled = true };
         var principal = new ClaimsPrincipal(new ClaimsIdentity(new[] { new Claim("sub", user.Id.ToString()),
@@ -47,10 +49,10 @@ public class MfaControllerFactorRemovalTests
             Mock.Of<IAuditService>(), Mock.Of<IPasskeyService>(), Mock.Of<ILogger<MfaController>>())
         { ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext { User = principal, Session = session, RequestServices = services } } };
 
-        var result = Assert.IsType<OkObjectResult>(await controller.BeginReauthentication(forRemoval));
+        var result = Assert.IsType<OkObjectResult>(await controller.BeginReauthentication(forRemoval, returnToProfile));
         var url = Assert.IsType<string>(result.Value!.GetType().GetProperty("loginUrl")!.GetValue(result.Value));
         var returnUrl = Microsoft.AspNetCore.WebUtilities.QueryHelpers.ParseQuery(new Uri("https://idp.test" + url).Query)["returnUrl"].ToString();
-        Assert.Equal(forRemoval ? "/Account/Profile" : "/Account/MfaSetup?returnUrl=%2FAccount%2FProfile", returnUrl);
+        Assert.Equal(forRemoval || returnToProfile ? "/Account/Profile" : "/Account/MfaSetup?returnUrl=%2FAccount%2FProfile", returnUrl);
         Assert.True(MfaEnrollmentSession.HasPending(session));
         Assert.False(MfaEnrollmentSession.HasFreshProof(session, user.Id));
         ((ClaimsIdentity)principal.Identity!).AddClaim(new Claim("amr", "mfa"));

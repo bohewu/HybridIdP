@@ -258,6 +258,8 @@
   "TotpCodeLength": "驗證碼必須為 6 位數",
   "InvalidOrExpiredEmailCode": "驗證碼無效、已過期或嘗試次數已用完。請重新取得驗證碼後再試一次。",
   "EmailCodeLength": "電子郵件驗證碼必須為 6 位數",
+  "EmailVerificationCode": "電子郵件驗證碼",
+  "MfaSetupRequired": "設定兩步驟驗證",
   "SendEmailCode": "發送驗證碼到電子郵件",
   "EmailCodeSent": "驗證碼已發送至您的電子郵件",
   "UseEmailMfa": "使用電子郵件驗證碼",

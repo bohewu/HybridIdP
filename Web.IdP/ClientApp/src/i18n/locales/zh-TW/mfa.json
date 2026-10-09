@@ -44,6 +44,7 @@
     "registerPasskeyFailed": "註冊密鑰失敗",
     "freshAuthenticationRequired": "為保護帳號，請重新登入並完成身分驗證後，再變更安全性設定。",
     "deletePasskeyFailed": "刪除密鑰失敗",
+    "listPasskeysFailed": "無法更新通行密鑰清單，請稍後重試。",
     "loadPasskeysFailed": "載入密鑰清單失敗",
     "webAuthnNotSupported": "您的瀏覽器不支援 WebAuthn",
     "userCanceled": "使用者已取消或生物辨識失敗",
@@ -70,7 +71,7 @@
     "nonCompliantWarning": "如果不啟用 MFA，您的通行密鑰可能會被撤銷。安全策略要求使用通行密鑰時必須啟用 MFA。"
   },
   "emailMfa": "電子郵件驗證",
-  "emailMfaDescription": "登入時透過電子郵件接收驗證碼",
+  "emailMfaDescription": "登入驗證碼寄至帳號的已驗證電子郵件；復原信箱則獨立用於密碼復原。",
   "emailMfaEnabled": "電子郵件驗證已啟用",
   "emailMfaDisabled": "電子郵件驗證已停用",
   "emailSetupTitle": "驗證您的電子郵件",

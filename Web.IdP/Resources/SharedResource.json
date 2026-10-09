@@ -259,6 +259,8 @@
   "TotpCodeLength": "Code must be 6 digits",
   "InvalidOrExpiredEmailCode": "The code is invalid, expired, or has reached its attempt limit. Request a new code and try again.",
   "EmailCodeLength": "Email code must be 6 digits",
+  "EmailVerificationCode": "Email verification code",
+  "MfaSetupRequired": "Set up two-step verification",
   "SendEmailCode": "Send code to email",
   "EmailCodeSent": "Code sent to your email",
   "UseEmailMfa": "Use email code",

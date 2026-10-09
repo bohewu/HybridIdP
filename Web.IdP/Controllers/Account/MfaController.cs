@@ -53,7 +53,8 @@ public partial class MfaController : ControllerBase
     /// </summary>
     [HttpPost("reauthenticate")]
     [ValidateAntiForgeryToken]
-    public async Task<ActionResult> BeginReauthentication([FromQuery] bool forRemoval = false)
+    public async Task<ActionResult> BeginReauthentication([FromQuery] bool forRemoval = false,
+        [FromQuery] bool returnToProfile = false)
     {
         var applicationAuthentication =
             await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
@@ -83,7 +84,7 @@ public partial class MfaController : ControllerBase
             "returnUrl",
             "/Account/Profile");
         var loginUrl = await AccountSecurityOperationSession.GetLoginUrlAsync(HttpContext, user,
-            forRemoval ? "/Account/Profile" : setupUrl);
+            forRemoval || returnToProfile ? "/Account/Profile" : setupUrl);
 
         return Ok(new { loginUrl });
     }

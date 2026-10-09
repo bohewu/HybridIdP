@@ -17,8 +17,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const btnText = btn.querySelector('.btn-text');
     const countdownSpan = btn.querySelector('.countdown');
     const msg = document.getElementById('emailCodeSentMsg');
+    const form = btn.closest('form');
+    const codeInput = form?.querySelector('[name="Input.EmailCode"]');
+    const verifyButton = form?.querySelector('[data-test-id="mfa-submit"]');
+    let codeSent = form?.dataset.emailCodeSent === 'true';
     let countdownInterval;
     let messageTimeout;
+
+    function updateVerifyButton() {
+        if (verifyButton) verifyButton.disabled = form.dataset.submitting === 'true' || !codeSent || !/^\d{6}$/.test(codeInput?.value || '');
+    }
+    codeInput?.addEventListener('input', function () {
+        codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+        updateVerifyButton();
+    });
+    updateVerifyButton();
 
     function showMessage(text, tone) {
         if (messageTimeout) clearTimeout(messageTimeout);
@@ -51,6 +64,8 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (response.ok) {
                 const data = await response.json();
+                codeSent = data.success === true;
+                updateVerifyButton();
                 
                 // Show success message
                 showMessage(i18n.emailCodeSent, 'text-green-600');
@@ -61,6 +76,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Handle error (e.g. rate limit hit)
                 const data = await response.json();
                 if (data.remainingSeconds) {
+                    codeSent = true;
+                    updateVerifyButton();
                     startCountdown(data.remainingSeconds);
                     showMessage(i18n.pleaseWaitThenRetry, 'text-amber-600');
                 } else {

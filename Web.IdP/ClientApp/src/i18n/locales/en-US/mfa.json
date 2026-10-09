@@ -44,6 +44,7 @@
     "registerPasskeyFailed": "Failed to register passkey",
     "freshAuthenticationRequired": "For your account's security, sign in again and verify your identity before changing security settings.",
     "deletePasskeyFailed": "Failed to delete passkey",
+    "listPasskeysFailed": "Unable to refresh your passkey list. Please try again.",
     "loadPasskeysFailed": "Failed to load passkey list",
     "webAuthnNotSupported": "WebAuthn not supported by your browser",
     "userCanceled": "User canceled or biometric failed",
@@ -70,7 +71,7 @@
     "nonCompliantWarning": "Your passkeys may be revoked if you don't enable MFA. The security policy requires MFA for passkey authentication."
   },
   "emailMfa": "Email Verification",
-  "emailMfaDescription": "Receive a verification code via email when signing in",
+  "emailMfaDescription": "Sign-in codes go to your verified account email. Your recovery email is used separately for password recovery.",
   "emailMfaEnabled": "Email verification enabled",
   "emailMfaDisabled": "Email verification disabled",
   "emailSetupTitle": "Verify your email",

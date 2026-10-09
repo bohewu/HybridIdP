@@ -20,6 +20,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @productName</title>
+    <script async src="~/js/account-form-guard.js" asp-append-version="true"></script>
     
     @* Tailwind CSS *@
     @if (ViteService.IsDevelopment)
@@ -51,7 +52,7 @@
             </div>
             
             <div class="google-login-body">
-                <form method="post">
+                <form method="post" data-account-form data-email-code-sent="@Model.EmailCodeSent.ToString().ToLowerInvariant()">
                     @if (!ViewData.ModelState.IsValid)
                     {
                         <div asp-validation-summary="All" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
@@ -113,7 +114,7 @@
 
                         <button type="submit" 
                                 class="btn-google-blue ml-4" 
-                                data-test-id="mfa-submit">
+                                data-test-id="mfa-submit" disabled>
                             @Localizer["Verify"]
                         </button>
                     </div>

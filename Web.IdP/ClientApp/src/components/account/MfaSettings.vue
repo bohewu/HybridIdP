@@ -35,7 +35,7 @@
           <p class="reauthentication-note">{{ t('mfa.reauthenticationNotice') }}</p>
           <p v-if="totpSetupError" class="error-message" role="alert">{{ totpSetupError }}</p>
         </div>
-        <button class="btn-enable" @click="startSetup" :disabled="totpSetupLoading">
+        <button class="btn-enable" @click="startSetup()" :disabled="totpSetupLoading">
           {{ totpSetupLoading ? t('mfa.redirectingToSignIn') : t('mfa.startSetup') }}
         </button>
       </div>
@@ -82,7 +82,7 @@
               v-if="!mfaStatus.emailMfaEnabled" 
               class="btn-enable" 
               @click="openEmailMfaSetup"
-              :disabled="emailMfaLoading"
+              :disabled="emailMfaLoading || totpSetupLoading"
             >
               {{ emailMfaLoading ? '...' : t('mfa.enable') }}
             </button>
@@ -90,7 +90,7 @@
               v-else 
               class="btn-danger" 
               @click="disableEmailMfa"
-              :disabled="emailMfaLoading"
+              :disabled="emailMfaLoading || totpSetupLoading"
             >
               {{ emailMfaLoading ? '...' : t('mfa.disable') }}
             </button>
@@ -126,7 +126,7 @@
             <button 
               class="btn-enable" 
               @click="registerNewPasskey" 
-              :disabled="passkeyLoading || passkeyBlockedByPolicy"
+              :disabled="passkeyLoading || totpSetupLoading || passkeyBlockedByPolicy"
               :title="passkeyBlockedByPolicy ? t('mfa.passkey.requiresMfa') : ''"
               :class="{ 'btn-disabled': passkeyBlockedByPolicy }"
             >
@@ -224,7 +224,7 @@
             <button
               type="submit"
               class="btn-primary"
-              :disabled="emailMfaLoading || !/^\d{6}$/.test(emailMfaCode)"
+              :disabled="emailMfaLoading || !emailCodeSent || !/^\d{6}$/.test(emailMfaCode)"
             >
               {{ emailMfaLoading ? '...' : t('mfa.verifyAndEnable') }}
             </button>
@@ -234,14 +234,14 @@
     </div>
 
     <!-- Passkey Delete Confirmation Modal -->
-    <div v-if="passkeyToDelete" class="modal-overlay" @click.self="passkeyToDelete = null">
+    <div v-if="passkeyToDelete" class="modal-overlay" @click.self="!passkeyLoading && (passkeyToDelete = null)">
       <div class="modal-content">
         <h2>{{ t('mfa.passkey.deleteConfirmTitle') }}</h2>
         <p>{{ t('mfa.passkey.deleteConfirmMessage') }}</p>
         <p class="delete-target"><strong>{{ passkeyToDelete.deviceName }}</strong></p>
         
         <div class="modal-actions">
-          <button class="btn-cancel" @click="passkeyToDelete = null">{{ t('common.cancel') }}</button>
+          <button class="btn-cancel" @click="passkeyToDelete = null" :disabled="passkeyLoading">{{ t('common.cancel') }}</button>
           <button class="btn-danger" @click="deletePasskey" :disabled="passkeyLoading">
             {{ passkeyLoading ? '...' : t('mfa.passkey.delete') }}
           </button>
@@ -327,6 +327,7 @@
             v-model="disablePassword"
             type="password"
             class="password-input"
+            :disabled="disableLoading"
             @keyup.enter="disableMfa"
           />
         </div>
@@ -337,6 +338,7 @@
           <input 
             v-model="disableTotpCode"
             type="text"
+            :disabled="disableLoading"
             inputmode="numeric"
             pattern="[0-9]*"
             maxlength="6"
@@ -349,8 +351,8 @@
         <p v-if="disableError" class="error-message">{{ disableError }}</p>
         
         <div class="modal-actions">
-          <button class="btn-cancel" @click="cancelDisable">{{ t('common.cancel') }}</button>
-          <button class="btn-danger" @click="disableMfa">{{ t('mfa.disable') }}</button>
+          <button class="btn-cancel" @click="cancelDisable" :disabled="disableLoading">{{ t('common.cancel') }}</button>
+          <button class="btn-danger" @click="disableMfa" :disabled="disableLoading || totpSetupLoading">{{ t('mfa.disable') }}</button>
         </div>
       </div>
     </div>
@@ -441,6 +443,7 @@ import { useI18n } from 'vue-i18n';
 import { useWebAuthn } from '../../composables/useWebAuthn';
 import { useEmailCodeCooldown } from '../../composables/useEmailCodeCooldown';
 import RecoveryEmailSettings from './RecoveryEmailSettings.vue';
+import { saveMfaContinuation, takeMfaContinuation, clearMfaContinuation } from '../../composables/mfaContinuation';
 
 const { t } = useI18n();
 
@@ -474,6 +477,8 @@ const allMfaDisabled = computed(() => {
 
 // Email MFA (Phase 20.3)
 const userEmail = ref('');
+const userId = ref('');
+let resumingSecurityAction = false;
 const userTimeZone = ref('');
 const emailMfaLoading = ref(false);
 const emailMfaError = ref('');
@@ -563,6 +568,19 @@ onMounted(async () => {
   await loadMfaStatus();
   await loadSecurityPolicy();
   await loadPasskeys();
+  const continuation = takeMfaContinuation(userId.value);
+  if (!continuation) return;
+  resumingSecurityAction = true;
+  try {
+    switch (continuation.action) {
+      case 'email-enable': if (mfaStatus.value.enableEmailMfa && !mfaStatus.value.emailMfaEnabled) openEmailMfaSetup(); break;
+      case 'email-disable': if (mfaStatus.value.emailMfaEnabled) await disableEmailMfa(); break;
+      case 'passkey-register': if (mfaStatus.value.enablePasskey && !passkeyBlockedByPolicy.value) await registerNewPasskey(); break;
+      case 'totp-disable': if (mfaStatus.value.twoFactorEnabled) showDisableModal.value = true; break;
+      case 'passkey-delete': passkeyToDelete.value = passkeys.value.find(key => key.id === continuation.targetId) || null; break;
+      case 'recovery-codes': openRegenerateModal(); break;
+    }
+  } finally { resumingSecurityAction = false; }
 });
 
 async function loadSecurityPolicy() {
@@ -582,13 +600,19 @@ async function loadPasskeys() {
     const response = await fetch('/api/passkey/list', { credentials: 'include' });
     if (response.ok) {
       passkeys.value = await response.json();
+    } else {
+      const result = await response.json().catch(() => ({}));
+      passkeyError.value = result.error === 'freshAuthenticationRequired'
+        ? t('mfa.errors.freshAuthenticationRequired') : t('mfa.errors.listPasskeysFailed');
     }
   } catch (err) {
+    passkeyError.value = t('mfa.errors.listPasskeysFailed');
     console.error('Failed to load passkeys:', err);
   }
 }
 
 async function registerNewPasskey() {
+  if (passkeyLoading.value || totpSetupLoading.value) return;
   passkeyLoading.value = true;
   passkeyError.value = '';
   passkeySuccess.value = '';
@@ -600,7 +624,7 @@ async function registerNewPasskey() {
     setTimeout(() => { passkeySuccess.value = ''; }, 3000);
   } catch (err: any) {
     passkeyError.value = t(err.message) || t('mfa.errors.registerPasskeyFailed');
-    if (err.message === 'mfa.errors.freshAuthenticationRequired') await startSetup();
+    if (err.message === 'mfa.errors.freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(false, 'passkey-register');
   } finally {
     passkeyLoading.value = false;
   }
@@ -611,7 +635,7 @@ function confirmDeletePasskey(pk: any) {
 }
 
 async function deletePasskey() {
-  if (!passkeyToDelete.value) return;
+  if (!passkeyToDelete.value || passkeyLoading.value) return;
   
   passkeyLoading.value = true;
   passkeyError.value = '';
@@ -623,12 +647,13 @@ async function deletePasskey() {
     });
     
     if (response.ok) {
+      passkeys.value = passkeys.value.filter(key => key.id !== passkeyToDelete.value.id);
       passkeyToDelete.value = null;
       await loadPasskeys();
     } else {
       const result = await response.json();
       passkeyError.value = result.error ? t(`mfa.errors.${result.error}`) : t('mfa.errors.deletePasskeyFailed');
-      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
+      if (result.error === 'freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(true, 'passkey-delete', passkeyToDelete.value?.id);
     }
   } catch (err) {
     passkeyError.value = t('mfa.errors.deletePasskeyFailed');
@@ -662,12 +687,14 @@ async function loadMfaStatus() {
     }
     // Also fetch user email for Email MFA display
     if (props.profile) {
+      userId.value = props.profile.userId || '';
       userEmail.value = props.profile.email || '';
       userTimeZone.value = props.profile.timeZone || '';
     } else {
       const profileResponse = await fetch('/api/profile', { credentials: 'include' });
       if (profileResponse.ok) {
         const profile = await profileResponse.json();
+        userId.value = profile.userId || '';
         userEmail.value = profile.email || '';
         userTimeZone.value = profile.timeZone || '';
       }
@@ -712,7 +739,7 @@ async function sendEmailMfaCode() {
       await nextTick();
       emailCodeInput.value?.focus();
     } else if (result.error === 'freshAuthenticationRequired') {
-      await startSetup();
+      if (!resumingSecurityAction) await startSetup(false, 'email-enable');
     } else if (result.remainingSeconds) {
       emailCodeSent.value = true;
       startEmailCooldown(result.remainingSeconds);
@@ -727,7 +754,7 @@ async function sendEmailMfaCode() {
 }
 
 async function verifyEmailMfa() {
-  if (!/^\d{6}$/.test(emailMfaCode.value)) return;
+  if (emailMfaLoading.value || !emailCodeSent.value || !/^\d{6}$/.test(emailMfaCode.value)) return;
 
   emailMfaLoading.value = true;
   emailMfaModalError.value = '';
@@ -755,7 +782,7 @@ async function verifyEmailMfa() {
       emit('status-changed');
       setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
     } else if (result.error === 'freshAuthenticationRequired') {
-      await startSetup();
+      if (!resumingSecurityAction) await startSetup(false, 'email-enable');
     } else {
       emailMfaModalError.value = result.message || t('mfa.errors.invalidOrExpiredCode');
     }
@@ -767,6 +794,7 @@ async function verifyEmailMfa() {
 }
 
 async function disableEmailMfa() {
+  if (emailMfaLoading.value || totpSetupLoading.value) return;
   emailMfaLoading.value = true;
   emailMfaError.value = '';
   emailMfaSuccess.value = '';
@@ -785,7 +813,7 @@ async function disableEmailMfa() {
     } else {
       const result = await response.json();
       emailMfaError.value = result.message || t('mfa.errors.toggleFailed');
-      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
+      if (result.error === 'freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(true, 'email-disable');
     }
   } catch (err) {
     emailMfaError.value = t('mfa.errors.toggleFailed');
@@ -794,12 +822,17 @@ async function disableEmailMfa() {
   }
 }
 
-async function startSetup(forRemoval = false) {
+async function startSetup(forRemoval = false, action: string | null = null, targetId: number | null = null) {
+  if (totpSetupLoading.value) return;
   totpSetupLoading.value = true;
   totpSetupError.value = '';
+  let redirecting = false;
+  if (action) saveMfaContinuation(userId.value, action, targetId);
 
   try {
-    const response = await fetch(forRemoval === true ? '/api/account/mfa/reauthenticate?forRemoval=true' : '/api/account/mfa/reauthenticate', {
+    const url = forRemoval === true ? '/api/account/mfa/reauthenticate?forRemoval=true'
+      : action ? '/api/account/mfa/reauthenticate?returnToProfile=true' : '/api/account/mfa/reauthenticate';
+    const response = await fetch(url, {
       method: 'POST',
       credentials: 'include'
     });
@@ -812,11 +845,13 @@ async function startSetup(forRemoval = false) {
       throw new Error('Reauthentication URL was not returned');
     }
 
+    redirecting = true;
     window.location.assign(result.loginUrl);
   } catch (err) {
+    clearMfaContinuation();
     totpSetupError.value = t('mfa.errors.setupFailed');
   } finally {
-    totpSetupLoading.value = false;
+    if (!redirecting) totpSetupLoading.value = false;
   }
 }
 
@@ -858,7 +893,11 @@ function finishSetup() {
   emit('status-changed');
 }
 
+const disableLoading = ref(false);
+
 async function disableMfa() {
+  if (disableLoading.value || totpSetupLoading.value) return;
+  disableLoading.value = true;
   disableError.value = '';
   
   try {
@@ -885,14 +924,15 @@ async function disableMfa() {
       // Translate error key from API (e.g., 'invalidPassword' -> mfa.errors.invalidPassword)
       const errorKey = result.error ? `mfa.errors.${result.error}` : 'mfa.errors.disableFailed';
       disableError.value = t(errorKey);
-      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
+      if (result.error === 'freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(true, 'totp-disable');
     }
   } catch (err) {
     disableError.value = t('mfa.errors.disableFailed');
-  }
+  } finally { disableLoading.value = false; }
 }
 
 function cancelDisable() {
+  if (disableLoading.value) return;
   showDisableModal.value = false;
   disablePassword.value = '';
   disableTotpCode.value = '';
@@ -965,7 +1005,7 @@ async function regenerateCodes() {
       }
 
       if (errorKey === 'freshAuthenticationRequired') {
-        await startSetup(true);
+        if (!resumingSecurityAction) await startSetup(true, 'recovery-codes');
         return;
       }
       const knownErrors = ['passwordRequired', 'invalidPassword', 'totpRequired', 'invalidCode'];

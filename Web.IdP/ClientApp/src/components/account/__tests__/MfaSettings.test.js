@@ -4,6 +4,7 @@ import MfaSettings from '../MfaSettings.vue';
 import { useWebAuthn } from '../../../composables/useWebAuthn';
 import enMfa from '../../../i18n/locales/en-US/mfa.json';
 import zhMfa from '../../../i18n/locales/zh-TW/mfa.json';
+import { saveMfaContinuation } from '../../../composables/mfaContinuation';
 
 // Mock vue-i18n
 const i18nState = vi.hoisted(() => ({ locale: 'en-US' }));
@@ -35,14 +36,17 @@ describe('MfaSettings.vue', () => {
             : operation === 'email-verify' ? '/api/account/mfa/email/verify' : '/api/account/mfa/recovery-codes';
         fetch.mockImplementation((url) => Promise.resolve({ ok: false,
             json: async () => url === endpoint ? { error: 'freshAuthenticationRequired' } : {} }));
-        if (operation === 'email-verify') wrapper.vm.emailMfaCode = '123456';
+        if (operation === 'email-verify') {
+            wrapper.vm.emailMfaCode = '123456';
+            wrapper.vm.emailCodeSent = true;
+        }
         if (operation === 'recovery') wrapper.vm.regeneratePassword = 'confirmation';
         await (operation === 'email-send' ? wrapper.vm.sendEmailMfaCode()
             : operation === 'email-verify' ? wrapper.vm.verifyEmailMfa() : wrapper.vm.regenerateCodes());
         await flushPromises();
         expect(fetch.mock.calls.filter(([url]) => url === endpoint)).toHaveLength(1);
         expect(fetch).toHaveBeenCalledWith(operation === 'recovery'
-            ? '/api/account/mfa/reauthenticate?forRemoval=true' : '/api/account/mfa/reauthenticate',
+            ? '/api/account/mfa/reauthenticate?forRemoval=true' : '/api/account/mfa/reauthenticate?returnToProfile=true',
             { method: 'POST', credentials: 'include' });
         wrapper.unmount();
     });
@@ -117,6 +121,7 @@ describe('MfaSettings.vue', () => {
     }
 
     beforeEach(() => {
+        sessionStorage.clear();
         i18nState.locale = 'en-US';
         vi.useRealTimers();
         vi.clearAllMocks();
@@ -140,6 +145,84 @@ describe('MfaSettings.vue', () => {
 
     afterEach(() => {
         vi.useRealTimers();
+    });
+
+    function mockContinuationAccount(emailMfaEnabled = true, denyRemoval = false) {
+        fetch.mockImplementation((url) => Promise.resolve(jsonResponse(
+            url === '/api/profile' ? { userId: 'account-a', email: 'test@example.com' }
+            : url === '/api/passkey/list' ? []
+            : url === '/api/account/mfa/status' ? { emailMfaEnabled, enableEmailMfa: true, enableTotpMfa: true }
+            : url === '/api/account/mfa/email/disable' && denyRemoval ? { error: 'freshAuthenticationRequired' }
+            : {}, !(url === '/api/account/mfa/email/disable' && denyRemoval))));
+    }
+
+    it('resumes Email MFA removal once for the same account and does not repeat on remount', async () => {
+        mockContinuationAccount();
+        saveMfaContinuation('account-a', 'email-disable');
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        expect(fetch.mock.calls.filter(([url]) => url === '/api/account/mfa/email/disable')).toHaveLength(1);
+        wrapper.unmount();
+        const reloaded = mount(MfaSettings);
+        await flushPromises();
+        expect(fetch.mock.calls.filter(([url]) => url === '/api/account/mfa/email/disable')).toHaveLength(1);
+        reloaded.unmount();
+    });
+
+    it('does not replay removal when a different account signs in', async () => {
+        mockContinuationAccount();
+        saveMfaContinuation('account-b', 'email-disable');
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        expect(fetch.mock.calls.some(([url]) => url === '/api/account/mfa/email/disable')).toBe(false);
+        wrapper.unmount();
+    });
+
+    it('does not start a reauthentication loop if the resumed removal is denied', async () => {
+        mockContinuationAccount(true, true);
+        saveMfaContinuation('account-a', 'email-disable');
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        expect(fetch.mock.calls.filter(([url]) => url === '/api/account/mfa/email/disable')).toHaveLength(1);
+        expect(fetch.mock.calls.some(([url]) => url.startsWith('/api/account/mfa/reauthenticate'))).toBe(false);
+        expect(wrapper.find('.email-mfa-section .error-message').exists()).toBe(true);
+        wrapper.unmount();
+    });
+
+    it('starts TOTP setup without treating the click event as a removal request', async () => {
+        mockContinuationAccount(false);
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        await wrapper.get('.mfa-status.mfa-disabled > .btn-enable').trigger('click');
+        await flushPromises();
+        expect(fetch).toHaveBeenCalledWith('/api/account/mfa/reauthenticate', { method: 'POST', credentials: 'include' });
+        expect(fetch.mock.calls.some(([url]) => url.includes('forRemoval'))).toBe(false);
+        wrapper.unmount();
+    });
+
+    it('blocks repeated TOTP removal and cancellation until the first response completes', async () => {
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        wrapper.vm.showDisableModal = true;
+        wrapper.vm.disablePassword = 'confirmation';
+        let release;
+        const pending = new Promise(resolve => { release = resolve; });
+        fetch.mockImplementation(url => url === '/api/account/mfa/disable'
+            ? pending : Promise.resolve(jsonResponse({})));
+        const first = wrapper.vm.disableMfa();
+        await wrapper.vm.disableMfa();
+        await flushPromises();
+        expect(fetch.mock.calls.filter(([url]) => url === '/api/account/mfa/disable')).toHaveLength(1);
+        expect(wrapper.get('.modal-content .btn-danger').element.disabled).toBe(true);
+        wrapper.vm.cancelDisable();
+        expect(wrapper.vm.showDisableModal).toBe(true);
+        release(jsonResponse({ error: 'invalidPassword' }, false));
+        await first;
+        await flushPromises();
+        expect(wrapper.get('.modal-content .btn-danger').element.disabled).toBe(false);
+        wrapper.vm.cancelDisable();
+        expect(wrapper.vm.showDisableModal).toBe(false);
+        wrapper.unmount();
     });
 
     it('renders passkey section', async () => {
@@ -188,6 +271,39 @@ describe('MfaSettings.vue', () => {
         await flushPromises();
 
         expect(mockRegisterPasskey).toHaveBeenCalled();
+    });
+
+    it('does not start a second registration while the browser credential request is pending', async () => {
+        let release;
+        mockRegisterPasskey.mockImplementationOnce(() => new Promise(resolve => { release = resolve; }));
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        const first = wrapper.vm.registerNewPasskey();
+        await wrapper.vm.registerNewPasskey();
+        await flushPromises();
+        expect(mockRegisterPasskey).toHaveBeenCalledOnce();
+        expect(wrapper.get('.passkey-section .section-action button').element.disabled).toBe(true);
+        release({ success: true });
+        await first;
+        await flushPromises();
+        expect(wrapper.get('.passkey-section .section-action button').element.disabled).toBe(false);
+        wrapper.unmount();
+    });
+
+    it('removes the confirmed deleted key even when stamp rotation denies the next list refresh', async () => {
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        wrapper.vm.passkeys = [{ id: 1 }, { id: 2 }];
+        wrapper.vm.confirmDeletePasskey({ id: 1 });
+        fetch.mockImplementation(url => Promise.resolve(url === '/api/passkey/1'
+            ? jsonResponse({ success: true }) : jsonResponse({ error: 'freshAuthenticationRequired' }, false)));
+        await wrapper.vm.deletePasskey();
+        await flushPromises();
+        expect(wrapper.findAll('.passkey-item')).toHaveLength(1);
+        expect(wrapper.vm.passkeys[0].id).toBe(2);
+        expect(wrapper.find('.modal-content').exists()).toBe(false);
+        expect(wrapper.find('.passkey-section .error-message').text()).toBe(enMfa.errors.freshAuthenticationRequired);
+        wrapper.unmount();
     });
 
     it.each(['en-US', 'zh-TW'])('translates fresh authentication errors in %s', async (locale) => {

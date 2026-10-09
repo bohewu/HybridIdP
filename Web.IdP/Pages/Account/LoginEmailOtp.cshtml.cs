@@ -57,6 +57,7 @@ public partial class LoginEmailOtpModel : PageModel
     public bool RememberMe { get; set; }
     
     public string? MaskedEmail { get; private set; }
+    public bool EmailCodeSent { get; private set; }
     
     /// <summary>
     /// Indicates if user also has TOTP enabled (for showing switch link).
@@ -92,6 +93,7 @@ public partial class LoginEmailOtpModel : PageModel
         ReturnUrl = returnUrl;
         RememberMe = rememberMe;
         TwoFactorEnabled = user.TwoFactorEnabled;
+        EmailCodeSent = HasPendingEmailCode(user);
         
         MaskEmail(user.Email);
         
@@ -141,6 +143,7 @@ public partial class LoginEmailOtpModel : PageModel
         {
             return RedirectToPage("./Login");
         }
+        EmailCodeSent = HasPendingEmailCode(user);
 
         if (!ModelState.IsValid)
         {
@@ -196,9 +199,14 @@ public partial class LoginEmailOtpModel : PageModel
             _localizer["InvalidOrExpiredEmailCode"]);
         TwoFactorEnabled = user.TwoFactorEnabled;
         MaskEmail(user.Email);
+        EmailCodeSent = HasPendingEmailCode(user);
         return Page();
     }
     
+    private static bool HasPendingEmailCode(ApplicationUser user) =>
+        !string.IsNullOrEmpty(user.EmailMfaCode) && user.EmailMfaCodeExpiry > DateTime.UtcNow &&
+        user.EmailMfaVerificationAttempts < 5;
+
     private void MaskEmail(string? email)
     {
         if (string.IsNullOrEmpty(email)) 

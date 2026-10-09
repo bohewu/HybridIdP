@@ -223,7 +223,13 @@ Successful removal consumes the management proof. Expired, password-only,
 initial-enrollment or security-stamp-mismatched proofs cannot authorize removal.
 The optional `forRemoval=true` reauthentication intent selects a fixed Profile
 return after sign-in; the default enrollment return remains MFA Setup. Neither
-intent changes the sign-in requirements or automatically repeats a removal.
+intent changes the sign-in requirements. The optional `returnToProfile=true`
+also selects that fixed return for enrollment. The Profile UI keeps a five-minute,
+same-account tab-local intent to resume email enrollment, email removal or passkey
+registration once after reauthentication. It consumes that UI intent before the
+retry; the intent grants no authority and every API still checks fresh server
+proof. Password/TOTP confirmation and passkey-removal dialogs reopen without
+persisting their secret input or silently removing another factor.
 
 Removal checks current account/Person eligibility and computes the qualifying
 methods remaining after any required passkey cascade, including policy-disabled

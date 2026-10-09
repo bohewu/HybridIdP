@@ -54,10 +54,12 @@ describe('MfaSetupApp Email MFA', () => {
       await flushPromises()
       expect(wrapper.get('input[name="ReturnUrl"]').element.value).toBe(url)
       if (method === 'totp') {
+        wrapper.vm.totpCode = '123456'
         await wrapper.vm.verifyTotp()
         wrapper.vm.finishTotpSetup()
       } else if (method === 'email') {
         await wrapper.vm.startEmailMfaSetup()
+        await wrapper.vm.sendEmailMfaCode()
         await flushPromises()
         await wrapper.get('#setup-email-mfa-code').setValue('123456')
         await wrapper.vm.verifyEmailMfa()
@@ -72,6 +74,33 @@ describe('MfaSetupApp Email MFA', () => {
       wrapper.unmount()
       vi.useRealTimers()
     }
+  })
+
+  it('blocks duplicate TOTP verification and cancellation while the request is pending', async () => {
+    fetch.mockResolvedValue(jsonResponse({ sharedKey: 'fixture-key' }))
+    const wrapper = mount(MfaSetupApp)
+    await flushPromises()
+    await wrapper.vm.startTotpSetup()
+    wrapper.vm.totpCode = '123456'
+    let release
+    const pending = new Promise(resolve => { release = resolve })
+    fetch.mockImplementation(url => url === '/api/account/mfa-setup/totp/verify'
+      ? pending : Promise.resolve(jsonResponse({})))
+    const first = wrapper.vm.verifyTotp()
+    await wrapper.vm.verifyTotp()
+    await flushPromises()
+    expect(fetch.mock.calls.filter(([url]) => url === '/api/account/mfa-setup/totp/verify')).toHaveLength(1)
+    expect(wrapper.get('.modal-content .btn-primary').element.disabled).toBe(true)
+    wrapper.vm.cancelTotpSetup()
+    expect(wrapper.find('.modal-content').exists()).toBe(true)
+    release(jsonResponse({ success: false }))
+    await first
+    await flushPromises()
+    expect(wrapper.get('.modal-content .btn-primary').element.disabled).toBe(false)
+    wrapper.vm.cancelTotpSetup()
+    await flushPromises()
+    expect(wrapper.find('.modal-content').exists()).toBe(false)
+    wrapper.unmount()
   })
 
   it('sends and verifies an emailed code before completing partial authentication', async () => {
