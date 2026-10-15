@@ -1,11 +1,13 @@
 <script setup>
 import { useI18n } from 'vue-i18n'
 import SearchInput from '@/components/common/SearchInput.vue'
+import { auditEventTypeLabel } from '@/utils/auditEventLabels'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const props = defineProps({
-  filters: { type: Object, required: true }
+  filters: { type: Object, required: true },
+  eventTypes: { type: Array, default: () => [] }
 })
 
 const emit = defineEmits(['filters-change'])
@@ -83,45 +85,9 @@ const clearFilters = () => {
               class="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-google-500 focus:border-google-500 sm:text-sm"
             >
               <option value="">{{ t('audit.filters.allEventTypes') }}</option>
-              
-              <!-- Session/Token Events -->
-              <optgroup :label="t('audit.eventTypes.categories.session')">
-                <option value="RefreshTokenRotated">{{ t('audit.eventTypes.RefreshTokenRotated') }}</option>
-                <option value="RefreshTokenReuseDetected">{{ t('audit.eventTypes.RefreshTokenReuseDetected') }}</option>
-                <option value="SessionRevoked">{{ t('audit.eventTypes.SessionRevoked') }}</option>
-                <option value="SlidingExpirationExtended">{{ t('audit.eventTypes.SlidingExpirationExtended') }}</option>
-              </optgroup>
-              
-              <!-- Passkey Events -->
-              <optgroup :label="t('audit.eventTypes.categories.passkey')">
-                <option value="PasskeyRegistered">{{ t('audit.eventTypes.PasskeyRegistered') }}</option>
-                <option value="PasskeyDeleted">{{ t('audit.eventTypes.PasskeyDeleted') }}</option>
-                <option value="PasskeyAuthenticationUsed">{{ t('audit.eventTypes.PasskeyAuthenticationUsed') }}</option>
-              </optgroup>
-              
-              <!-- MFA Events -->
-              <optgroup :label="t('audit.eventTypes.categories.mfa')">
-                <option value="MfaEnabled">{{ t('audit.eventTypes.MfaEnabled') }}</option>
-                <option value="MfaDisabled">{{ t('audit.eventTypes.MfaDisabled') }}</option>
-                <option value="EmailMfaEnabled">{{ t('audit.eventTypes.EmailMfaEnabled') }}</option>
-                <option value="EmailMfaDisabled">{{ t('audit.eventTypes.EmailMfaDisabled') }}</option>
-              </optgroup>
-              
-              <!-- Login Events -->
-              <optgroup :label="t('audit.eventTypes.categories.login')">
-                <option value="LoginSucceeded">{{ t('audit.eventTypes.LoginSucceeded') }}</option>
-                <option value="LoginFailed">{{ t('audit.eventTypes.LoginFailed') }}</option>
-                <option value="RateLimitExceeded">{{ t('audit.eventTypes.RateLimitExceeded') }}</option>
-              </optgroup>
-              
-              <!-- Admin Events -->
-              <optgroup :label="t('audit.eventTypes.categories.admin')">
-                <option value="AdminUserCreated">{{ t('audit.eventTypes.AdminUserCreated') }}</option>
-                <option value="AdminUserUpdated">{{ t('audit.eventTypes.AdminUserUpdated') }}</option>
-                <option value="AdminUserDeleted">{{ t('audit.eventTypes.AdminUserDeleted') }}</option>
-                <option value="AdminRoleChanged">{{ t('audit.eventTypes.AdminRoleChanged') }}</option>
-                <option value="SecurityPolicyUpdated">{{ t('audit.eventTypes.SecurityPolicyUpdated') }}</option>
-              </optgroup>
+              <option v-for="eventType in eventTypes" :key="eventType" :value="eventType">
+                {{ auditEventTypeLabel(eventType, t, te) }}
+              </option>
             </select>
           </div>
 

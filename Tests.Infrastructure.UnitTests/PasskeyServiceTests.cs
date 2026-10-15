@@ -134,6 +134,78 @@ public class PasskeyServiceTests
         Assert.Equal(4, await _dbContext.UserCredentials.CountAsync());
     }
 
+    [Theory]
+    [InlineData("none", false)]
+    [InlineData("account-codes", false)]
+    [InlineData("retired-key", false)]
+    [InlineData("local", true)]
+    [InlineData("external", true)]
+    [InlineData("contract", true)]
+    [InlineData("directory", true)]
+    [InlineData("migration", true)]
+    [InlineData("another-key", true)]
+    public async Task DeletePasskeyAsync_ShouldKeepFinalPrimaryKeyUnlessAlternateAuthorityExists(string authority, bool allowed)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "primary-key-user", SecurityStamp = "before" };
+        if (authority == "local") user.PasswordHash = "existing-password-hash";
+        _dbContext.Users.Add(user);
+        var key = new UserCredential { Id = 1, UserId = user.Id, CredentialId = [1], PublicKey = [1] };
+        _dbContext.UserCredentials.Add(key);
+        if (authority is "another-key" or "retired-key")
+            _dbContext.UserCredentials.Add(new UserCredential { Id = 2, UserId = user.Id, CredentialId = [2], PublicKey = [2],
+                DisabledAtUtc = authority == "retired-key" ? DateTime.UtcNow : null });
+        if (authority is "external" or "contract")
+            _dbContext.UserLogins.Add(new IdentityUserLogin<Guid> { UserId = user.Id,
+                LoginProvider = authority, ProviderKey = "bound-subject" });
+        if (authority is "directory" or "migration")
+        {
+            var binding = new ProviderSubjectDirectoryBinding(user.Id, "directory", "bound-subject", Guid.NewGuid(), DateTime.UtcNow);
+            _dbContext.ProviderSubjectDirectoryBindings.Add(binding);
+            if (authority == "migration")
+                _dbContext.CredentialMigrationStateRecords.Add(new CredentialMigrationStateRecord(user.Id, binding.Id, DateTimeOffset.UtcNow));
+        }
+        if (authority == "account-codes")
+            _dbContext.UserTokens.Add(new IdentityUserToken<Guid> { UserId = user.Id,
+                LoginProvider = AccountRecoveryCodeService.LoginProvider, Name = "Batch.v1", Value = "[\"hash\"]" });
+        await _dbContext.SaveChangesAsync();
+        _userManagerMock.Setup(value => value.UpdateAsync(user)).Returns(async () =>
+        { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
+        var result = await _sut.DeletePasskeyAsync(user.Id, key.Id);
+        Assert.Equal(allowed ? MfaRemovalResult.Succeeded : MfaRemovalResult.AlternateSignInRequired, result);
+        Assert.Equal(allowed, key.DisabledAtUtc != null);
+        Assert.Equal(allowed, user.SecurityStamp != "before");
+        if (!allowed) _userManagerMock.Verify(value => value.UpdateAsync(user), Times.Never);
+    }
+
+    [Fact]
+    public async Task DeletePasskeyAsync_ShouldAllowTwoKeysToBecomeOneButProtectTheLastKey_WhenMfaIsMandatory()
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "two-active-keys", SecurityStamp = "before" };
+        _dbContext.Users.Add(user);
+        _dbContext.UserCredentials.AddRange(
+            new UserCredential { Id = 1, UserId = user.Id, CredentialId = [1], PublicKey = [1] },
+            new UserCredential { Id = 2, UserId = user.Id, CredentialId = [2], PublicKey = [2] });
+        await _dbContext.SaveChangesAsync();
+        _securityPolicy.Setup(value => value.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy
+        {
+            EnablePasskey = true, RequireMfaForPasskey = false, EnforceMandatoryMfaEnrollment = true
+        });
+        _userManagerMock.Setup(value => value.UpdateAsync(user)).Returns(async () =>
+        {
+            await _dbContext.SaveChangesAsync();
+            return IdentityResult.Success;
+        });
+
+        Assert.Equal(MfaRemovalResult.Succeeded, await _sut.DeletePasskeyAsync(user.Id, 1));
+        Assert.Equal(1, await _dbContext.UserCredentials.CountAsync(value => value.UserId == user.Id && value.DisabledAtUtc == null));
+        var stampAfterRemoval = user.SecurityStamp;
+        Assert.NotEqual("before", stampAfterRemoval);
+
+        Assert.Equal(MfaRemovalResult.MandatoryFactorRequired, await _sut.DeletePasskeyAsync(user.Id, 2));
+        Assert.Null((await _dbContext.UserCredentials.SingleAsync(value => value.Id == 2)).DisabledAtUtc);
+        Assert.Equal(stampAfterRemoval, user.SecurityStamp);
+    }
+
     [Fact]
     public async Task DeletePasskeyAsync_ExistingPasskey_RetiresOnceAndPreservesHistory()
     {
@@ -148,7 +220,7 @@ public class PasskeyServiceTests
         };
         
         _dbContext.UserCredentials.Add(cred);
-        _dbContext.Users.Add(new ApplicationUser { Id = userId, UserName = "key-owner" });
+        _dbContext.Users.Add(new ApplicationUser { Id = userId, UserName = "key-owner", PasswordHash = "existing-password-hash" });
         _userManagerMock.Setup(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()))
             .Returns(async () => { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
         await _dbContext.SaveChangesAsync();
@@ -157,10 +229,10 @@ public class PasskeyServiceTests
         var result = await _sut.DeletePasskeyAsync(userId, 1, CancellationToken.None);
 
         // Assert
-        Assert.True(result);
+        Assert.Equal(MfaRemovalResult.Succeeded, result);
         Assert.NotNull((await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc);
         var retiredAt = cred.DisabledAtUtc;
-        Assert.False(await _sut.DeletePasskeyAsync(userId, 1));
+        Assert.Equal(MfaRemovalResult.NotFound, await _sut.DeletePasskeyAsync(userId, 1));
         Assert.Equal(retiredAt, (await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc);
     }
 
@@ -174,7 +246,7 @@ public class PasskeyServiceTests
         var result = await _sut.DeletePasskeyAsync(userId, 999, CancellationToken.None);
 
         // Assert
-        Assert.False(result);
+        Assert.Equal(MfaRemovalResult.NotFound, result);
     }
 
     [Theory]
@@ -183,7 +255,7 @@ public class PasskeyServiceTests
     [InlineData(false, true)]
     public async Task DeletePasskeyAsync_ShouldPreserveKeyOnMandatoryPolicyOrFailedPersistence(bool mandatory, bool persistenceSucceeds)
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner", SecurityStamp = "before-removal" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "owner", PasswordHash = "existing-password-hash", SecurityStamp = "before-removal" };
         _dbContext.Users.Add(user);
         _dbContext.UserCredentials.Add(new UserCredential { Id = 7, UserId = user.Id, CredentialId = [7], PublicKey = [7] });
         await _dbContext.SaveChangesAsync();
@@ -194,7 +266,7 @@ public class PasskeyServiceTests
             await _dbContext.SaveChangesAsync();
             return IdentityResult.Success;
         });
-        Assert.Equal(!mandatory && persistenceSucceeds, await _sut.DeletePasskeyAsync(user.Id, 7));
+        Assert.Equal(!mandatory && persistenceSucceeds, await _sut.DeletePasskeyAsync(user.Id, 7) == MfaRemovalResult.Succeeded);
         user.PhoneNumber = "test-later-save";
         await _dbContext.SaveChangesAsync();
         Assert.Equal(!mandatory && persistenceSucceeds, (await _dbContext.UserCredentials.SingleAsync()).DisabledAtUtc != null);
@@ -222,7 +294,7 @@ public class PasskeyServiceTests
         var result = await _sut.DeletePasskeyAsync(userId, 1, CancellationToken.None);
 
         // Assert
-        Assert.False(result);
+        Assert.Equal(MfaRemovalResult.NotFound, result);
         Assert.Single(_dbContext.UserCredentials);
     }
 

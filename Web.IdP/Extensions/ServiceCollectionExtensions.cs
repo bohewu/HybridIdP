@@ -158,6 +158,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ISessionService, SessionService>();
         services.AddScoped<IImpersonationService, ImpersonationService>();
         services.AddScoped<IEmailMfaAttemptStore, EmailMfaAttemptStore>();
+        services.AddScoped<IAccountRecoveryCodeService, AccountRecoveryCodeService>();
         services.AddScoped<IMfaService, MfaService>(); // Phase 20: MFA
         services.AddScoped<Core.Application.Interfaces.IEmailTemplateService, EmailTemplateService>(); // Phase 20.3: Email MFA Templates
         services.AddScoped<IRecoveryProofAuthorizer, HttpContextRecoveryProofAuthorizer>();

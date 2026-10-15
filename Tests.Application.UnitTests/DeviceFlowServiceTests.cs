@@ -21,22 +21,25 @@ namespace Tests.Application.UnitTests;
 public class DeviceFlowServiceTests
 {
     [Theory]
-    [InlineData("pwd", false, "amr")]
-    [InlineData("hwk", false, "amr")]
-    [InlineData("pwd", true, "amr")]
-    [InlineData("hwk", true, "amr")]
-    [InlineData("hwk", false, ClaimTypes.AuthenticationMethod)]
-    [InlineData("pwd", true, ClaimTypes.AuthenticationMethod)]
+    [InlineData("pwd", false, "amr", "current")]
+    [InlineData("hwk", false, "amr", "current")]
+    [InlineData("pwd", true, "amr", "current")]
+    [InlineData("hwk", true, "amr", "current")]
+    [InlineData("hwk", false, ClaimTypes.AuthenticationMethod, "current")]
+    [InlineData("pwd", true, ClaimTypes.AuthenticationMethod, "current")]
+    [InlineData("pwd", true, "amr", "retired")]
+    [InlineData("pwd", true, "amr", null)]
     public async Task ProcessVerificationAsync_ShouldRequirePerformedMfa_WhenGlobalPolicyActivatesAfterCookieIssued(
-        string primaryAmr, bool completedMfa, string claimType)
+        string primaryAmr, bool completedMfa, string claimType, string? binding)
     {
         var policy = new SecurityPolicy { MfaEnforcementGracePeriodDays = 30 };
         _securityPolicy.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(policy);
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "stale-device-cookie", IsActive = true };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "stale-device-cookie", IsActive = true, SecurityStamp = "current" };
         var identity = new ClaimsIdentity(
             [new Claim(claimType, primaryAmr)], IdentityConstants.ApplicationScheme);
         if (completedMfa) identity.AddClaim(new Claim(claimType, AuthConstants.Amr.Mfa));
         identity.SetClaim(Claims.AuthenticationTime, DateTimeOffset.UtcNow.AddDays(-1).ToUnixTimeSeconds());
+        identity.SetClaim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, binding);
         var userPrincipal = new ClaimsPrincipal(identity);
         _mockUserManager.Setup(manager => manager.GetUserAsync(userPrincipal)).ReturnsAsync(user);
         _mockUserManager.Setup(manager => manager.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
@@ -54,7 +57,7 @@ public class DeviceFlowServiceTests
             AuthenticateResult.Success(new AuthenticationTicket(device, OpenIddictServerAspNetCoreDefaults.AuthenticationScheme)));
 
         _securityPolicy.Verify(service => service.GetCurrentPolicyAsync(), Times.Once);
-        if (!completedMfa)
+        if (!completedMfa || binding != "current")
         {
             var denied = Assert.IsType<ForbidResult>(result);
             Assert.Equal(Errors.InvalidGrant, denied.Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
@@ -78,9 +81,10 @@ public class DeviceFlowServiceTests
     [InlineData(true, "hwk")]
     public async Task ProcessVerificationAsync_ShouldRequirePerformedMfaAndPreserveEvidence(bool completedMfa, string primaryAmr)
     {
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "device-user" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "device-user", SecurityStamp = "current" };
         var userPrincipal = new ClaimsPrincipal(new ClaimsIdentity(
             [new Claim("amr", primaryAmr), new Claim("amr", completedMfa ? "mfa" : "user")], IdentityConstants.ApplicationScheme));
+        userPrincipal.SetClaim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, user.SecurityStamp);
         _mockUserManager.Setup(m => m.GetUserAsync(userPrincipal)).ReturnsAsync(user);
         _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
         _mockApplicationManager.Setup(m => m.GetPropertiesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>())).ReturnsAsync(
@@ -280,6 +284,7 @@ public class DeviceFlowServiceTests
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "testuser", Email = "test@test.com" };
         var userPrincipal = new ClaimsPrincipal(new ClaimsIdentity("test"));
 
+        userPrincipal.SetClaim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, user.SecurityStamp);
         _mockUserManager.Setup(m => m.GetUserAsync(userPrincipal)).ReturnsAsync(user);
         _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
         _mockUserManager.Setup(m => m.GetEmailAsync(user)).ReturnsAsync(user.Email);

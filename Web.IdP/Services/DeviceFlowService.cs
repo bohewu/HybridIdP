@@ -98,6 +98,7 @@ public partial class DeviceFlowService : IDeviceFlowService
             });
         }
 
+        Web.IdP.Helpers.AuthorizationAuthenticationSession.StripStaleMfa(userPrincipal, user);
         if (authenticateResult is { Succeeded: true } && !string.IsNullOrEmpty(authenticateResult.Principal.GetClaim(Claims.ClientId)))
         {
             // Create the claims-based identity that will be used by OpenIddict to generate tokens.
@@ -155,6 +156,7 @@ public partial class DeviceFlowService : IDeviceFlowService
                 .Where(c => c.Type == AuthConstants.ClaimTypes.Amr || c.Type == ClaimTypes.AuthenticationMethod)
                 .Select(c => c.Value).Distinct(StringComparer.Ordinal).ToImmutableArray());
             
+            Web.IdP.Helpers.AuthorizationAuthenticationSession.CopyMfaBinding(userPrincipal, identity);
             // Enrich with scope-mapped claims and permissions using shared service
             await _claimsEnricher.AddScopeMappedClaimsAsync(identity, user, scopes);
             await _claimsEnricher.AddPermissionClaimsAsync(identity, user, authenticateResult.Principal.GetClaim(Claims.ClientId));
@@ -240,6 +242,7 @@ public partial class DeviceFlowService : IDeviceFlowService
                 }
                 yield break;
 
+            case Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim:
             case "AspNet.Identity.SecurityStamp": yield break;
 
             default:

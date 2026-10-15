@@ -35,6 +35,7 @@ namespace Tests.Application.UnitTests
                 return Task.CompletedTask;
             }
             public Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter, CancellationToken cancellationToken = default) => throw new NotImplementedException();
+            public Task<IEnumerable<string>> GetEventTypesAsync(CancellationToken cancellationToken = default) => Task.FromResult<IEnumerable<string>>(Array.Empty<string>());
             public Task<AuditEventExportDto?> ExportEventAsync(int eventId, CancellationToken cancellationToken = default) => throw new NotImplementedException();
             public Task LogImpersonationEventAsync(string eventType, System.Security.Claims.ClaimsPrincipal impersonatedPrincipal, string? ipAddress, string? userAgent, CancellationToken cancellationToken = default) => throw new NotImplementedException();
             public Task LogAdministrativeEventAsync(string eventType, string targetType, string targetId, string? details, CancellationToken cancellationToken = default) => Task.CompletedTask;

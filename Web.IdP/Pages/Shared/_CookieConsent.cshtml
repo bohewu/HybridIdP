@@ -1,15 +1,14 @@
 @using Microsoft.Extensions.Localization
 @inject IStringLocalizer<Web.IdP.SharedResource> Localizer
 
-@* Cookie consent banner - Google style *@
+@* Informational notice for necessary cookies *@
 <div id="cookie-consent-template" style="display:none">
-  <div id="cookie-consent-banner" role="dialog" aria-live="polite" aria-label="@Localizer["CookieConsent.AriaLabel"]">
+  <div id="cookie-consent-banner" role="status" aria-live="polite" aria-label="@Localizer["CookieConsent.AriaLabel"]">
     <div>
       <strong class="text-gray-900">@Localizer["CookieConsent.Title"]</strong>
       <p class="text-sm text-gray-600 mt-2 mb-0">@Localizer["CookieConsent.Description"]</p>
       <div class="cc-actions">
-        <button id="cookie-consent-decline" class="btn-google-white">@Localizer["CookieConsent.Decline"]</button>
-        <button id="cookie-consent-accept" class="btn-google-blue">@Localizer["CookieConsent.Accept"]</button>
+        <button type="button" id="cookie-notice-acknowledge" class="btn-google-blue">@Localizer["CookieConsent.Acknowledge"]</button>
       </div>
       <div class="mt-3">
         <a href="/Privacy" class="text-sm link-google">@Localizer["Privacy"]</a>

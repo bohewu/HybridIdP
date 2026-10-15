@@ -29,17 +29,20 @@ public static class AccountSecurityOperationSession
         var credentials = await http.RequestServices.GetRequiredService<IApplicationDbContext>().UserCredentials
             .Where(credential => credential.UserId == user.Id && credential.DisabledAtUtc == null)
             .Select(credential => credential.CredentialId).ToListAsync(ct);
-        var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled || credentials.Count > 0;
+        var accountCodes = await http.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+            .GetStatusAsync(user.Id, ct);
+        var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled || credentials.Count > 0 || accountCodes.RemainingCodes > 0;
         if (purpose == MfaResetPurpose && !hasFactors) return null;
         var nonce = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var state = new Operation(user.Id, user.SecurityStamp, purpose, target, nonce,
             DateTimeOffset.UtcNow.AddMinutes(5), user.TwoFactorEnabled, user.EmailMfaEnabled, user.Email,
             credentials.Select(WebEncoders.Base64UrlEncode).ToArray(),
-            purpose == MfaResetPurpose || hasFactors, false);
+            purpose == MfaResetPurpose || hasFactors, false, accountCodes.RemainingCodes > 0);
         await http.Session.LoadAsync(ct);
         PendingExternalLoginLink.Cancel(http);
         http.Session.SetString(SessionKey, JsonSerializer.Serialize(state));
         await http.SignOutAsync(IdentityConstants.ApplicationScheme);
+        await http.SignOutAsync(IdentityConstants.TwoFactorUserIdScheme);
         await http.SignOutAsync(IdentityConstants.TwoFactorRememberMeScheme);
         return nonce;
     }
@@ -47,7 +50,7 @@ public static class AccountSecurityOperationSession
     public static async Task<string> GetLoginUrlAsync(HttpContext http, ApplicationUser user, string returnUrl)
     {
         var state = Read(http);
-        if (state?.UserId == user.Id && (state.Totp || state.EmailMfa || state.Passkeys.Length > 0))
+        if (state?.UserId == user.Id && (state.Totp || state.EmailMfa || state.Passkeys.Length > 0 || state.AccountCodes))
         {
             var identity = TwoFactorAuthenticationSession.CreateIdentity(user,
                 http.RequestServices.GetRequiredService<UserManager<ApplicationUser>>());
@@ -68,6 +71,8 @@ public static class AccountSecurityOperationSession
             "password" => !state.RequireMfa,
             "totp" => state.Totp && user.TwoFactorEnabled,
             "email" => state.EmailMfa && user.EmailMfaEnabled && state.Email == user.Email,
+            "account-recovery" => state.AccountCodes && http.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+                .HasRedemptionProof(user, state.Nonce),
             "recovery" => state.Totp && user.TwoFactorEnabled || state.EmailMfa && user.EmailMfaEnabled,
             "passkey" => credentialId != null && state.Passkeys.Contains(credentialId, StringComparer.Ordinal),
             _ => false
@@ -107,6 +112,9 @@ public static class AccountSecurityOperationSession
         return state?.Purpose == purpose && state.Target == target ? state.Nonce : null;
     }
 
+    public static string GetRecoveryOperationBinding(HttpContext http, ApplicationUser user) =>
+        Read(http)?.Nonce ?? PendingExternalLoginLink.GetPurposeClaim(http.Session, user.Id)?.Value ?? "login-mfa";
+
     public static void Consume(HttpContext http) => http.Features.Get<ISessionFeature>()?.Session.Remove(SessionKey);
 
     private static Operation? Read(HttpContext http)
@@ -123,5 +131,5 @@ public static class AccountSecurityOperationSession
 
     private sealed record Operation(Guid UserId, string Stamp, string Purpose, string Target, string Nonce,
         DateTimeOffset ExpiresUtc, bool Totp, bool EmailMfa, string? Email, string[] Passkeys,
-        bool RequireMfa, bool Verified);
+        bool RequireMfa, bool Verified, bool AccountCodes = false);
 }

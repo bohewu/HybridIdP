@@ -196,6 +196,9 @@ public class PendingExternalLoginLinkTests
     {
         using var fixture = new Fixture(method == "email" ? "email" : "totp");
         await fixture.BeginAsync();
+        var recovery = Mock.Get(fixture.Http.RequestServices.GetRequiredService<IAccountRecoveryCodeService>());
+        recovery.Setup(value => value.RedeemAsync(fixture.User, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(valid);
         var mfa = new Mock<IMfaService>();
         mfa.Setup(x => x.ValidateTotpCodeAsync(fixture.User, It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(valid);
         mfa.Setup(x => x.ValidateNativeRecoveryCodeAsync(fixture.User, It.IsAny<string>(), It.IsAny<CancellationToken>())).ReturnsAsync(valid);
@@ -285,21 +288,33 @@ public class PendingExternalLoginLinkTests
         { PageContext = new PageContext { HttpContext = fixture.Http }, ReturnUrl = input };
         Assert.IsType<PageResult>(await page.OnGetAsync());
         Assert.Equal(expected, page.ReturnUrl);
+        Assert.False(page.IsManagement);
         page.ReturnUrl = input; // Model binding runs again on a direct skip POST.
         Assert.Equal(expected, Assert.IsType<RedirectResult>(await page.OnPostSkipAsync()).Url);
     }
 
     [Theory]
-    [InlineData(false, false)]
-    [InlineData(false, true)]
-    [InlineData(true, false)]
-    [InlineData(true, true)]
-    public async Task ActualPasskeyCompletion_ShouldRequireUserVerificationForLink(bool enrollment, bool userVerified)
+    [InlineData(false, false, false, true)]
+    [InlineData(false, true, false, true)]
+    [InlineData(true, false, false, true)]
+    [InlineData(true, true, false, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(false, false, true, false)]
+    public async Task ActualPasskeyCompletion_ShouldRequireQualifiedMfaAndBoundLink(
+        bool enrollment, bool userVerified, bool freshPassword, bool validNonce)
     {
         using var fixture = new Fixture(enrollment ? "enrollment" : "passkey");
         fixture.User.Person = new Person { Id = Guid.NewGuid() };
         fixture.User.PersonId = fixture.User.Person.Id;
         await fixture.BeginAsync();
+        if (freshPassword) AuthenticationMethodSession.Replace(fixture.Http.Session, fixture.User, "pwd");
+        if (!validNonce)
+        {
+            var identity = (ClaimsIdentity)fixture.Partial!.Identity!;
+            identity.RemoveClaim(identity.FindFirst(PendingExternalLoginLink.PurposeClaim)!);
+            identity.AddClaim(new Claim(PendingExternalLoginLink.PurposeClaim, "unrelated"));
+        }
         var policy = new Mock<ISecurityPolicyService>();
         policy.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy { EnablePasskey = true });
         policy.Setup(x => x.GetCurrentPolicyForPasskeyAuthenticationAsync(It.IsAny<CancellationToken>()))
@@ -318,7 +333,7 @@ public class PendingExternalLoginLinkTests
         using var response = System.Text.Json.JsonDocument.Parse("{\"id\":\"AQ\",\"rawId\":\"AQ\"}");
         if (enrollment) await controller.MakeCredential(response.RootElement, default);
         else await controller.MakeAssertion(response.RootElement, default);
-        Assert.Equal(userVerified ? 1 : 0, fixture.Links.Count);
+        Assert.Equal((userVerified || freshPassword) && validNonce ? 1 : 0, fixture.Links.Count);
     }
 
     [Fact]
@@ -393,7 +408,7 @@ public class PendingExternalLoginLinkTests
                     AuthenticateResult.Success(new AuthenticationTicket(Partial, IdentityConstants.TwoFactorUserIdScheme)));
             _services = new ServiceCollection().AddSingleton(auth.Object).AddSingleton(Users.Object)
                 .AddSingleton<IApplicationDbContext>(Database)
-                .AddSingleton(SignIn.Object).AddSingleton(Login.Object).AddSingleton(Lifecycle.Object).AddSingleton(Migration.Object).BuildServiceProvider();
+                .AddSingleton(SignIn.Object).AddSingleton(Login.Object).AddSingleton(Lifecycle.Object).AddSingleton(Migration.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
             Http = new DefaultHttpContext { RequestServices = _services, Session = new MemorySession() };
             SignIn.Setup(x => x.SignInWithClaimsAsync(User, It.IsAny<bool>(), It.IsAny<IEnumerable<Claim>>()))
                 .Returns<ApplicationUser, bool, IEnumerable<Claim>>(async (_, _, claims) =>

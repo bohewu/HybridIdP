@@ -26,6 +26,23 @@ namespace Tests.Web.IdP.UnitTests.Pages.Account;
 
 public class LoginModelTurnstileTests
 {
+    [Fact]
+    public void ReauthenticationNotice_ShouldRequireLiveServerPendingContext()
+    {
+        var (model, _, _, _) = CreateModel();
+        model.HttpContext.Session = new Tests.Web.IdP.UnitTests.TestSupport.MemorySession();
+        model.ReturnUrl = "/Account/MfaSetup";
+        model.HttpContext.Request.QueryString = new QueryString("?reauthenticate=true&returnUrl=/Account/MfaSetup");
+
+        Assert.False(model.IsMfaEnrollmentReauthentication);
+        global::Web.IdP.Helpers.MfaEnrollmentSession.Begin(model.HttpContext.Session, Guid.NewGuid(),
+            action: global::Web.IdP.Helpers.MfaEnrollmentAction.EnableEmailOtp);
+        Assert.True(model.IsMfaEnrollmentReauthentication);
+        Assert.Equal("MfaReauthenticationEnableEmailOtpNotice", model.MfaReauthenticationNoticeKey);
+        global::Web.IdP.Helpers.MfaEnrollmentSession.Consume(model.HttpContext.Session);
+        Assert.False(model.IsMfaEnrollmentReauthentication);
+    }
+
     [Theory]
     [InlineData(true)]
     [InlineData(false)]

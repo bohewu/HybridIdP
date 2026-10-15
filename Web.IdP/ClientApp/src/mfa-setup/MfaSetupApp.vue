@@ -8,7 +8,7 @@
             d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
         </svg>
       </div>
-      <h1 class="title">{{ t('mfa.setupPageTitle') }}</h1>
+      <h1 class="title">{{ !isRequiredSetup && (mfaStatus.twoFactorEnabled || mfaStatus.emailMfaEnabled) ? t('mfa.manageMethodsTitle') : t('mfa.setupPageTitle') }}</h1>
       
       <!-- Grace Period Info -->
       <div v-if="isMfaEnforced" class="grace-expired enforced">
@@ -32,8 +32,8 @@
         </svg>
       </div>
       <div class="info-content">
-        <h3>{{ t('mfa.whyRequiredTitle') }}</h3>
-        <p>{{ t('mfa.whyRequiredDescription') }}</p>
+        <h3>{{ isRequiredSetup ? t('mfa.whyRequiredTitle') : t('mfa.optionalSetupTitle') }}</h3>
+        <p>{{ isRequiredSetup ? t('mfa.whyRequiredDescription') : (mfaStatus.twoFactorEnabled || mfaStatus.emailMfaEnabled) ? t('mfa.additionalMethodDescription') : t('mfa.enableDescription') }}</p>
       </div>
     </div>
 
@@ -58,12 +58,12 @@
           </svg>
         </div>
         <div class="option-info">
-          <h3>{{ t('mfa.title') }}</h3>
-          <p v-if="mfaStatus.twoFactorEnabled">{{ t('mfa.enabled') }}</p>
-          <p v-else>{{ t('mfa.enableDescription') }}</p>
+          <h3>{{ t('mfa.authenticatorTitle') }}</h3>
+          <p v-if="mfaStatus.twoFactorEnabled">{{ t('mfa.authenticatorEnabled') }}</p>
+          <p v-else>{{ mfaStatus.emailMfaEnabled ? t('mfa.authenticatorOptional') : t('mfa.authenticatorDescription') }}</p>
         </div>
-        <button v-if="!mfaStatus.twoFactorEnabled" class="btn-enable" @click="startTotpSetup" :disabled="settingUp">
-          {{ settingUp ? '...' : t('mfa.enable') }}
+        <button v-if="!mfaStatus.twoFactorEnabled" class="btn-enable" data-testid="totp-add" @click="startTotpSetup" :disabled="settingUp">
+          {{ settingUp ? '...' : t('mfa.addAuthenticator') }}
         </button>
         <span v-else class="status-badge enabled">✓</span>
       </div>
@@ -106,7 +106,18 @@
 
       <!-- Success Message -->
       <div v-if="successMessage" class="success-message">{{ successMessage }}</div>
-      <div v-if="errorMessage" class="error-message">{{ errorMessage }}</div>
+      <div v-if="errorMessage" class="error-message" role="alert">{{ errorMessage }}</div>
+      <div v-if="totpReauthenticationRequired" class="error-message" data-testid="totp-reauthentication-retry">
+        <h3>{{ t('mfa.addAuthenticator') }}</h3>
+        <p v-if="!totpSignInRequired">{{ t('mfa.reauthenticationDescription', { action: t('mfa.reauthenticationActions.totp-add') }) }}</p>
+        <div class="modal-actions">
+          <button type="button" class="btn-cancel" data-testid="totp-reauthentication-cancel" :disabled="settingUp" @click="cancelTotpReauthentication">{{ t('common.cancel') }}</button>
+          <a v-if="totpSignInRequired" href="/Account/Login?returnUrl=%2FAccount%2FProfile" class="btn-primary" data-testid="totp-sign-in">{{ t('mfa.continueReauthentication') }}</a>
+          <button v-else type="button" class="btn-primary" data-testid="totp-reauthentication-continue" :disabled="settingUp" @click="reauthenticateTotpSetup">
+            {{ settingUp ? t('mfa.redirectingToSignIn') : t('mfa.continueReauthentication') }}
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- TOTP Setup Modal -->
@@ -114,7 +125,7 @@
       <div class="modal-content">
         <h2>{{ t('mfa.setupTitle') }}</h2>
         
-        <div v-if="!totpComplete">
+        <div>
           <p>{{ t('mfa.scanQrCode') }}</p>
           <div class="qr-container">
             <img v-if="totpSetup.qrCodeDataUri" :src="totpSetup.qrCodeDataUri" alt="QR Code" />
@@ -133,14 +144,6 @@
           </div>
         </div>
         
-        <div v-else class="recovery-codes">
-          <h3>{{ t('mfa.setupComplete') }}</h3>
-          <p class="warning">{{ t('mfa.saveRecoveryCodes') }}</p>
-          <div class="codes-grid">
-            <code v-for="code in recoveryCodes" :key="code">{{ code }}</code>
-          </div>
-          <button class="btn-primary" @click="finishTotpSetup">{{ t('mfa.done') }}</button>
-        </div>
       </div>
     </div>
 
@@ -156,7 +159,7 @@
         <p>{{ t('mfa.emailSetupDescription', { email: t('mfa.yourEmailAddress') }) }}</p>
 
         <p v-if="emailCodeSent" class="email-code-sent" role="status">
-          {{ t('mfa.emailCodeSent') }}
+          {{ t('mfa.emailCodePending') }}
         </p>
         <p v-if="emailError" class="email-modal-error" role="alert">
           {{ emailError }}
@@ -169,6 +172,9 @@
               id="setup-email-mfa-code"
               ref="emailCodeInput"
               v-model.trim="emailCode"
+              @input="syncEmailCode"
+              @change="syncEmailCode"
+              @focus="syncEmailCode"
               type="text"
               inputmode="numeric"
               autocomplete="one-time-code"
@@ -176,8 +182,9 @@
               maxlength="6"
               placeholder="000000"
               :disabled="emailLoading"
+              aria-describedby="setup-email-mfa-code-guidance"
             />
-            <p class="field-hint">{{ t('mfa.emailCodeHelp') }}</p>
+            <p id="setup-email-mfa-code-guidance" class="field-hint" data-testid="email-mfa-code-guidance" role="status">{{ emailCodeGuidance }}</p>
           </div>
 
           <div class="modal-actions">
@@ -197,6 +204,7 @@
             <button
               type="submit"
               class="btn-primary"
+              data-testid="email-mfa-verify"
               :disabled="emailLoading || !emailCodeSent || !/^\d{6}$/.test(emailCode)"
             >
               {{ emailLoading ? '...' : t('mfa.verifyAndEnable') }}
@@ -206,9 +214,14 @@
       </div>
     </div>
 
+    <AccountRecoveryCodes ref="accountRecoveryCodes" disclosure-only @saved="finishRecoveryCodes" />
+
     <!-- Footer Actions -->
     <div class="footer-actions">
-      <div v-if="!gracePeriodExpired" class="skip-section">
+      <a v-if="!loading && canReturn" :href="returnUrl" class="skip-btn" data-testid="mfa-return">
+        {{ t('mfa.returnToAccount') }}
+      </a>
+      <div v-else-if="!loading && !gracePeriodExpired" class="skip-section">
         <form :action="skipActionUrl" method="post">
           <input type="hidden" name="ReturnUrl" :value="returnUrl" />
           <input type="hidden" name="__RequestVerificationToken" :value="csrfToken" />
@@ -217,7 +230,7 @@
           </button>
         </form>
       </div>
-      <div v-else class="logout-section">
+      <div v-else-if="!loading" class="logout-section">
         <a :href="logoutUrl" class="logout-link">{{ t('mfa.logout') }}</a>
       </div>
     </div>
@@ -225,10 +238,11 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick } from 'vue'
+import { ref, computed, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useWebAuthn } from '../composables/useWebAuthn'
 import { useEmailCodeCooldown } from '../composables/useEmailCodeCooldown'
+import AccountRecoveryCodes from '../components/account/AccountRecoveryCodes.vue'
 
 const { t } = useI18n()
 const { registerPasskey: webAuthnRegister } = useWebAuthn()
@@ -238,6 +252,8 @@ const gracePeriodExpired = ref(false)
 const remainingGraceDays = ref(0)
 const isMfaEnforced = ref(false)
 const showGracePeriod = ref(false)
+const isManagement = ref(false)
+const isRequiredSetup = computed(() => isMfaEnforced.value || showGracePeriod.value)
 const returnUrl = ref('/')
 const csrfToken = ref('')
 const skipActionUrl = ref('/Account/MfaSetup?handler=Skip')
@@ -253,13 +269,18 @@ const mfaStatus = ref({
   enablePasskey: true
 })
 const passkeys = ref([])
+const canReturn = computed(() => (isManagement.value && !isRequiredSetup.value) || mfaStatus.value.twoFactorEnabled ||
+  mfaStatus.value.emailMfaEnabled || passkeys.value.length > 0)
 const policy = ref({ requireMfaForPasskey: false })
 
 // UI State
 const settingUp = ref(false)
+const totpReauthenticationRequired = ref(false)
+const totpSignInRequired = ref(false)
 const verifyingTotp = ref(false)
 const emailLoading = ref(false)
 const passkeyLoading = ref(false)
+const accountRecoveryCodes = ref(null)
 const successMessage = ref('')
 const errorMessage = ref('')
 const showEmailModal = ref(false)
@@ -275,17 +296,25 @@ const {
 const emailSendButtonText = computed(() => {
   if (emailLoading.value) return t('mfa.sendingCode')
   if (emailCooldownSeconds.value > 0) {
-    return t('mfa.resendCodeIn', { seconds: emailCooldownSeconds.value })
+    return t(emailCodeSent.value ? 'mfa.resendCodeIn' : 'mfa.sendCodeIn', { seconds: emailCooldownSeconds.value })
   }
   return emailCodeSent.value ? t('mfa.resendCode') : t('mfa.sendCode')
 })
+const emailCodeGuidance = computed(() => emailCodeSent.value
+  ? t('mfa.emailCodeHelp')
+  : emailCooldownSeconds.value > 0 ? t('mfa.emailCodeUnavailable') : t('mfa.emailCodeNeeded'))
+
+function syncEmailCode() {
+  if (emailLoading.value || !emailCodeInput.value) return
+  emailCode.value = emailCodeInput.value.value.replace(/\D/g, '').slice(0, 6)
+  emailCodeInput.value.value = emailCode.value
+}
 
 // TOTP Modal
 const showTotpModal = ref(false)
 const totpSetup = ref({ sharedKey: '', qrCodeDataUri: '' })
 const totpCode = ref('')
-const totpComplete = ref(false)
-const recoveryCodes = ref([])
+let returnTimer
 
 const allMfaDisabled = computed(() => {
   return !mfaStatus.value.enableTotpMfa && !mfaStatus.value.enableEmailMfa && !mfaStatus.value.enablePasskey
@@ -296,18 +325,30 @@ const passkeyBlocked = computed(() => {
 })
 
 onMounted(async () => {
+  window.addEventListener('pageshow', syncEmailCode)
   // Read config from data attributes
   const mountEl = document.getElementById('mfa-setup-app')
+  const resumeMethod = mountEl?.dataset.resumeMethod
+  if (mountEl) delete mountEl.dataset.resumeMethod
   if (mountEl) {
     gracePeriodExpired.value = mountEl.dataset.gracePeriodExpired === 'true'
     remainingGraceDays.value = parseInt(mountEl.dataset.remainingGraceDays || '0', 10)
     isMfaEnforced.value = mountEl.dataset.isMfaEnforced === 'true'
     showGracePeriod.value = mountEl.dataset.showGracePeriod === 'true'
+    isManagement.value = mountEl.dataset.isManagement === 'true'
     returnUrl.value = mountEl.dataset.returnUrl || '/'
     csrfToken.value = mountEl.dataset.csrfToken || ''
   }
   
   await loadData()
+  // Navigation intent only; the setup API still checks fresh server proof.
+  if (resumeMethod === 'totp' && mfaStatus.value.enableTotpMfa && !mfaStatus.value.twoFactorEnabled) {
+    await startTotpSetup()
+  }
+})
+onUnmounted(() => {
+  window.removeEventListener('pageshow', syncEmailCode)
+  clearTimeout(returnTimer)
 })
 
 async function loadData() {
@@ -332,8 +373,10 @@ async function loadData() {
 }
 
 async function startTotpSetup() {
-  if (settingUp.value) return
+  if (settingUp.value || showTotpModal.value) return
   settingUp.value = true
+  totpReauthenticationRequired.value = false
+  totpSignInRequired.value = false
   errorMessage.value = ''
   
   try {
@@ -342,14 +385,56 @@ async function startTotpSetup() {
       totpSetup.value = await res.json()
       showTotpModal.value = true
       totpCode.value = ''
-      totpComplete.value = false
     } else {
-      errorMessage.value = t('mfa.errors.setupFailed')
+      const result = await res.json().catch(() => ({}))
+      if (res.status === 401 || result.error === 'freshAuthenticationRequired') {
+        showTotpModal.value = false
+        totpCode.value = ''
+        totpSetup.value = { sharedKey: '', qrCodeDataUri: '' }
+        totpReauthenticationRequired.value = true
+        totpSignInRequired.value = res.status === 401
+        errorMessage.value = t(totpSignInRequired.value ? 'mfa.setupSignInRequired' : 'mfa.setupIdentityExpired')
+      } else {
+        errorMessage.value = t('mfa.errors.setupFailed')
+      }
     }
   } catch (err) {
     errorMessage.value = t('mfa.errors.setupFailed')
   } finally {
     settingUp.value = false
+  }
+}
+
+function cancelTotpReauthentication() {
+  if (settingUp.value) return
+  totpReauthenticationRequired.value = false
+  totpSignInRequired.value = false
+  errorMessage.value = ''
+}
+
+async function reauthenticateTotpSetup() {
+  if (settingUp.value || !totpReauthenticationRequired.value || totpSignInRequired.value) return
+  settingUp.value = true
+  errorMessage.value = ''
+  let redirecting = false
+  try {
+    const res = await fetch('/api/account/mfa/reauthenticate?action=totp-add', {
+      method: 'POST',
+      headers: { 'X-XSRF-TOKEN': csrfToken.value },
+      credentials: 'include'
+    })
+    const result = await res.json().catch(() => ({}))
+    if (!res.ok || !result.loginUrl) {
+      totpSignInRequired.value = res.status === 401
+      errorMessage.value = t(totpSignInRequired.value ? 'mfa.setupSignInRequired' : 'mfa.errors.setupFailed')
+      return
+    }
+    redirecting = true
+    window.location.assign(result.loginUrl)
+  } catch {
+    errorMessage.value = t('mfa.errors.setupFailed')
+  } finally {
+    if (!redirecting) settingUp.value = false
   }
 }
 
@@ -369,11 +454,20 @@ async function verifyTotp() {
       body: JSON.stringify({ code: totpCode.value })
     })
     
-    const result = await res.json()
-    if (result.success) {
-      recoveryCodes.value = result.recoveryCodes || []
-      totpComplete.value = true
+    const result = await res.json().catch(() => ({}))
+    if (res.status === 401 || result.error === 'freshAuthenticationRequired') {
+      showTotpModal.value = false
+      totpCode.value = ''
+      totpSetup.value = { sharedKey: '', qrCodeDataUri: '' }
+      totpReauthenticationRequired.value = true
+      totpSignInRequired.value = res.status === 401
+      errorMessage.value = t(totpSignInRequired.value ? 'mfa.setupSignInRequired' : 'mfa.setupIdentityExpired')
+    } else if (result.success) {
       await loadData()
+      showTotpModal.value = false
+      totpCode.value = ''
+      totpSetup.value = { sharedKey: '', qrCodeDataUri: '' }
+      finishEnrollment('mfa.setupComplete', result.accountRecoveryCodes)
     } else {
       errorMessage.value = t('mfa.errors.invalidCode')
     }
@@ -388,11 +482,13 @@ function cancelTotpSetup() {
   totpCode.value = ''
 }
 
-function finishTotpSetup() {
-  showTotpModal.value = false
-  successMessage.value = t('mfa.setupComplete')
-  // Redirect to ReturnUrl after short delay
-  setTimeout(() => { 
+function finishEnrollment(message, issuedCodes) {
+  successMessage.value = t(message)
+  if (issuedCodes?.length) {
+    accountRecoveryCodes.value?.displayIssuedCodes(issuedCodes)
+    return
+  }
+  returnTimer = setTimeout(() => {
     window.location.href = returnUrl.value
   }, 1000)
 }
@@ -425,14 +521,13 @@ async function sendEmailMfaCode() {
       credentials: 'include'
     })
     const result = await res.json().catch(() => ({}))
-    
+    emailCodeSent.value = result.hasPendingCode === true
+
     if (res.ok) {
-      emailCodeSent.value = true
       startEmailCooldown(result.remainingSeconds || 60)
       await nextTick()
       emailCodeInput.value?.focus()
     } else if (result.remainingSeconds) {
-      emailCodeSent.value = true
       startEmailCooldown(result.remainingSeconds)
     } else {
       emailError.value = t('mfa.errors.sendCodeFailed')
@@ -445,6 +540,7 @@ async function sendEmailMfaCode() {
 }
 
 async function verifyEmailMfa() {
+  syncEmailCode()
   if (emailLoading.value || !emailCodeSent.value || !/^\d{6}$/.test(emailCode.value)) return
 
   emailLoading.value = true
@@ -461,6 +557,7 @@ async function verifyEmailMfa() {
       body: JSON.stringify({ code: emailCode.value })
     })
     const result = await res.json().catch(() => ({}))
+    if (typeof result.hasPendingCode === 'boolean') emailCodeSent.value = result.hasPendingCode
 
     if (res.ok && result.success) {
       showEmailModal.value = false
@@ -468,10 +565,7 @@ async function verifyEmailMfa() {
       emailCodeSent.value = false
       stopEmailCooldown()
       await loadData()
-      successMessage.value = t('mfa.emailMfaEnabled')
-      setTimeout(() => {
-        window.location.href = returnUrl.value
-      }, 1000)
+      finishEnrollment('mfa.emailMfaEnabled', result.accountRecoveryCodes)
     } else {
       emailError.value = result.message || t('mfa.errors.invalidOrExpiredCode')
     }
@@ -483,22 +577,23 @@ async function verifyEmailMfa() {
 }
 
 async function registerPasskey() {
+  if (passkeyLoading.value) return
   passkeyLoading.value = true
   errorMessage.value = ''
   
   try {
-    await webAuthnRegister()
+    const result = await webAuthnRegister()
     await loadData()
-    successMessage.value = t('mfa.passkey.registerSuccess')
-    // Redirect to ReturnUrl after short delay, similar to TOTP/Email flow
-    setTimeout(() => { 
-      window.location.href = returnUrl.value
-    }, 1000)
+    finishEnrollment('mfa.passkey.registerSuccess', result?.accountRecoveryCodes)
   } catch (err) {
     errorMessage.value = t(err.message || 'mfa.errors.registerPasskeyFailed')
   } finally {
     passkeyLoading.value = false
   }
+}
+
+function finishRecoveryCodes() {
+  window.location.href = returnUrl.value
 }
 </script>
 

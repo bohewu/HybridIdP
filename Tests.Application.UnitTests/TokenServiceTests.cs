@@ -29,6 +29,7 @@ namespace Tests.Application.UnitTests
 {
     public class TokenServiceTests
     {
+        private readonly Mock<IAccountRecoveryCodeService> _accountCodes = new();
         [Theory]
         [InlineData("amr", "pwd", false)]
         [InlineData("amr", "hwk", false)]
@@ -424,6 +425,8 @@ namespace Tests.Application.UnitTests
 
             _scopeUsage.Setup(p => p.CanUseScopesAsync(It.IsAny<object>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
         _mockApiResourceService.Setup(s => s.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(new List<string>());
+            _accountCodes.Setup(codes => codes.GetStatusAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0));
             _service = new TokenService(
                 _lifecycle.Object,
                 _mockUserManager.Object,
@@ -440,7 +443,8 @@ namespace Tests.Application.UnitTests
                 Options.Create(_credentialMigrationOptions = new CredentialMigrationOptions()),
                 _mockCredentialMigrationStateStore.Object,
                 _mockStage2CredentialMigrationService.Object,
-                _mockMigrationIssuanceGuard.Object, _scopeUsage.Object);
+                _mockMigrationIssuanceGuard.Object, _scopeUsage.Object,
+                _accountCodes.Object);
         }
 
         [Theory]
@@ -1153,6 +1157,25 @@ namespace Tests.Application.UnitTests
             _mockUserManager.Verify(manager => manager.UpdateAsync(user), Times.Never);
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task PasswordGrant_ShouldDenyAccountCodeEnrollmentGraceOnlyUnderMandatoryPolicy(bool mandatory)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "backup-user", IsActive = true };
+            SetupPasswordGrant(user);
+            SetupMockUserCredentials();
+            _accountCodes.Setup(value => value.GetStatusAsync(user.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(true, 1));
+            _mockSecurityPolicyService.Setup(value => value.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = mandatory, MfaEnforcementGracePeriodDays = 3 });
+            var result = await _service.HandleTokenRequestAsync(
+                CreateRequest(GrantTypes.Password, username: user.UserName, password: "${TEST_FIXTURE_001}"), null);
+            if (mandatory) AssertPasswordGrantRejected(result);
+            else Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result);
+            Assert.Null(user.MfaRequirementNotifiedAt);
+        }
+
         [Fact]
         public async Task HandleTokenRequestAsync_Password_InvalidPassword_AppliesConfiguredLockout()
         {
@@ -1705,11 +1728,58 @@ namespace Tests.Application.UnitTests
              };
         }
 
+        [Theory]
+        [InlineData(GrantTypes.AuthorizationCode, true, null)]
+        [InlineData(GrantTypes.AuthorizationCode, true, "old")]
+        [InlineData(GrantTypes.AuthorizationCode, false, "old")]
+        [InlineData(GrantTypes.RefreshToken, true, null)]
+        [InlineData(GrantTypes.RefreshToken, true, "old")]
+        [InlineData(GrantTypes.RefreshToken, false, "old")]
+        [InlineData(GrantTypes.DeviceCode, true, null)]
+        [InlineData(GrantTypes.DeviceCode, true, "old")]
+        [InlineData(GrantTypes.DeviceCode, false, "old")]
+        public async Task UserGrant_ShouldRejectStaleMfaWhenRequiredAndStripItWhenOptional(string grant, bool required, string? binding)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, SecurityStamp = "current" };
+            var principal = grant == GrantTypes.AuthorizationCode ? SetupAuthorizationCodeGrant(user) :
+                grant == GrantTypes.RefreshToken ? SetupRefreshGrant(user) : SetupDeviceCodeGrant(user);
+            principal.SetClaims("amr", ImmutableArray.Create("pwd", "otp", "mfa"));
+            principal.SetClaim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, binding);
+            _mockSecurityPolicyService.Setup(value => value.GetCurrentPolicyAsync())
+                .ReturnsAsync(new SecurityPolicy { EnforceMandatoryMfaEnrollment = required });
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(grant), principal);
+            if (required) AssertInvalidGrant(result);
+            else
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+                Assert.Equal(new[] { "pwd" }, issued.GetClaims("amr"));
+                Assert.Null(issued.GetClaim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim));
+            }
+        }
+
+        [Theory]
+        [InlineData(GrantTypes.AuthorizationCode)]
+        [InlineData(GrantTypes.RefreshToken)]
+        [InlineData(GrantTypes.DeviceCode)]
+        public async Task UserGrant_ShouldPersistCurrentMfaBindingWithoutTokenDestinations(string grant)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, SecurityStamp = "current" };
+            var principal = grant == GrantTypes.AuthorizationCode ? SetupAuthorizationCodeGrant(user) :
+                grant == GrantTypes.RefreshToken ? SetupRefreshGrant(user) : SetupDeviceCodeGrant(user);
+            principal.SetClaims("amr", ImmutableArray.Create("pwd", "mfa"));
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(grant), principal);
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            var binding = Assert.Single(issued.FindAll(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim));
+            Assert.Equal("current", binding.Value);
+            Assert.Empty(binding.GetDestinations());
+        }
+
         private ClaimsPrincipal SetupRefreshGrant(
             ApplicationUser user,
             bool isLockedOut = false,
             bool clientRequiresMfa = false)
         {
+            user.SecurityStamp ??= "test-stamp";
             var clientApp = new object();
             _mockApplicationManager
                 .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -1730,7 +1800,8 @@ namespace Tests.Application.UnitTests
             _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
 
             return new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(Claims.Subject, user.Id.ToString())],
+                [new Claim(Claims.Subject, user.Id.ToString()),
+                 new Claim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, user.SecurityStamp)],
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
         }
 
@@ -1747,6 +1818,7 @@ namespace Tests.Application.UnitTests
             ApplicationUser user,
             bool isLockedOut = false)
         {
+            user.SecurityStamp ??= "test-stamp";
             var clientApp = new object();
             _mockApplicationManager
                 .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -1761,7 +1833,8 @@ namespace Tests.Application.UnitTests
             _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
 
             return new ClaimsPrincipal(new ClaimsIdentity(
-                [new Claim(Claims.Subject, user.Id.ToString())],
+                [new Claim(Claims.Subject, user.Id.ToString()),
+                 new Claim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, user.SecurityStamp)],
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme));
         }
 
@@ -1769,6 +1842,7 @@ namespace Tests.Application.UnitTests
             ApplicationUser user,
             bool isLockedOut = false)
         {
+            user.SecurityStamp ??= "test-stamp";
             var clientApp = new object();
             _mockApplicationManager
                 .Setup(m => m.FindByClientIdAsync("test-client", It.IsAny<CancellationToken>()))
@@ -1781,6 +1855,7 @@ namespace Tests.Application.UnitTests
                     OpenIddictConstants.Permissions.Prefixes.Scope + Scopes.Profile));
 
             SetupMockUsers(user);
+            _mockUserManager.Setup(m => m.FindByIdAsync(user.Id.ToString())).ReturnsAsync(user);
             _mockUserManager.Setup(m => m.IsLockedOutAsync(user)).ReturnsAsync(isLockedOut);
             _mockUserManager.Setup(m => m.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
             _mockSignInManager.Setup(m => m.CanSignInAsync(user)).ReturnsAsync(true);
@@ -1790,7 +1865,8 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync([]);
 
             var identity = new ClaimsIdentity(
-                [new Claim(Claims.Subject, user.Id.ToString())],
+                [new Claim(Claims.Subject, user.Id.ToString()),
+                 new Claim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, user.SecurityStamp)],
                 OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
             identity.SetScopes(Scopes.OpenId, Scopes.Profile);
             return new ClaimsPrincipal(identity);

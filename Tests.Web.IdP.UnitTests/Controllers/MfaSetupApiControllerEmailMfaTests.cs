@@ -79,23 +79,84 @@ public class MfaSetupApiControllerEmailMfaTests
             Times.Never);
     }
 
-    [Fact]
-    public async Task VerifyEmailMfaCode_InvalidProof_ShouldNotEnableOrPromoteSession()
+    [Theory]
+    [InlineData("fresh", true)]
+    [InlineData("pending", true)]
+    [InlineData("consumed", false)]
+    [InlineData("expired", false)]
+    [InlineData("exhausted", false)]
+    [InlineData("missing-expiry", false)]
+    public async Task SendEmailMfaCode_ShouldReportPendingChallengeIndependentlyOfCooldown(string condition, bool expectedPending)
     {
         var fixture = CreateFixture();
+        ArrangeTwoFactorPartialAuthentication(fixture);
+        fixture.User.EmailMfaCode = condition is "fresh" or "consumed" ? null : "HASHED_CODE";
+        fixture.User.EmailMfaCodeExpiry = condition == "missing-expiry" ? null :
+            DateTime.UtcNow.AddMinutes(condition == "expired" ? -1 : 10);
+        fixture.User.EmailMfaVerificationAttempts = condition == "exhausted" ? 5 : 4;
+        fixture.MfaService.Setup(service => service.SendEmailMfaCodeAsync(fixture.User, It.IsAny<CancellationToken>()))
+            .Callback(() =>
+            {
+                if (condition != "fresh") return;
+                fixture.User.EmailMfaCode = "NEW_HASHED_CODE";
+                fixture.User.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(10);
+                fixture.User.EmailMfaVerificationAttempts = 0;
+            })
+            .ReturnsAsync((condition == "fresh", 60));
+
+        var result = Assert.IsAssignableFrom<ObjectResult>(await fixture.Controller.SendEmailMfaCode(default));
+        var response = System.Text.Json.JsonSerializer.SerializeToElement(result.Value);
+
+        Assert.Equal(condition == "fresh" ? 200 : 429, result.StatusCode);
+        Assert.Equal(condition == "fresh", response.GetProperty("success").GetBoolean());
+        Assert.Equal(60, response.GetProperty("remainingSeconds").GetInt32());
+        Assert.Equal(expectedPending, response.GetProperty("hasPendingCode").GetBoolean());
+        Assert.False(fixture.User.EmailMfaEnabled);
+        fixture.SignInManager.Verify(manager => manager.SignInWithClaimsAsync(
+            It.IsAny<ApplicationUser>(), It.IsAny<bool>(), It.IsAny<IEnumerable<Claim>>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData("wrong-code", true)]
+    [InlineData("final-attempt", false)]
+    [InlineData("consumed", false)]
+    [InlineData("expired", false)]
+    [InlineData("missing-expiry", false)]
+    [InlineData("missing-code", false)]
+    public async Task VerifyEmailMfaCode_InvalidProof_ShouldReportPendingChallengeWithoutEnablingOrPromotingSession(string condition, bool expectedPending)
+    {
+        var fixture = CreateFixture();
+        fixture.User.EmailMfaCode = condition == "consumed" ? null : condition == "missing-code" ? "" : "HASHED_CODE";
+        fixture.User.EmailMfaCodeExpiry = condition == "missing-expiry" ? null :
+            DateTime.UtcNow.AddMinutes(condition == "expired" ? -1 : 10);
+        fixture.User.EmailMfaVerificationAttempts = condition == "final-attempt" ? 4 : 3;
         fixture.MfaService
             .Setup(service => service.VerifyAndEnableEmailMfaAsync(
                 fixture.User,
                 "000000",
                 It.IsAny<CancellationToken>()))
+            .Callback(() =>
+            {
+                if (condition == "wrong-code") fixture.User.EmailMfaVerificationAttempts++;
+                if (condition is "final-attempt" or "expired" or "missing-expiry")
+                {
+                    fixture.User.EmailMfaCode = null;
+                    fixture.User.EmailMfaCodeExpiry = null;
+                    fixture.User.EmailMfaVerificationAttempts = 0;
+                }
+            })
             .ReturnsAsync(false);
 
         var result = await fixture.Controller.VerifyEmailMfaCode(
             new MfaSetupVerifyRequest { Code = "000000" },
             default);
 
-        Assert.IsType<OkObjectResult>(result);
+        var response = System.Text.Json.JsonSerializer.SerializeToElement(Assert.IsType<OkObjectResult>(result).Value);
+        Assert.False(response.GetProperty("success").GetBoolean());
+        Assert.Equal("invalidOrExpiredCode", response.GetProperty("error").GetString());
+        Assert.Equal(expectedPending, response.GetProperty("hasPendingCode").GetBoolean());
         Assert.False(fixture.User.EmailMfaEnabled);
+        Assert.True(MfaEnrollmentSession.HasFreshProof(fixture.Session, fixture.User.Id));
         fixture.SignInManager.Verify(
             manager => manager.SignInWithClaimsAsync(
                 It.IsAny<ApplicationUser>(),
@@ -342,7 +403,7 @@ public class MfaSetupApiControllerEmailMfaTests
         var authentication = new Mock<IAuthenticationService>();
         authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme)).ReturnsAsync(AuthenticateResult.NoResult());
         authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme)).ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(httpContext.User, IdentityConstants.ApplicationScheme)));
-        httpContext.RequestServices = new ServiceCollection().AddSingleton(authentication.Object).BuildServiceProvider();
+        httpContext.RequestServices = new ServiceCollection().AddSingleton(authentication.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
 
         return new ControllerFixture(
             controller,
@@ -373,7 +434,7 @@ public class MfaSetupApiControllerEmailMfaTests
                 new AuthenticationTicket(principal, IdentityConstants.TwoFactorUserIdScheme)));
         fixture.Controller.HttpContext.RequestServices = new ServiceCollection()
             .AddSingleton(authentication.Object)
-            .BuildServiceProvider();
+            .AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
     }
 
     private static IPasskeyService CreatePasskeyService()

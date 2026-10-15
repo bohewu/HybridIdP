@@ -19,35 +19,27 @@
     return null;
   }
 
-  function hideConsent(){
+  function hideNotice(){
     var el = document.getElementById('cookie-consent-banner');
     if (el) el.style.display = 'none';
   }
 
-  function accept(){
-    setCookie('cookie_consent', 'accepted', 365);
-    hideConsent();
-  }
-
-  function decline(){
-    setCookie('cookie_consent', 'declined', 365);
-    hideConsent();
+  function acknowledge(){
+    setCookie('cookie_notice', 'acknowledged', 365);
+    document.cookie = 'cookie_consent=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/';
+    hideNotice();
   }
 
   function showBanner(){
-    var consent = getCookie('cookie_consent');
-    if (!consent){
+    var acknowledged = getCookie('cookie_notice') === 'acknowledged';
+    if (!acknowledged){
       var container = document.createElement('div');
       container.innerHTML = document.getElementById('cookie-consent-template').innerHTML;
       // Prepend so it appears quickly (helpful on login page)
       if (document.body.firstChild) document.body.insertBefore(container, document.body.firstChild);
       else document.body.appendChild(container);
-      var a = document.getElementById('cookie-consent-accept');
-      var d = document.getElementById('cookie-consent-decline');
-      var c = document.getElementById('cookie-consent-close');
-      if (a) a.addEventListener('click', accept);
-      if (d) d.addEventListener('click', decline);
-      if (c) c.addEventListener('click', hideConsent);
+      var button = document.getElementById('cookie-notice-acknowledge');
+      if (button) button.addEventListener('click', acknowledge);
     }
   }
 

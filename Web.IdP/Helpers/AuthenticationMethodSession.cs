@@ -22,7 +22,8 @@ public static class AuthenticationMethodSession
             return;
         }
         var now = DateTimeOffset.UtcNow;
-        Write(session, new PendingMethods(user.Id, user.SecurityStamp, Normalize(methods), now, now.Add(Lifetime)));
+        Write(session, new PendingMethods(user.Id, user.SecurityStamp, Normalize(methods), now, now.Add(Lifetime),
+            methods.Contains(AuthConstants.Amr.Password, StringComparer.Ordinal)));
     }
 
     public static void Add(ISession session, ApplicationUser user, params string[] methods)
@@ -30,7 +31,11 @@ public static class AuthenticationMethodSession
         var pending = Read(session, user);
         if (pending == null)
         {
-            Replace(session, user, methods);
+            if (string.IsNullOrEmpty(user.SecurityStamp)) return;
+            var now = DateTimeOffset.UtcNow;
+            // Adding methods (including copied cookie AMR during enrollment) is not
+            // a newly performed password first factor.
+            Write(session, new PendingMethods(user.Id, user.SecurityStamp, Normalize(methods), now, now.Add(Lifetime)));
             return;
         }
         Write(session, pending with { Methods = Normalize(pending.Methods.Concat(methods)) });
@@ -58,6 +63,10 @@ public static class AuthenticationMethodSession
 
     public static IReadOnlyList<string> Get(ISession session, ApplicationUser user) =>
         Read(session, user)?.Methods ?? [];
+
+    public static bool HasFreshPassword(ISession session, ApplicationUser user) =>
+        Read(session, user) is { PasswordVerified: true } pending &&
+        pending.Methods.Contains(AuthConstants.Amr.Password, StringComparer.Ordinal);
 
     public static IReadOnlyList<Claim> CreateClaims(ISession session, ApplicationUser user) =>
         Get(session, user).Select(method => new Claim(AuthConstants.ClaimTypes.Amr, method)).ToList();
@@ -101,5 +110,5 @@ public static class AuthenticationMethodSession
         session.SetString(SessionKey, JsonSerializer.Serialize(pending));
 
     private sealed record PendingMethods(Guid UserId, string SecurityStamp, string[] Methods,
-        DateTimeOffset AuthenticatedAt, DateTimeOffset ExpiresUtc);
+        DateTimeOffset AuthenticatedAt, DateTimeOffset ExpiresUtc, bool PasswordVerified = false);
 }

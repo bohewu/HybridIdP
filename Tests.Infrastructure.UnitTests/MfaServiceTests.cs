@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Core.Application;
@@ -22,6 +23,42 @@ namespace Tests.Infrastructure.UnitTests;
 /// </summary>
 public class MfaServiceTests : IDisposable
 {
+    [Theory]
+    [InlineData(true, "none", false)]
+    [InlineData(false, "none", false)]
+    [InlineData(true, "local", true)]
+    [InlineData(false, "local", true)]
+    [InlineData(true, "directory", true)]
+    [InlineData(false, "directory", true)]
+    public async Task DisableFactor_ShouldProtectPrimaryPasskeyBeforeDependencyCascade(bool totp, string authority, bool allowed)
+    {
+        var user = CreateTestUser();
+        user.SecurityStamp = "before";
+        user.TwoFactorEnabled = totp;
+        user.EmailMfaEnabled = !totp;
+        user.RecoveryCodes = "[\"legacy-hash\"]";
+        if (authority == "local") user.PasswordHash = "existing-password-hash";
+        _dbContext.Users.Add(user);
+        var key = new Core.Domain.Entities.UserCredential { UserId = user.Id, CredentialId = [1], PublicKey = [1] };
+        _dbContext.UserCredentials.Add(key);
+        if (authority == "directory") _dbContext.ProviderSubjectDirectoryBindings.Add(new Core.Domain.Entities.ProviderSubjectDirectoryBinding(
+            user.Id, "directory", "subject", Guid.NewGuid(), DateTime.UtcNow));
+        await _dbContext.SaveChangesAsync();
+        _securityPolicyServiceMock.Setup(value => value.GetCurrentPolicyAsync()).ReturnsAsync(new Core.Domain.Entities.SecurityPolicy
+            { RequireMfaForPasskey = true, EnforceMandatoryMfaEnrollment = false });
+        _userManagerMock.Setup(value => value.UpdateAsync(user)).Returns(async () =>
+        { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
+        _userManagerMock.Setup(value => value.ResetAuthenticatorKeyAsync(user)).Returns(async () =>
+        { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
+        var result = totp ? await _sut.DisableMfaAsync(user) : await _sut.DisableEmailMfaAsync(user);
+        Assert.Equal(allowed ? MfaRemovalResult.Succeeded : MfaRemovalResult.AlternateSignInRequired, result);
+        Assert.Equal(allowed, key.DisabledAtUtc != null);
+        Assert.Equal(allowed, user.SecurityStamp != "before");
+        Assert.Equal(allowed ? "[]" : "[\"legacy-hash\"]", user.RecoveryCodes);
+        Assert.Equal(!allowed && totp, user.TwoFactorEnabled);
+        Assert.Equal(!allowed && !totp, user.EmailMfaEnabled);
+    }
+
     private readonly Mock<UserManager<ApplicationUser>> _userManagerMock;
     private readonly Mock<IBrandingService> _brandingServiceMock;
     private readonly Mock<IEmailService> _emailServiceMock;
@@ -253,6 +290,9 @@ public class MfaServiceTests : IDisposable
     {
         // Arrange
         var user = CreateTestUser();
+        user.SecurityStamp = "current-stamp";
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
 
@@ -264,10 +304,13 @@ public class MfaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task GenerateRecoveryCodesAsync_CustomCount_ReturnsRequestedCount()
+    public async Task GenerateRecoveryCodesAsync_LegacyCountParameter_UsesSingleAccountBatchSize()
     {
         // Arrange
         var user = CreateTestUser();
+        user.SecurityStamp = "current-stamp";
+        _dbContext.Users.Add(user);
+        await _dbContext.SaveChangesAsync();
         _userManagerMock.Setup(x => x.UpdateAsync(user))
             .ReturnsAsync(IdentityResult.Success);
 
@@ -275,7 +318,7 @@ public class MfaServiceTests : IDisposable
         var result = await _sut.GenerateRecoveryCodesAsync(user, count: 5);
 
         // Assert
-        result.Should().HaveCount(5);
+        result.Should().HaveCount(10);
     }
 
     [Fact]
@@ -301,7 +344,7 @@ public class MfaServiceTests : IDisposable
         // Assert
         await act.Should().ThrowAsync<InvalidOperationException>();
         user.RecoveryCodes.Should().Be(previousRecoveryCodes);
-        _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
+        _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Never);
     }
 
     #endregion
@@ -411,17 +454,22 @@ public class MfaServiceTests : IDisposable
     public async Task DisableFactor_ShouldPlanCascadeBeforeMutationAndPreserveRetiredHistory(bool totp, bool mandatory)
     {
         var user = CreateTestUser();
+        user.SecurityStamp = "existing";
         user.TwoFactorEnabled = totp;
         user.EmailMfaEnabled = !totp;
         user.LastTotpValidatedWindow = 12;
         user.RecoveryCodes = "[\"retired-code\"]";
         var previousStamp = user.SecurityStamp;
+        user.PasswordHash = "existing-password-hash";
         _dbContext.Users.Add(user);
         var historicalTime = DateTime.UtcNow.AddYears(-1);
         _dbContext.UserCredentials.AddRange(
             new Core.Domain.Entities.UserCredential { Id = 1, UserId = user.Id, CredentialId = [1], PublicKey = [1] },
             new Core.Domain.Entities.UserCredential { Id = 2, UserId = user.Id, CredentialId = [2], PublicKey = [2], DisabledAtUtc = historicalTime });
         await _dbContext.SaveChangesAsync();
+        var accountRecovery = new AccountRecoveryCodeService(_dbContext);
+        var accountCodes = await accountRecovery.GenerateAsync(user);
+        Assert.NotNull(accountCodes);
         _securityPolicyServiceMock.Setup(x => x.GetCurrentPolicyAsync()).ReturnsAsync(new Core.Domain.Entities.SecurityPolicy
             { RequireMfaForPasskey = true, EnforceMandatoryMfaEnrollment = mandatory });
         _userManagerMock.Setup(x => x.UpdateAsync(user)).Returns(async () => { await _dbContext.SaveChangesAsync(); return IdentityResult.Success; });
@@ -437,8 +485,10 @@ public class MfaServiceTests : IDisposable
         Assert.Equal(mandatory, keys[0].DisabledAtUtc == null);
         Assert.Equal(historicalTime, keys[1].DisabledAtUtc);
         if (mandatory) _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Never);
-        Assert.Equal(mandatory, user.RecoveryCodes != null);
+        Assert.Equal("[]", user.RecoveryCodes);
         if (!mandatory) Assert.NotEqual(previousStamp, user.SecurityStamp);
+        Assert.Equal(10, (await accountRecovery.GetStatusAsync(user.Id)).RemainingCodes);
+        Assert.True(await accountRecovery.RedeemAsync(user, accountCodes[0], "after-factor-removal"));
     }
 
     [Theory]
@@ -460,6 +510,7 @@ public class MfaServiceTests : IDisposable
     public async Task DisableEmailMfaAsync_ShouldNotLeakFailedFactorOrRetirementIntoLaterSave()
     {
         var user = CreateTestUser();
+        user.PasswordHash = "existing-password-hash";
         user.EmailMfaEnabled = true;
         _dbContext.Users.Add(user);
         _dbContext.UserCredentials.Add(new Core.Domain.Entities.UserCredential
@@ -550,6 +601,48 @@ public class MfaServiceTests : IDisposable
     #endregion
 
     #region Email MFA Tests (Phase 20.3)
+
+    [Theory]
+    [InlineData(45000, 45)]
+    [InlineData(100, 1)]
+    [InlineData(0, 0)]
+    [InlineData(-1000, 0)]
+    public async Task GetEmailMfaCooldownRemainingSecondsAsync_ShouldReadDeadlineWithoutMutation(int milliseconds, int expectedRemaining)
+    {
+        var user = CreateTestUser();
+        var deadline = _time.GetUtcNow().AddMilliseconds(milliseconds);
+        _distributedCacheMock.Setup(cache => cache.GetAsync($"EmailMfa_Cooldown_{user.Id}", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Encoding.UTF8.GetBytes(deadline.Ticks.ToString()));
+
+        Assert.Equal(expectedRemaining, await _sut.GetEmailMfaCooldownRemainingSecondsAsync(user));
+        Assert.Null(user.EmailMfaCode);
+        _distributedCacheMock.Verify(cache => cache.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()), Times.Never);
+        _distributedCacheMock.Verify(cache => cache.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task GetEmailMfaCooldownRemainingSecondsAsync_ShouldReturnZero_WhenNoDeadlineExists()
+    {
+        Assert.Equal(0, await _sut.GetEmailMfaCooldownRemainingSecondsAsync(CreateTestUser()));
+    }
+
+    [Fact]
+    public async Task SendEmailMfaCodeAsync_ShouldRetainThrottleUntilDeadline_IncludingFractionalSecond()
+    {
+        var user = CreateTestUser();
+        var deadline = _time.GetUtcNow().AddMilliseconds(100);
+        _distributedCacheMock.Setup(cache => cache.GetAsync($"EmailMfa_Cooldown_{user.Id}", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Encoding.UTF8.GetBytes(deadline.Ticks.ToString()));
+
+        Assert.Equal((false, 1), await _sut.SendEmailMfaCodeAsync(user));
+        Assert.Null(user.EmailMfaCode);
+        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
 
     [Fact]
     public async Task SendEmailMfaCodeAsync_NoEmail_ThrowsException()

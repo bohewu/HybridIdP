@@ -96,6 +96,8 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         await httpContext.Session.LoadAsync(cancellationToken);
         AuthenticationMethodSession.Replace(httpContext.Session, user, AuthConstants.Amr.External);
 
+        var hasAccountCodes = (await httpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+            .GetStatusAsync(user.Id, cancellationToken)).RemainingCodes > 0;
         if (login != null)
         {
             if (string.IsNullOrEmpty(user.SecurityStamp) || user.RequiresPasswordChange ||
@@ -106,7 +108,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             var credentials = await httpContext.RequestServices.GetRequiredService<IApplicationDbContext>().UserCredentials
                 .Where(credential => credential.UserId == user.Id && credential.DisabledAtUtc == null)
                 .Select(credential => credential.CredentialId).ToListAsync(cancellationToken);
-            if (!passwordVerified && !user.TwoFactorEnabled && !user.EmailMfaEnabled && credentials.Count == 0)
+            if (!passwordVerified && !user.TwoFactorEnabled && !user.EmailMfaEnabled && credentials.Count == 0 && !hasAccountCodes)
                 return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
             await httpContext.SignOutAsync(IdentityConstants.TwoFactorRememberMeScheme);
             PendingExternalLoginLink.Begin(httpContext.Session, user, login, _timeProvider, passwordVerified,
@@ -125,7 +127,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             return ExternalSignInCompletionResult.EmailOtpRequired();
         }
 
-        if (login != null && (await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken)).Count > 0)
+        if (login != null && (hasAccountCodes || (await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken)).Count > 0))
         {
             await IssuePartialSignInAsync(httpContext, user);
             return new ExternalSignInCompletionResult(ExternalSignInCompletionStatus.PasskeyRequired);
@@ -134,6 +136,11 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         if (policy.EnforceMandatoryMfaEnrollment)
         {
+            if (hasAccountCodes)
+            {
+                await IssuePartialSignInAsync(httpContext, user);
+                return new ExternalSignInCompletionResult(ExternalSignInCompletionStatus.PasskeyRequired);
+            }
             var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken);
             if (passkeys.Count == 0)
             {

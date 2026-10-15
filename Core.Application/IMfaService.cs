@@ -50,6 +50,9 @@ public interface IMfaService
     /// <summary>Consumes an Identity recovery code and discards failed tracked consumption.</summary>
     Task<bool> ValidateNativeRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default);
     
+    /// <summary>Returns the first enrollment batch once, only after a committed enrollment.</summary>
+    IReadOnlyList<string>? TakeInitialRecoveryCodes(ApplicationUser user);
+
     // ========== Email MFA (Phase 20.3) ==========
     
     /// <summary>
@@ -57,6 +60,9 @@ public interface IMfaService
     /// Returns rate limit status (Success, RemainingSeconds).
     /// </summary>
     Task<(bool Success, int RemainingSeconds)> SendEmailMfaCodeAsync(ApplicationUser user, CancellationToken ct = default);
+
+    /// <summary>Reads the remaining email send cooldown without creating a challenge.</summary>
+    Task<int> GetEmailMfaCooldownRemainingSecondsAsync(ApplicationUser user, CancellationToken ct = default);
     
     /// <summary>
     /// Verifies the email MFA code entered by the user.
@@ -80,7 +86,9 @@ public enum MfaRemovalResult
 {
     Succeeded,
     MandatoryFactorRequired,
-    PersistenceFailed
+    PersistenceFailed,
+    AlternateSignInRequired,
+    NotFound
 }
 
 /// <summary>

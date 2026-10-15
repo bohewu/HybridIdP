@@ -54,8 +54,11 @@ public partial class MfaController : ControllerBase
     [HttpPost("reauthenticate")]
     [ValidateAntiForgeryToken]
     public async Task<ActionResult> BeginReauthentication([FromQuery] bool forRemoval = false,
-        [FromQuery] bool returnToProfile = false)
+        [FromQuery] bool returnToProfile = false, [FromQuery] string? action = null)
     {
+        if (!MfaEnrollmentSession.TryParseAction(action, out var enrollmentAction))
+            return BadRequest(new { error = "invalidReauthenticationAction" });
+
         var applicationAuthentication =
             await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         var bearerAuthentication = await HttpContext.AuthenticateAsync(
@@ -76,8 +79,11 @@ public partial class MfaController : ControllerBase
                 AccountSecurityOperationSession.MfaEnrollmentPurpose, user.Id.ToString(), HttpContext.RequestAborted) == null)
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
         var hasFactors = user.TwoFactorEnabled || user.EmailMfaEnabled ||
-            (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0;
-        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors, securityStamp: user.SecurityStamp);
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, HttpContext.RequestAborted)).Count > 0 ||
+            (await HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+                .GetStatusAsync(user.Id, HttpContext.RequestAborted)).RemainingCodes > 0;
+        MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, hasFactors, securityStamp: user.SecurityStamp,
+            action: enrollmentAction);
 
         var setupUrl = QueryHelpers.AddQueryString(
             "/Account/MfaSetup",
@@ -114,7 +120,9 @@ public partial class MfaController : ControllerBase
             EmailMfaEnabled = user.EmailMfaEnabled,
             EnableTotpMfa = policy.EnableTotpMfa,
             EnableEmailMfa = policy.EnableEmailMfa,
-            EnablePasskey = policy.EnablePasskey
+            EnablePasskey = policy.EnablePasskey,
+            RequireMfaForPasskey = policy.RequireMfaForPasskey,
+            EnforceMandatoryMfaEnrollment = policy.EnforceMandatoryMfaEnrollment
         });
     }
     
@@ -206,14 +214,14 @@ public partial class MfaController : ControllerBase
             LogMfaEnabled(user.Id);
             await _auditService.LogEventAsync("MfaEnabled", user.Id.ToString(), null, null, null, ct);
 
-            // Generate recovery codes
-            var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
+            var recoveryCodes = _mfaService.TakeInitialRecoveryCodes(user);
+            Response.Headers.CacheControl = "no-store";
             MfaEnrollmentSession.Consume(HttpContext.Session);
 
             return Ok(new MfaVerifyResponse
             {
                 Success = true,
-                RecoveryCodes = recoveryCodes.ToList()
+                AccountRecoveryCodes = recoveryCodes?.ToList()
             });
         }
 
@@ -274,10 +282,14 @@ public partial class MfaController : ControllerBase
             }
         }
 
+        var previousStamp = user.SecurityStamp;
         var removal = await _mfaService.DisableMfaAsync(user, ct);
         if (removal != MfaRemovalResult.Succeeded)
             return BadRequest(new { error = removal == MfaRemovalResult.MandatoryFactorRequired
-                ? "mandatoryMfaEnforced" : "disableFailed" });
+                ? "mandatoryMfaEnforced" : removal == MfaRemovalResult.AlternateSignInRequired
+                    ? "alternateSignInRequired" : "disableFailed" });
+        if (!await MfaEnrollmentSession.CarryAuthorizedStampAsync(HttpContext, user, previousStamp, ct, retireMfaAssurance: true))
+            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogMfaDisabled(user.Id);
@@ -352,8 +364,9 @@ public partial class MfaController : ControllerBase
             }
         }
 
-        var codes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
         MfaEnrollmentSession.Consume(HttpContext.Session);
+        var codes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
+        Response.Headers.CacheControl = "no-store";
 
         LogRecoveryCodesRegenerated(user.Id);
         await _auditService.LogEventAsync("MfaRecoveryCodesRegenerated", user.Id.ToString(), null, null, null, ct);
@@ -394,15 +407,16 @@ public partial class MfaController : ControllerBase
         }
 
         var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user, ct);
+        var hasPendingCode = EmailMfaChallenge.HasPendingCode(user);
 
         if (!success)
         {
-            return StatusCode(429, new { success = false, remainingSeconds, error = "rateLimitExceeded", message = $"Please wait {remainingSeconds} seconds." });
+            return StatusCode(429, new { success = false, remainingSeconds, hasPendingCode, error = "rateLimitExceeded", message = $"Please wait {remainingSeconds} seconds." });
         }
 
         LogEmailMfaCodeSent(user.Id);
 
-        return Ok(new { success = true, remainingSeconds, message = "Code sent to email." });
+        return Ok(new { success = true, remainingSeconds, hasPendingCode, message = "Code sent to email." });
     }
 
     /// <summary>
@@ -440,10 +454,11 @@ public partial class MfaController : ControllerBase
             MfaEnrollmentSession.Consume(HttpContext.Session);
             LogEmailMfaEnabled(user.Id);
             await _auditService.LogEventAsync("EmailMfaEnabled", user.Id.ToString(), null, null, null, ct);
-            return Ok(new { success = true });
+            Response.Headers.CacheControl = "no-store";
+            return Ok(new { success = true, accountRecoveryCodes = _mfaService.TakeInitialRecoveryCodes(user) });
         }
 
-        return Ok(new { success = false, error = "invalidOrExpiredCode" });
+        return Ok(new { success = false, error = "invalidOrExpiredCode", hasPendingCode = EmailMfaChallenge.HasPendingCode(user) });
     }
 
     /// <summary>
@@ -488,10 +503,14 @@ public partial class MfaController : ControllerBase
         if (!await MfaEnrollmentSession.IsRemovalAuthorizedAsync(HttpContext, user, ct))
             return StatusCode(403, new { error = "freshAuthenticationRequired" });
 
+        var previousStamp = user.SecurityStamp;
         var removal = await _mfaService.DisableEmailMfaAsync(user, ct);
         if (removal != MfaRemovalResult.Succeeded)
             return BadRequest(new { error = removal == MfaRemovalResult.MandatoryFactorRequired
-                ? "mandatoryMfaEnforced" : "disableFailed" });
+                ? "mandatoryMfaEnforced" : removal == MfaRemovalResult.AlternateSignInRequired
+                    ? "alternateSignInRequired" : "disableFailed" });
+        if (!await MfaEnrollmentSession.CarryAuthorizedStampAsync(HttpContext, user, previousStamp, ct, retireMfaAssurance: true))
+            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogEmailMfaDisabled(user.Id);
@@ -555,6 +574,8 @@ public record MfaStatusResponse
     public bool EnableTotpMfa { get; init; }
     public bool EnableEmailMfa { get; init; }
     public bool EnablePasskey { get; init; }
+    public bool RequireMfaForPasskey { get; init; }
+    public bool EnforceMandatoryMfaEnrollment { get; init; }
 }
 
 public record MfaSetupResponse
@@ -574,6 +595,7 @@ public record MfaVerifyResponse
     public bool Success { get; init; }
     public string? Error { get; init; }
     public List<string>? RecoveryCodes { get; init; }
+    public List<string>? AccountRecoveryCodes { get; init; }
 }
 
 public record MfaDisableRequest

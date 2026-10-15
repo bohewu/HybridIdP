@@ -78,7 +78,7 @@ public class PasskeyService : IPasskeyService
         return options;
     }
 
-    public async Task<(bool Success, string? Error, bool UserVerified)> RegisterCredentialsAsync(
+    public async Task<PasskeyRegistrationResult> RegisterCredentialsAsync(
         ApplicationUser user, 
         string jsonResponse, 
         string originalOptionsJson, 
@@ -146,25 +146,33 @@ public class PasskeyService : IPasskeyService
             
             var userVerified = AuthenticatorAttestationResponse.Parse(attestationResponse)
                 .AttestationObject.AuthData.UserVerified;
+            var accountCodes = new AccountRecoveryCodeService(_dbContext);
+            await using var transaction = _dbContext.Database.IsRelational()
+                ? await _dbContext.Database.BeginTransactionAsync(ct) : null;
             _dbContext.UserCredentials.Add(credential);
+            IReadOnlyList<string>? recoveryCodes = null;
             var persisted = false;
             try
             {
                 ct.ThrowIfCancellationRequested();
                 // Persist the key together with the user version that authorized it.
-                persisted = (await _userManager.UpdateAsync(user)).Succeeded;
-                if (!persisted) return (false, "Registration authorization expired", false);
+                recoveryCodes = await accountCodes.StageInitialBatchAsync(user, ct);
+                if (!(await _userManager.UpdateAsync(user)).Succeeded)
+                    return (false, "Registration authorization expired", false);
+                if (transaction != null) await transaction.CommitAsync(ct);
+                persisted = true;
             }
             finally
             {
                 if (!persisted)
                 {
+                    if (transaction != null) await transaction.RollbackAsync(CancellationToken.None);
                     _dbContext.Entry(credential).State = EntityState.Detached;
-                    await _dbContext.Entry(user).ReloadAsync(CancellationToken.None);
+                    await accountCodes.DiscardChangesAsync(user);
                 }
             }
             _logger.LogInformation("Passkey registered successfully for user {UserId}", user.Id);
-            return (true, null, userVerified);
+            return new PasskeyRegistrationResult(true, null, userVerified, recoveryCodes);
         }
         catch (Exception ex)
         {
@@ -297,25 +305,27 @@ public class PasskeyService : IPasskeyService
         return credentials;
     }
 
-    public async Task<bool> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default)
+    public async Task<MfaRemovalResult> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default)
     {
         var credential = await _dbContext.UserCredentials
             .FirstOrDefaultAsync(c => c.UserId == userId && c.Id == credentialId && c.DisabledAtUtc == null, ct);
         
         if (credential == null)
         {
-            return false; // Not found or not owned by user
+            return MfaRemovalResult.NotFound; // Not found or not owned by user
         }
         
         var user = await _dbContext.Users.SingleOrDefaultAsync(u => u.Id == userId, ct);
-        if (user == null) return false;
+        if (user == null) return MfaRemovalResult.NotFound;
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         var otherPasskeys = policy.EnablePasskey && (!policy.RequireMfaForPasskey ||
-            user.TwoFactorEnabled || user.EmailMfaEnabled) && await _dbContext.UserCredentials
+            (policy.EnableTotpMfa && user.TwoFactorEnabled) || (policy.EnableEmailMfa && user.EmailMfaEnabled)) && await _dbContext.UserCredentials
             .AnyAsync(c => c.UserId == userId && c.Id != credentialId && c.DisabledAtUtc == null, ct);
         if (policy.EnforceMandatoryMfaEnrollment && !otherPasskeys &&
             !(policy.EnableTotpMfa && user.TwoFactorEnabled) && !(policy.EnableEmailMfa && user.EmailMfaEnabled))
-            return false;
+            return MfaRemovalResult.MandatoryFactorRequired;
+        if (!otherPasskeys && !await HasAlternatePrimaryAuthorityAsync(_dbContext, user, ct))
+            return MfaRemovalResult.AlternateSignInRequired;
 
         credential.DisabledAtUtc = DateTime.UtcNow;
         user.SecurityStamp = Guid.NewGuid().ToString();
@@ -324,9 +334,9 @@ public class PasskeyService : IPasskeyService
         {
             // Compete with other factor removals on the same user concurrency stamp.
             persisted = (await _userManager.UpdateAsync(user)).Succeeded;
-            if (!persisted) return false;
+            if (!persisted) return MfaRemovalResult.PersistenceFailed;
         }
-        catch (DbUpdateException) { return false; }
+        catch (DbUpdateException) { return MfaRemovalResult.PersistenceFailed; }
         finally
         {
             if (!persisted)
@@ -337,6 +347,15 @@ public class PasskeyService : IPasskeyService
         }
         
         _logger.LogInformation("Retired passkey {CredentialId} for user {UserId}", credentialId, userId);
-        return true;
+        return MfaRemovalResult.Succeeded;
     }
+
+    // Block only the known account-with-no-primary-authority state. A durable upstream
+    // link/binding retains its own login/recovery routing; passwordlessness is not a denial.
+    internal static async Task<bool> HasAlternatePrimaryAuthorityAsync(
+        ApplicationDbContext db, ApplicationUser user, CancellationToken ct) =>
+        !string.IsNullOrEmpty(user.PasswordHash) ||
+        await db.UserLogins.AsNoTracking().AnyAsync(login => login.UserId == user.Id, ct) ||
+        await db.ProviderSubjectDirectoryBindings.AsNoTracking().AnyAsync(binding => binding.LocalAccountId == user.Id, ct) ||
+        await db.CredentialMigrationStateRecords.AsNoTracking().AnyAsync(migration => migration.LocalAccountId == user.Id, ct);
 }

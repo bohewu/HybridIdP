@@ -71,6 +71,8 @@ public static class PendingExternalLoginLink
         {
             "totp" => pending.Totp && user.TwoFactorEnabled,
             "email" => pending.EmailMfa && user.EmailMfaEnabled && pending.Email == user.Email,
+            "account-recovery" => http.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+                .HasRedemptionProof(user, pending.Nonce),
             "recovery" => pending.Totp && user.TwoFactorEnabled || pending.EmailMfa && user.EmailMfaEnabled,
             "passkey" => credentialId != null && pending.Passkeys.Contains(credentialId, StringComparer.Ordinal),
             "enrollment" => pending.PasswordVerified,

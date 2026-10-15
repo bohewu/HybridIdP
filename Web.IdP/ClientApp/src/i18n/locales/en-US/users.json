@@ -154,7 +154,7 @@
     "enabled": "2FA Enabled",
     "disabled": "2FA Disabled",
     "reset": "Reset MFA",
-    "resetConfirm": "Are you sure you want to reset MFA for this user? They will need to set up 2FA again.",
+    "resetConfirm": "Reset all verification methods for this user? This disables authenticator (TOTP) and email verification, retires all passkeys and security keys, and invalidates both authenticator recovery codes and account backup codes. The user must verify their identity through an available sign-in method and set up verification again.",
     "resetSuccess": "MFA has been reset successfully.",
     "reasonPrompt": "Enter the reason for resetting MFA (up to 500 characters).",
     "reauthenticate": "Verify your identity with an existing MFA method before resetting this user's MFA.",

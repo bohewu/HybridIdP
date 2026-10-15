@@ -1,6 +1,6 @@
 const storageKey = 'mfa.continuation';
 const lifetimeMs = 5 * 60 * 1000;
-const actions = new Set(['email-enable', 'email-disable', 'passkey-register', 'totp-disable', 'passkey-delete', 'recovery-codes']);
+const actions = new Set(['email-enable', 'email-disable', 'passkey-register', 'totp-disable', 'passkey-delete', 'recovery-codes', 'account-recovery-codes']);
 
 // UI intent only. Every resumed operation still requires server-side fresh proof.
 export function clearMfaContinuation() {

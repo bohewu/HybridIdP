@@ -10,6 +10,12 @@ describe('MFA continuation', () => {
     expect(takeMfaContinuation('account-a')).toBeNull();
   });
 
+  it('resumes account backup-code generation independently of authenticator code generation', () => {
+    saveMfaContinuation('account-a', 'account-recovery-codes');
+    expect(takeMfaContinuation('account-a')?.action).toBe('account-recovery-codes');
+    expect(takeMfaContinuation('account-a')).toBeNull();
+  });
+
   it('discards the intent after switching accounts', () => {
     saveMfaContinuation('account-a', 'passkey-register');
     expect(takeMfaContinuation('account-b')).toBeNull();

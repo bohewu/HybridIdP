@@ -109,6 +109,7 @@ public partial class LoginModel : PageModel
     public bool NativeForgotPasswordAvailable { get; private set; }
     public bool IsMfaEnrollmentReauthentication =>
         MfaEnrollmentSession.HasPending(HttpContext.Session);
+    public string MfaReauthenticationNoticeKey => MfaEnrollmentSession.GetPendingNoticeKey(HttpContext.Session);
 
     /// <summary>
     /// Calculate if Turnstile should be enabled based on settings and key configuration
@@ -336,6 +337,13 @@ public partial class LoginModel : PageModel
                     var currentPolicy = await _securityPolicyService.GetCurrentPolicyAsync();
                     if (currentPolicy.EnforceMandatoryMfaEnrollment)
                     {
+                        if ((await HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+                            .GetStatusAsync(result.User.Id, cancellationToken)).RemainingCodes > 0)
+                        {
+                            await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme,
+                                new System.Security.Claims.ClaimsPrincipal(TwoFactorAuthenticationSession.CreateIdentity(result.User, _userManager)));
+                            return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = Input.RememberMe });
+                        }
                         var passkeys = await _passkeyService.GetUserPasskeysAsync(result.User.Id, cancellationToken);
                         if (passkeys.Count == 0)
                         {
@@ -393,6 +401,7 @@ public partial class LoginModel : PageModel
                                 ModelState.AddModelError(string.Empty, _localizer["InvalidCredentials"]);
                                 return Page();
                             }
+                            await MfaEnrollmentSession.TryBeginInitialAfterPasswordAsync(HttpContext, result.User, cancellationToken);
                             await _signInManager.SignInWithClaimsAsync(result.User, Input.RememberMe, claims);
                             AuthenticationMethodSession.Consume(HttpContext.Session);
                             await _userManagementService.UpdateLastLoginAsync(result.User.Id, cancellationToken);
@@ -409,6 +418,7 @@ public partial class LoginModel : PageModel
                     ModelState.AddModelError(string.Empty, _localizer["InvalidCredentials"]);
                     return Page();
                 }
+                await MfaEnrollmentSession.TryBeginInitialAfterPasswordAsync(HttpContext, result.User!, cancellationToken);
                 await _signInManager.SignInWithClaimsAsync(result.User!, isPersistent: Input.RememberMe, amrClaimsList);
                 AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(result.User!.Id, cancellationToken);

@@ -150,6 +150,40 @@ public class AuthorizationAuthenticationSessionTests
         Assert.True(AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(context.Principal));
     }
 
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("old", false)]
+    [InlineData("current", true)]
+    public void MfaBinding_ShouldRequireExactCurrentStamp(string? stamp, bool expected)
+    {
+        var principal = Principal();
+        var identity = (ClaimsIdentity)principal.Identity!;
+        identity.AddClaim(new Claim("amr", "mfa"));
+        if (stamp != null) identity.AddClaim(new Claim(AuthorizationAuthenticationSession.MfaSecurityStampClaim, stamp));
+        var user = new Core.Domain.ApplicationUser { SecurityStamp = "current" };
+        Assert.Equal(expected, AuthorizationAuthenticationSession.HasCurrentMfa(principal, user));
+        AuthorizationAuthenticationSession.StripStaleMfa(principal, user);
+        Assert.Equal(expected, MfaEnrollmentSession.HasMfa(principal));
+        Assert.Contains(principal.Claims, claim => claim.Type == "amr" && claim.Value == "pwd");
+    }
+
+    [Fact]
+    public void SigningIn_ShouldBindNewMfaButAuthorizedStampCarryMustNotRenewOldBinding()
+    {
+        var context = SigningContext(new MemorySession());
+        var identity = (ClaimsIdentity)context.Principal!.Identity!;
+        identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, "user"));
+        identity.AddClaim(new Claim("AspNet.Identity.SecurityStamp", "old"));
+        identity.AddClaim(new Claim("amr", "mfa"));
+        AuthorizationAuthenticationSession.OnSigningIn(context);
+        Assert.Equal("old", context.Principal.FindFirstValue(AuthorizationAuthenticationSession.MfaSecurityStampClaim));
+        var refreshed = new ClaimsPrincipal(new ClaimsIdentity([
+            new Claim(ClaimTypes.NameIdentifier, "user"), new Claim("AspNet.Identity.SecurityStamp", "new")], "cookie"));
+        AuthorizationAuthenticationSession.CopyAssurance(context.Principal, refreshed, authorizedStampChange: true);
+        Assert.False(AuthorizationAuthenticationSession.HasCurrentMfa(refreshed, new Core.Domain.ApplicationUser { SecurityStamp = "new" }));
+        Assert.Equal("old", refreshed.FindFirstValue(AuthorizationAuthenticationSession.MfaSecurityStampClaim));
+    }
+
     private static ClaimsPrincipal Principal() => new(new ClaimsIdentity([new Claim("amr", "pwd")], "Identity.Application"));
 
     [Fact]

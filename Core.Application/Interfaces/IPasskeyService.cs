@@ -10,7 +10,7 @@ public interface IPasskeyService
 {
     Task<CredentialCreateOptions> GetRegistrationOptionsAsync(ApplicationUser user, CancellationToken ct = default);
     
-    Task<(bool Success, string? Error, bool UserVerified)> RegisterCredentialsAsync(
+    Task<Core.Application.DTOs.PasskeyRegistrationResult> RegisterCredentialsAsync(
         ApplicationUser user, 
         string jsonResponse, 
         string originalOptionsJson, 
@@ -31,6 +31,6 @@ public interface IPasskeyService
     /// <summary>
     /// Delete a passkey by ID (must be owned by the specified user)
     /// </summary>
-    Task<bool> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default);
+    Task<MfaRemovalResult> DeletePasskeyAsync(Guid userId, int credentialId, CancellationToken ct = default);
 }
 

@@ -55,9 +55,16 @@ public partial class LoginEmailOtpModel : PageModel
     
     [BindProperty(SupportsGet = true)]
     public bool RememberMe { get; set; }
+
+    [BindProperty(SupportsGet = true)]
+    public string? RecoveryPurpose { get; set; }
     
     public string? MaskedEmail { get; private set; }
     public bool EmailCodeSent { get; private set; }
+    public int EmailCodeRemainingSeconds { get; private set; }
+    public bool IsMfaEnrollmentReauthentication =>
+        MfaEnrollmentSession.HasPending(HttpContext.Session);
+    public string MfaReauthenticationNoticeKey => MfaEnrollmentSession.GetPendingNoticeKey(HttpContext.Session);
     
     /// <summary>
     /// Indicates if user also has TOTP enabled (for showing switch link).
@@ -72,12 +79,12 @@ public partial class LoginEmailOtpModel : PageModel
         public string? EmailCode { get; set; }
     }
 
-    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, bool rememberMe = false)
+    public async Task<IActionResult> OnGetAsync(string? returnUrl = null, bool rememberMe = false, CancellationToken cancellationToken = default)
     {
         var user = await GetTwoFactorUserAsync();
         if (user == null)
         {
-            return RedirectToPage("./Login");
+            return RedirectToPage("./Login", new { returnUrl });
         }
         
         // Verify user actually has Email MFA enabled
@@ -85,17 +92,14 @@ public partial class LoginEmailOtpModel : PageModel
         {
             if (user.TwoFactorEnabled)
             {
-                return RedirectToPage("./LoginTotp", new { returnUrl, rememberMe });
+                return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe, method = "totp", recoveryPurpose = RecoveryPurpose });
             }
             return RedirectToPage("./Login");
         }
 
         ReturnUrl = returnUrl;
         RememberMe = rememberMe;
-        TwoFactorEnabled = user.TwoFactorEnabled;
-        EmailCodeSent = HasPendingEmailCode(user);
-        
-        MaskEmail(user.Email);
+        await LoadEmailCodeStateAsync(user, cancellationToken);
         
         return Page();
     }
@@ -116,15 +120,16 @@ public partial class LoginEmailOtpModel : PageModel
         try 
         {
             var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user);
+            var hasPendingCode = EmailMfaChallenge.HasPendingCode(user);
             
             if (success)
             {
-                return new JsonResult(new { success = true, remainingSeconds });
+                return new JsonResult(new { success = true, remainingSeconds, hasPendingCode });
             }
             else
             {
                 // Rate limited
-                return StatusCode(429, new { success = false, remainingSeconds });
+                return StatusCode(429, new { success = false, remainingSeconds, hasPendingCode });
             }
         }
         catch (Exception ex)
@@ -143,12 +148,11 @@ public partial class LoginEmailOtpModel : PageModel
         {
             return RedirectToPage("./Login");
         }
-        EmailCodeSent = HasPendingEmailCode(user);
-
+        if (!user.EmailMfaEnabled)
+            return RedirectToPage("./LoginMfa", new { returnUrl, rememberMe = RememberMe, recoveryPurpose = RecoveryPurpose });
         if (!ModelState.IsValid)
         {
-            TwoFactorEnabled = user.TwoFactorEnabled;
-            MaskEmail(user.Email);
+            await LoadEmailCodeStateAsync(user, cancellationToken);
             return Page();
         }
 
@@ -197,16 +201,18 @@ public partial class LoginEmailOtpModel : PageModel
         ModelState.AddModelError(
             nameof(Input.EmailCode),
             _localizer["InvalidOrExpiredEmailCode"]);
-        TwoFactorEnabled = user.TwoFactorEnabled;
-        MaskEmail(user.Email);
-        EmailCodeSent = HasPendingEmailCode(user);
+        await LoadEmailCodeStateAsync(user, cancellationToken);
         return Page();
     }
-    
-    private static bool HasPendingEmailCode(ApplicationUser user) =>
-        !string.IsNullOrEmpty(user.EmailMfaCode) && user.EmailMfaCodeExpiry > DateTime.UtcNow &&
-        user.EmailMfaVerificationAttempts < 5;
 
+    private async Task LoadEmailCodeStateAsync(ApplicationUser user, CancellationToken cancellationToken)
+    {
+        TwoFactorEnabled = user.TwoFactorEnabled;
+        MaskEmail(user.Email);
+        EmailCodeSent = EmailMfaChallenge.HasPendingCode(user);
+        EmailCodeRemainingSeconds = await _mfaService.GetEmailMfaCooldownRemainingSecondsAsync(user, cancellationToken);
+    }
+    
     private void MaskEmail(string? email)
     {
         if (string.IsNullOrEmpty(email)) 
@@ -237,8 +243,10 @@ public partial class LoginEmailOtpModel : PageModel
     
     private async Task<ApplicationUser?> GetTwoFactorUserAsync()
     {
-        // Try standard Identity method first
-        return await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
+        var user = await LoginMfaModel.GetMfaUserAsync(HttpContext, _userManager);
+        return user != null && user.IsActive && !user.IsDeleted && !user.RequiresPasswordChange &&
+            await _signInManager.CanSignInAsync(user) && !await _userManager.IsLockedOutAsync(user) &&
+            await CanIssueFullCookieAsync(user, HttpContext.RequestAborted) ? user : null;
     }
 
     private async Task<bool> CanIssueFullCookieAsync(

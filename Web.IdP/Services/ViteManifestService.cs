@@ -95,11 +95,39 @@ public class ViteManifestService : IViteManifestService
             return Enumerable.Empty<string>();
         }
 
-        if (_manifest.TryGetValue(entryName, out var entry) && entry.Css != null)
+        var cssPaths = new List<string>();
+        var visitedEntries = new HashSet<string>(StringComparer.Ordinal);
+        var includedCss = new HashSet<string>(StringComparer.Ordinal);
+
+        void CollectCss(string name)
         {
-            return entry.Css.Select(css => _basePath + css);
+            if (!visitedEntries.Add(name) || !_manifest.TryGetValue(name, out var entry))
+            {
+                return;
+            }
+
+            if (entry.Css != null)
+            {
+                foreach (var css in entry.Css)
+                {
+                    if (includedCss.Add(css))
+                    {
+                        cssPaths.Add(_basePath + css);
+                    }
+                }
+            }
+
+            if (entry.Imports != null)
+            {
+                foreach (var import in entry.Imports)
+                {
+                    CollectCss(import);
+                }
+            }
         }
-        return Enumerable.Empty<string>();
+
+        CollectCss(entryName);
+        return cssPaths;
     }
 
     public IEnumerable<string> GetImportPaths(string entryName)

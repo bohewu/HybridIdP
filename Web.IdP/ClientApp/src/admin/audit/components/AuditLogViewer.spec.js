@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest'
 import AuditLogViewer from './AuditLogViewer.vue'
 
 vi.mock('vue-i18n', () => ({
-  useI18n: () => ({ t: (key) => key })
+  useI18n: () => ({ t: (key) => key, te: (key) => key !== 'audit.eventTypes.CustomEvent' })
 }))
 
 describe('AuditLogViewer recovery events', () => {

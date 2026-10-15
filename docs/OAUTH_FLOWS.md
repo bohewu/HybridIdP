@@ -131,3 +131,20 @@ a rendered browser/RP roundtrip or deployed endpoint acceptance.
 ## Testing
 
 See `DEVELOPMENT_GUIDE.md` for details on how to use `TestClient` or `curl`/Postman to test these flows.
+
+### MFA assurance after factor changes
+
+Newly completed MFA carries an internal security-stamp binding. Authorization
+GET and consent POST compare it to the current account before accepting MFA;
+authorization-code exchange, refresh and device approval/exchange do the same.
+The binding remains in protected protocol grants and has no access-token or
+ID-token destination. A client or global MFA requirement rejects missing/stale
+binding. Optional token issuance strips obsolete MFA AMR/ACR. An original
+`acr_values=mfa` grant also retains its requirement during code exchange/refresh.
+
+With optional global MFA, authorized final-factor removal keeps primary account
+access and clears obsolete MFA and management proof. A later required client
+routes to fresh verification or replacement setup. A fresh independent account
+code may authorize the explicitly selected enrollment-only recovery ceremony,
+including its last code; legacy OTP backups do not gain this authority. Existing
+access tokens expire normally; this change does not revoke already-issued tokens.
