@@ -11,9 +11,10 @@ docs/
 ├── DEVELOPMENT_GUIDE.md           # 👈 你在這裡 - 開發工作流程、規範、測試指南
 ├── ARCHITECTURE.md                # 📐 架構決策與技術棧詳解
 ├── FEATURES.md                    # ✨ 未來增強功能與特定功能整合
-├── PROJECT_STATUS.md              # ✅ 專案進度、待辦事項與已完成摘要
+├── PROJECT_PROGRESS.md            # ✅ 專案里程碑與已完成摘要
+├── TODOS.md                       # 待辦事項與啟用條件
 ├── README.md                      # 📚 專案總覽與文件快速導航
-├── idp_req_details.md             # 📚 完整需求文件（參考用）
+├── archive/historical/idp_req_details.md # 歷史需求（參考用）
 └── examples/                      # 程式碼範例目錄
     └── ...
 ```
@@ -26,11 +27,11 @@ docs/
 
 **第一次進入專案:**
 1.  `DEVELOPMENT_GUIDE.md` (本文件) - 了解工作流程、規範與測試
-2.  `PROJECT_STATUS.md` - 了解已完成的部分與下一步要做什麼
+2.  `PROJECT_PROGRESS.md` - 了解已完成的部分與下一步要做什麼
 3.  `ARCHITECTURE.md` - 學習專案架構與技術棧
 
 **繼續開發時:**
-1.  `PROJECT_STATUS.md` - 確認當前任務
+1.  `PROJECT_PROGRESS.md` 與 `TODOS.md` - 確認進度與當前任務
 2.  `DEVELOPMENT_GUIDE.md` - 查閱實作範本與測試指南
 
 ### 2. 環境啟動檢查清單與正確的啟動順序
@@ -209,8 +210,13 @@ app.directive('loading', vLoading)
 ```
 
 **📝 使用規範：**
-1. **頁面級別載入** → 使用 `v-loading` 指令
-2. **組件級別載入** → 使用 `LoadingIndicator` 組件
+1. **One primary indicator per operation**: choose the smallest readable scope. Use `LoadingPlaceholder` for an initially empty data region, `LoadingIndicator` for inline work, or `v-loading` when an existing content region must be locked. Do not stack them for the same request.
+2. **Independent regions**: dashboard stats/health and each settings region own their loading state. Completed regions remain rendered and usable while another region loads. `SettingsApp` resolves permissions before mounting the independent settings regions.
+3. **Initial data**: `LoadingPlaceholder.vue` requires a localized `message`; it reserves space with static gray lines and exposes `role="status"`, `aria-live="polite"` and `aria-busy="true"`. Initial dashboard, settings and monitoring data use this placeholder rather than a full-page overlay.
+4. **Modal work**: `BaseModal :loading="busy"` owns the shared localized overlay and busy close lock. Keep submit guards, disabled actions and busy labels; do not add a footer spinner for that same operation. Independent list lookups may retain their own indicator. An action-only modal, such as SMTP test, may keep its existing action indicator when it does not pass modal loading.
+5. **Audit**: `AuditLogViewer` owns result loading/locking; the outer `AuditApp` does not repeat that indicator. Independent filter/export controls remain usable.
+6. **Monitoring refresh**: ActivityDashboard, SecurityMetrics and RealTimeAlerts retain successful data during refresh and show one localized refreshing/previous-results status with Refresh disabled. A failed refresh shows an error and explicitly stale retained data; it cannot imply current Healthy or successful empty/zero results. Initial failure, successful empty and initial loading are distinct states. Refresh retries; a valid SignalR update supplies new successful data and clears the prior HTTP error. Admin health keeps its existing clear-on-refresh behavior and uses the region placeholder, with its refresh button disabled.
+7. **Preserve restrictions**: loading presentation does not replace duplicate-submit guards, busy close rules, permissions, authentication, MFA, session or CSRF checks. New visible feedback must exist in both en-US and zh-TW.
 
 **組件用法範例（component-level）：**
 
@@ -222,9 +228,9 @@ app.directive('loading', vLoading)
 <LoadingIndicator v-if="loading" :loading="loading" :message="t('loading.message')" />
 ```
 
-### 🔁 v-loading 指令（推薦用於頁面級載入）✅
+### 🔁 v-loading 指令（需要鎖定既有內容時）✅
 
-**用途：** 整頁或大範圍容器的覆蓋式載入狀態
+**用途：** 需要暫停互動的既有內容區域；範圍應限於該操作所屬區塊。
 
 **優勢：**
 - 保留頁面內容結構（不破壞布局）
@@ -232,7 +238,7 @@ app.directive('loading', vLoading)
 - 自動鎖定使用者互動
 - 內部使用 `LoadingIndicator` 組件確保視覺一致性
 
-**標準用法（所有 admin 頁面已遷移）：**
+**需要鎖定內容時的用法：**
 
 ```vue
 <template>
@@ -247,7 +253,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-const loading = ref(true)  // 初始值必須為 true，確保首次載入時顯示 spinner
+const loading = ref(true)  // 初次請求開始時即顯示載入狀態
 
 onMounted(async () => {
   // 載入數據...
@@ -257,7 +263,7 @@ onMounted(async () => {
 ```
 
 **⚠️ 重要注意事項：**
-1. **loading 初始值必須為 `true`**：確保頁面載入時立即顯示 spinner
+1. **初次請求立即顯示 loading**：初始資料未就緒時使用 placeholder 或其他唯一主要指示；不要將稍後才執行的獨立操作預設為 busy
 2. **訊息使用 i18n**：所有顯示文字都應該使用 `t()` 函數翻譯
 3. **指令已全域註冊**：所有 admin SPA 的 main.js 都已註冊，無需額外導入
 
@@ -1359,7 +1365,7 @@ Production、Staging、空白/預設、未知及其他所有環境不會因為�
 ## 參考資料
 
 -   **完整需求：** `idp_req_details.md`
--   **專案進度：** `PROJECT_STATUS.md`
+-   **專案進度：** `PROJECT_PROGRESS.md`
 -   **架構決策：** `ARCHITECTURE.md`
 -   **未來增強：** `FEATURES.md`
 

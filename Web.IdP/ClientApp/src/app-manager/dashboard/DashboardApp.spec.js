@@ -10,15 +10,13 @@ it('finishes the dashboard dataset loader without calling monitoring or health A
   Object.assign(appEl.dataset, { displayName: 'Application owner', clientCount: '3', scopeCount: '4', resourceCount: '5' })
   document.body.appendChild(appEl)
   vi.stubGlobal('fetch', vi.fn())
-  const markLoading = (el, binding) => { el.dataset.loading = String(binding.value.loading) }
   const wrapper = mount(DashboardApp, { global: {
-    plugins: [createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': { 'app-manager': appManager } } })],
-    directives: { loading: { mounted: markLoading, updated: markLoading } }
+    plugins: [createI18n({ legacy: false, locale: 'en-US', messages: { 'en-US': { 'app-manager': appManager } } })]
   } })
   await flushPromises()
   expect(wrapper.text()).toContain('Application owner')
   expect(wrapper.get('a[href="/Admin/Clients"]').text()).toContain('3')
-  expect(wrapper.get('[data-loading]').attributes('data-loading')).toBe('false')
+  expect(wrapper.find('[aria-busy="true"]').exists()).toBe(false)
   expect(fetch).not.toHaveBeenCalled()
   wrapper.unmount()
   appEl.remove()

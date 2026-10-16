@@ -155,7 +155,7 @@ onMounted(() => fetchLoginHistory())
                 </div>
 
                 <!-- Loading State -->
-                <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('users.loginHistory.loading')" />
+                <LoadingIndicator v-if="loading && !approving" :loading="loading" size="sm" :message="t('users.loginHistory.loading')" />
 
                 <!-- Empty State -->
                 <div v-else-if="!loading && filteredHistory.length === 0" class="mt-4 text-center py-8">

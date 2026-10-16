@@ -1,6 +1,6 @@
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import { useI18n } from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
@@ -13,9 +13,11 @@ const metrics = ref({
 })
 const loading = ref(true)
 const error = ref(null)
+const hasData = ref(false)
 const connection = ref(null)
 
 const fetchMetrics = async () => {
+  if (loading.value && hasData.value) return
   try {
     console.debug('[SecurityMetrics] fetchMetrics: start')
     loading.value = true
@@ -35,6 +37,7 @@ const fetchMetrics = async () => {
     const data = await response.json()
     console.debug('[SecurityMetrics] fetchMetrics: received data', data)
     metrics.value = data
+    hasData.value = true
   } catch (err) {
     console.error('Failed to fetch security metrics:', err)
     error.value = err.message || 'Failed to load security metrics'
@@ -54,12 +57,12 @@ const startSignalRConnection = async () => {
     connection.value.on('ReceiveSystemMetrics', (updatedMetrics) => {
       // console.log('Received system metrics update:', updatedMetrics)
       metrics.value = updatedMetrics
-      loading.value = false
+      hasData.value = true
+      error.value = null
     })
 
     connection.value.onclose(() => {
       // console.log('SignalR connection stopped')
-      loading.value = false
     })
 
     await connection.value.start()
@@ -90,10 +93,17 @@ onUnmounted(() => {
 <template>
   <div class="security-metrics">
 
-    <!-- Use the shared LoadingIndicator component (inline, small) -->
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
+    <div class="mb-3 flex items-center justify-end gap-3">
+      <p v-if="loading && hasData" role="status" class="text-sm text-gray-600">{{ t('monitoring.refreshing') }}</p>
+      <button type="button" :disabled="loading" @click="fetchMetrics" class="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50">{{ t('monitoring.refresh') }}</button>
+    </div>
+    <LoadingPlaceholder v-if="loading && !hasData" :message="t('monitoring.loading')" />
+    <div v-if="error" role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      {{ t('monitoring.loadFailed') }}
+      <span v-if="hasData">{{ t('monitoring.stale') }}</span>
+    </div>
 
-    <div v-else class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+    <div v-if="hasData" class="grid grid-cols-1 lg:grid-cols-2 gap-6">
       <!-- Gauges -->
       <div class="metric-chart">
         <h4 class="text-md font-medium mb-2">{{ t('monitoring.securityMetrics.gauges') }}</h4>

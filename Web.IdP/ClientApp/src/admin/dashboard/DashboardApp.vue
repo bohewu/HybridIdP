@@ -17,12 +17,12 @@
     </div>
 
     <!-- Dashboard Content -->
-    <div v-if="!error">
+    <div>
       <!-- Quick Stats -->
-      <div class="mb-8 bg-white rounded-lg shadow-sm p-6"
-           v-loading="{ loading: loading, overlay: true, message: t('dashboard.loading') }">
+      <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('dashboard.quickStats') }}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <LoadingPlaceholder v-if="loading" :message="t('dashboard.loading')" />
+        <div v-else-if="!error" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="text-center p-4 bg-linear-to-br from-google-50 to-google-100 rounded-lg" data-test-id="dashboard-stats-clients">
             <div class="text-3xl font-bold text-google-500">{{ stats.totalClients }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalClients') }}</div>
@@ -48,11 +48,7 @@
                 class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                 data-test-id="dashboard-health-refresh"
             >
-                <svg v-if="healthLoading" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <svg v-else class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 {{ $t('dashboard.health.refresh') }}
@@ -63,7 +59,7 @@
             {{ healthError }}
         </div>
 
-        <LoadingIndicator v-if="healthLoading" :message="t('dashboard.health.checking')" />
+        <LoadingPlaceholder v-if="healthLoading" :message="t('dashboard.health.checking')" />
         <div v-else-if="healthData" class="space-y-4">
             <!-- Overall Status -->
             <div class="flex items-center p-4 rounded-lg" :class="healthData.status === 'Healthy' ? 'bg-green-50' : 'bg-red-50'">
@@ -187,7 +183,7 @@ import { useI18n } from 'vue-i18n'
 import ActivityDashboard from '../monitoring/components/ActivityDashboard.vue'
 import SecurityMetrics from '../monitoring/components/SecurityMetrics.vue'
 import RealTimeAlerts from '../monitoring/components/RealTimeAlerts.vue'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import { dashboardApi } from '@/services/dashboardApi'
 
 const { t, locale } = useI18n()

@@ -7,8 +7,8 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
-         v-loading="{ loading: loading, overlay: true, message: $t('dashboard.loading') }">
+    <LoadingPlaceholder v-if="loading" class="mb-8" :message="$t('dashboard.loading')" />
+    <div v-else class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
       <!-- Clients Card -->
       <a href="/Admin/Clients" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group">
         <div class="flex items-center gap-4">
@@ -111,6 +111,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 
 const displayName = ref('')
 const clientCount = ref(0)

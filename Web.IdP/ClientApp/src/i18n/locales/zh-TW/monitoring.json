@@ -8,7 +8,8 @@
     "activeSessions": "活躍工作階段",
     "totalLogins": "總登入次數",
     "failedLogins": "失敗登入次數",
-    "riskScore": "風險評分"
+    "riskScore": "風險評分",
+    "noActivity": "目前沒有活動紀錄。"
   },
   "securityMetrics": {
     "title": "安全指標",
@@ -24,5 +25,9 @@
   "realTimeAlerts": {
     "title": "即時警報",
     "noAlerts": "沒有活躍警報"
-  }
+  },
+  "refresh": "重新整理",
+  "refreshing": "更新中；目前顯示先前的結果。",
+  "loadFailed": "無法載入監控資料，請重試。",
+  "stale": "先前的結果已過期。"
 }

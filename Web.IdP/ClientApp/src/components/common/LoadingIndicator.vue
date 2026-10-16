@@ -7,7 +7,7 @@
     ]"
     :aria-busy="loading"
     role="status"
-    :aria-label="ariaLabel || defaultLabel"
+    :aria-label="ariaLabel || message || defaultLabel"
     data-testid="loading-indicator">
     <div :class="spinnerClasses" aria-hidden="true"></div>
     <div v-if="showMessage" class="ml-3 text-sm text-gray-600" aria-hidden="true">

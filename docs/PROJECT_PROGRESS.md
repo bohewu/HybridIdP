@@ -1,17 +1,20 @@
 ---
 title: "Project Progress Summary"
 owner: HybridAuthIdP Team
-last-updated: 2026-01-14
+last-updated: 2026-10-17
 ---
 
 # Project Progress
 
 This document tracks the evolution of the HybridAuthIdP project across different phases.
 
-## 🚀 Active Phase
+## Current delivery status
 
-- **Phase 22**: App-Specific Roles & Permission Isolation (✅ Completed) — `phase-22-app-roles.md`
-  - **Goal**: Decouple IdP-internal permissions from external apps and implement client-specific roles.
+- **Phase 22 is complete**: app-specific roles and permission isolation; [retained role-assignment decisions](archive/2026-01-16-app-role-assignment.md). The activity log below is historical.
+- **Upstream authentication**: Provider Proof 1.0 and staged directory binding/credential migration have delivered implementations with independent, default-off switches. Generic direct AD/LDAP beyond that staged capability and connected directory acceptance remain pending; see [Phase 23](design_specs/phase-23-ad-integration-plan.md) and the [integration guide](AUTHENTICATION_INTEGRATION.md).
+- **Phase 24 is partly delivered**: the admin Audit viewer and `/api/admin/audit/events` exist; the proposed Profile My Sessions UI/endpoints remain pending. See [observability status](design_specs/phase-24-observability.md).
+- **Lifecycle**: the consumer and eligibility checkpoints are implemented and default disabled. Producer/source authority, deployment cohort, connected validation and runtime enablement require separate decisions; see the [lifecycle handoff](implementation_plans/provider-api-lifecycle-plan.md).
+- See [TODOS.md](TODOS.md) for remaining work. Source inspection establishes implementation presence, not live directory, producer or production acceptance.
 
 ## 📊 Phase Summary
 

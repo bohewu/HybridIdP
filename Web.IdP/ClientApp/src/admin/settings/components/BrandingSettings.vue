@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 
 const props = defineProps({
   canUpdate: {
@@ -214,7 +214,7 @@ onMounted(() => {
     </div>
 
     <!-- Loading State -->
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('settings.loading')" />
+    <LoadingPlaceholder v-if="loading" :message="t('settings.loading')" />
 
     <!-- Form Content -->
     <div v-else class="p-4">

@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, onUnmounted, ref} from 'vue'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import {useI18n} from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
@@ -14,9 +14,11 @@ const stats = ref({
 })
 const loading = ref(true)
 const error = ref(null)
+const hasData = ref(false)
 const connection = ref(null)
 
 const fetchStats = async () => {
+  if (loading.value && hasData.value) return
   try {
     loading.value = true
     error.value = null
@@ -33,6 +35,7 @@ const fetchStats = async () => {
     }
 
     stats.value = await response.json()
+    hasData.value = true
   } catch (err) {
     console.error('Failed to fetch activity stats:', err)
     error.value = err.message || 'Failed to load activity statistics'
@@ -51,6 +54,8 @@ const startSignalRConnection = async () => {
     connection.value.on('ActivityStatsUpdated', (updatedStats) => {
       // console.log('Received activity stats update:', updatedStats)
       stats.value = updatedStats
+      hasData.value = true
+      error.value = null
     })
 
     await connection.value.start()
@@ -80,10 +85,18 @@ onUnmounted(() => {
 <template>
   <div class="activity-dashboard">
 
-    <!-- Use shared loading component (inline small) -->
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
+    <div class="mb-3 flex items-center justify-end gap-3">
+      <p v-if="loading && hasData" role="status" class="text-sm text-gray-600">{{ t('monitoring.refreshing') }}</p>
+      <button type="button" :disabled="loading" @click="fetchStats" class="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50">{{ t('monitoring.refresh') }}</button>
+    </div>
+    <LoadingPlaceholder v-if="loading && !hasData" :message="t('monitoring.loading')" />
+    <div v-if="error" role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      {{ t('monitoring.loadFailed') }}
+      <span v-if="hasData">{{ t('monitoring.stale') }}</span>
+    </div>
 
-    <div v-else class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+    <p v-if="hasData && Object.values(stats).every(value => value === 0)" class="mb-3 text-sm text-gray-500">{{ t('monitoring.activityDashboard.noActivity') }}</p>
+    <div v-if="hasData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="stat-card">
         <div class="stat-icon">
           <i class="bi bi-people"></i>

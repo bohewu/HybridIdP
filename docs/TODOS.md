@@ -1,7 +1,7 @@
 ---
 title: "TODOs & Backlog"
 owner: HybridIdP Team
-last-updated: 2026-08-12
+last-updated: 2026-10-17
 ---
 
 # TODOs & Technical Backlog
@@ -35,7 +35,7 @@ server, client package, Agent, deployment setting, or OpenIddict-specific
 adapter until the OpenBao infrastructure owner, machine-authentication method,
 secret inventory, availability policy, and reuse requirements are approved.
 
-## 🔄 Active: Phase 22 - App-Specific Roles & Permission Isolation (Completed)
+## Completed: Phase 22 - App-Specific Roles & Permission Isolation (Completed)
 - [x] **Data Model & Schema**
   - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
   - [x] Add EF Core Migrations (PostgreSQL & SQL Server)
@@ -45,7 +45,7 @@ secret inventory, availability policy, and reuse requirements are approved.
   - [x] Support Role Mapping/Transformation
 - [x] **Client Manifest**
   - [x] Extend Client Registration (OpenIddict Application Properties) to define `SupportedRoles`
-- [x] **UI Integration** (Next Session)
+- [x] **UI Integration**
   - [x] User/Person Management: App-specific role assignment UI
 - [x] **Testing & Verification**
   - [x] Update `ClientSeeder` for system test compatibility
@@ -53,47 +53,43 @@ secret inventory, availability policy, and reuse requirements are approved.
 
 ## 📋 Planned Follow-ons: HIDP-20260806-1 to HIDP-20260806-4 Upstream Authentication and Credential Migration
 
-Current behavior remains Local plus configurable LegacyAuth HTTP authentication;
-direct AD/LDAP is not implemented. The future preferred credential authority is
-deployment-configured direct AD/LDAP. A standardized, provider-neutral
-authentication/profile API adapter may be selected only when direct directory
-access cannot supply a required capability. Provider selection must be explicit
-and fail closed, with no automatic credential-authority fallback.
+Provider Proof 1.0 API login and staged directory integration/credential
+migration now have delivered implementations. Local-password accounts remain
+independent; the flat LegacyAuth adapter/settings are retired. See the current
+[authentication integration guide](AUTHENTICATION_INTEGRATION.md) and
+[Phase 23 status](design_specs/phase-23-ad-integration-plan.md). All directory
+stage switches default off. Implementation presence and fixture tests do not
+establish connected directory acceptance or deployment activation.
 
-- [x] **HIDP-20260806-4 -- Documentation specification**: Document the future,
-  generic OSS, one-time legacy-proof-to-directory-credential ceremony and its
-  security invariants. This documentation-only item neither implements nor
-  validates a provider, configuration, package, migration, test, or connected
-  directory operation.
-- [ ] **HIDP-20260806-2 -- Future provider contract and migration state-machine
-  implementation/tests**: Define and implement the generic provider contract,
-  direct AD/LDAP provider, and any explicitly justified API adapter, together
-  with the one-time migration state machine and its focused tests. Preserve
-  directory ownership of credentials, lockout, password expiration/change, and
-  password policy; do not add an IdP-side directory password-history or
-  password-policy overlay. Cover immutable provider-key linking,
-  assurance-gated matching, local lifecycle precedence, MFA trust, claim
-  allowlisting, cookie/token/upstream revalidation, and migration completion
-  boundaries.
-- [ ] **HIDP-20260806-3 -- Opt-in sanitized connected non-production directory
-  validation**: After HIDP-20260806-2, plan and execute separately approved,
-  opt-in scenarios in a non-production directory environment. The future
-  scenarios must cover migration success, uniform denial, replay rejection,
-  and uncertain-commit/recovery boundaries using sanitized evidence. This
-  documentation item performs no connected validation.
+- [x] **HIDP-20260806-4 -- Documentation specification**: The generic boundary
+  and one-time ceremony are documented; stable trace IDs remain in Phase 23.
+- [x] **HIDP-20260806-2 -- Delivered staged implementation**: `IProofProvider`,
+  Stage 1 binding, `Stage2CredentialMigrationService`, durable migration state
+  and protected LDAP transport exist. This status does not mark every future
+  generic provider extension or deployment configuration complete.
+- [ ] **Generic direct AD/LDAP beyond staged migration**: Specify and implement
+  any separately approved provider extension; retain one selected credential
+  authority, fail-closed handling, local lifecycle/MFA and directory-owned
+  password policy.
+- [ ] **HIDP-20260806-3 -- Connected non-production directory validation and
+  activation**: Separately approve capability checks for exact managed lookup,
+  constrained reset, independent bind, migration denial/replay and uncertain
+  commit/recovery; retain sanitized evidence and operator rollout/rollback gates.
 
 The boundary is generic OSS guidance: it must not depend on organization-
 specific source systems, APIs, schemas, identifiers, databases, or policy.
 
-## 📋 Planned: Phase 24 - Enterprise Observability & Self-Service
-- See `docs/design_specs/phase-24-observability.md`
+## Partly delivered: Phase 24 - Enterprise Observability & Self-Service
+- See [Phase 24 status](design_specs/phase-24-observability.md)
 - [ ] **User Self-Service**: "My Sessions" UI in Profile App
   - [ ] `GET /api/profile/sessions` endpoint
   - [ ] `DELETE /api/profile/sessions/{id}` (Revocation logic)
   - [ ] `SessionList.vue` component
-- [ ] **Admin Observability**: Audit Logs UI in Admin App
-  - [ ] `GET /api/admin/audit-logs` endpoint with filtering
-  - [ ] `AuditLogList.vue` component
+- [x] **Admin Observability**: Audit viewer in Admin App
+  - [x] `GET /api/admin/audit/events` with filtering/pagination, event types and per-event export
+  - [x] `admin/audit/AuditApp.vue` and `components/AuditLogViewer.vue`
+
+### Retained completed Phase 22 checklist
 
 - [x] **Data Model & Schema**
   - [x] Create `UserAppRole` entity (UserId, ClientId, RoleName)
@@ -104,11 +100,18 @@ specific source systems, APIs, schemas, identifiers, databases, or policy.
   - [x] Support Role Mapping/Transformation
 - [x] **Client Manifest**
   - [x] Extend Client Registration (OpenIddict Application Properties) to define `SupportedRoles`
-- [x] **UI Integration** (Next Session)
+- [x] **UI Integration**
   - [x] User/Person Management: App-specific role assignment UI
 - [x] **Testing & Verification**
   - [x] Update `ClientSeeder` for system test compatibility
   - [x] Verify permission isolation via JWT inspections
+
+## Pending activation: Provider Lifecycle
+
+- [x] Default-disabled consumer, strict HTTP validation and local/remote eligibility checkpoints.
+- [ ] Select authoritative producer/source, approved mapping and explicit account cohort.
+- [ ] Connected interoperability/source validation, clock assurance and operator-approved enablement/rollback.
+- See the [lifecycle integration handoff](implementation_plans/provider-api-lifecycle-plan.md); synthetic tests do not establish deployed authority.
 
 ---
 

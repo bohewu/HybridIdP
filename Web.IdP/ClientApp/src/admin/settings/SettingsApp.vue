@@ -9,6 +9,7 @@ import LoggingSettings from './components/LoggingSettings.vue'
 import SystemSettings from './components/SystemSettings.vue'
 import TurnstileSettings from './components/TurnstileSettings.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 const { t } = useI18n()
 
 const hasReadPermission = ref(false)
@@ -32,8 +33,7 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen bg-gray-50 py-6">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8"
-         v-loading="{ loading: loading, overlay: true, message: t('settings.loading') }">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
       <!-- Header -->
     <PageHeader 
       :title="$t('settings.pageTitle')" 
@@ -41,6 +41,8 @@ onMounted(async () => {
     >
     </PageHeader>
       
+
+      <LoadingPlaceholder v-if="loading" :message="t('settings.loading')" />
 
       <!-- Error State -->
       <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4">

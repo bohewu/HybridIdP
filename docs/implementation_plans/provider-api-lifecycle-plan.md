@@ -1,16 +1,16 @@
 # Provider API and lifecycle integration handoff
 
-Date: 2026-10-03. Status: consumer implemented, default disabled; independent final verification passed and independent review passed after one side-effect ordering repair. Producer ownership is
+Implementation record: 2026-10-03; status clarified 2026-10-17. The consumer is implemented and default disabled. The recorded synthetic verification and review below describe that delivery, not connected producer or production acceptance. Producer ownership is
 undecided. [Lifecycle Status 1.0](../PROVIDER_LIFECYCLE_CONTRACT.md) and its
 [schema/examples](../contracts/provider-lifecycle/v1.0/examples/README.md) are the
 neutral contract definition for review. [Current capability inventory](../PROVIDER_API_CAPABILITIES.md)
 preserves Proof, Metadata, Recovery and unversioned Password Sync independently.
 
-This replaces no frozen contract. The read-only AuthProxy background handoff at
-`handoff/provider-api-lifecycle-plan.md` informed scope;
-its proposed flags/fields/transition steps are background, not current settings
-or implementation authorization. No neighboring repository must be present to
-use this bundle, and AuthProxy is not assigned lifecycle/affiliation ownership.
+This replaces no frozen contract. A historical, deployment-specific background
+handoff informed scope; it is not a canonical public prerequisite or configuration
+guide. Its proposed flags/fields/transition steps grant no implementation or
+activation authority. No neighboring repository must be present to use this
+bundle, and AuthProxy is not assigned lifecycle/affiliation ownership.
 
 ## Integration sequence and gates
 
@@ -67,8 +67,9 @@ check must not re-enable an account disabled by an explicit local transition.
 Open decisions before enablement: selected producer/authoritative source;
 documented managed mappings and actual snapshot semantics; approved local account
 cohort and maxAge; operational host UTC clock trust; live interoperability/source
-verification and rollout/rollback authorization. No producer implementation,
-runtime activation, retirement transition, deployment or push has occurred.
+verification and rollout/rollback authorization. This consumer delivery does not
+establish producer implementation, runtime activation, retirement transition,
+deployment or publication in any environment.
 
 Backlog: per-namespace/multiple lifecycle routing; in-process Local/Inner adapters;
 persistent caching or event projection; automatic retirement import; immediate

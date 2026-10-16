@@ -7,10 +7,11 @@ implicit Local-to-AD-to-Legacy credential fallback and IdP-side directory
 password-history or policy overlay are rejected. They are not implementation
 instructions.
 
-Phase 23 defines a future, generic OSS boundary only. Direct configurable
-AD/LDAP is the preferred credential provider, but it is not implemented in the
-current product. Current password behavior remains Local plus the configurable
-LegacyAuth HTTP compatibility adapter.
+Status clarified 2026-10-17: Provider Proof 1.0 API login and the staged
+directory-binding/credential-migration implementation are delivered, with
+independent switches disabled by default. Generic direct AD/LDAP outside that
+staged capability remains future work. Implementation presence does not prove
+connected directory capability, deployment activation or production acceptance.
 
 This plan has no dependency on organization-specific identity synchronization
 systems, organization-specific identity data stores, private APIs, schemas,
@@ -18,7 +19,7 @@ identifiers, databases, or organizational policy. It requires no raw national id
 
 ## Scope
 
-The future boundary must:
+The boundary must:
 
 - Support direct, deployment-configured AD/LDAP credential validation and
   profile retrieval as the preferred upstream provider.
@@ -35,21 +36,25 @@ The future boundary must:
 - Define safe provider-result, capability, matching, lifecycle, and operational
   requirements before any implementation is approved.
 
-This plan does not authorize packages, provider code, migrations, configuration
-parsing, runtime changes, test-code changes, connected AD/LDAP testing, or
-changes to Local or LegacyAuth behavior.
-
-It also does not implement the opt-in one-time migration contract below. That
-contract is documentation only and does not authorize product, configuration,
-package, migration, test, or connected-directory work.
+This status reconciliation changes documentation only. It does not enable a
+provider, change configuration, authorize further implementation or execute
+connected AD/LDAP validation. Deployment activation remains separately gated.
 
 ## Current baseline
 
-`LoginService` currently authenticates a found local user locally; when no
-local user is found, it calls the configurable `ILegacyAuthService` HTTP
-adapter. There is no AD/LDAP branch or directory dependency. LegacyAuth remains
-an accurately documented compatibility adapter and must not be silently
-upgraded, relabeled, or assumed to satisfy this future generic contract.
+`LoginService` retains local-password authentication and uses `IProofProvider`
+for configured upstream Proof authentication. It also routes Stage 1 binding
+and completed-directory sign-in through durable migration and deployment gates;
+`Stage2CredentialMigrationService` implements the separate migration ceremony.
+`LdapProtectedDirectoryTransport` is registered for protected directory identity
+and credential operations. These source paths do not establish a connected AD
+test or authorize generic direct-directory rollout.
+
+The flat LegacyAuth HTTP adapter and `LegacyAuth` settings are retired. Existing
+Legacy links are retained; a username, email or key shape cannot prove the new
+provider tuple. Use the current [integration guide](../AUTHENTICATION_INTEGRATION.md)
+and [upgrade procedure](../DEPLOYMENT_GUIDE.md#upgrading-existing-legacy-api-accounts)
+for the explicit same-subject transition.
 
 Existing seams include durable provider-key links, JIT provisioning, Person to
 multiple-`ApplicationUser` linkage, local lifecycle checks on cookies and token
@@ -92,11 +97,11 @@ for its local shadow `ApplicationUser`, Person relationship, durable links and
 JIT, local eligibility overlays, MFA, cookies, `UserSession` lifecycle,
 OIDC/OAuth tokens, claims, and consent.
 
-The optional API adapter is a new standardized, provider-neutral
-authentication/profile contract with a deployment shape comparable to
-LegacyAuth. It is used only when a required capability is unavailable directly
-from the directory and must declare the same result and assurance concepts as
-the directory provider. Existing LegacyAuth is not this contract.
+The delivered Provider Proof 1.0 API is an independently configured integration
+family; it does not require Stage 1 directory enablement. For future generic
+directory-provider extensions, an optional API adapter still requires a recorded
+direct-directory capability gap and the declared result/assurance concepts.
+The retired flat LegacyAuth format is not either contract.
 
 ## Contract requirements
 
@@ -222,13 +227,12 @@ deployment/restart and are not mutable Admin UI settings.
 
 ## Future one-time legacy-proof-to-directory credential migration
 
-This authoritative future contract is a narrow, deployment-controlled ceremony
-that is separate from ordinary sign-in. It is not present in the current
-product: current password behavior remains Local plus the configurable
-LegacyAuth HTTP adapter, while direct configurable AD/LDAP remains future. It
-does not relabel current LegacyAuth as a directory provider or introduce a
-fallback route. The companion [Authentication Integration Guide](../AUTHENTICATION_INTEGRATION.md#future-one-time-legacy-proof-to-directory-credential-migration)
-contains the same integration contract.
+The historical heading is retained for existing links. This narrow,
+deployment-controlled ceremony now has an implementation in
+`Stage2CredentialMigrationService`, separate from ordinary sign-in and disabled
+by default. The companion [Authentication Integration Guide](../AUTHENTICATION_INTEGRATION.md#one-time-legacy-proof-to-directory-credential-migration)
+describes its current integration. Connected directory validation and operator
+activation remain pending; no fallback authority is introduced.
 
 ### Mode, durable authorization, and binding resolution
 
@@ -329,9 +333,10 @@ national identifiers, unnecessary profile values, and token-visible sensitive
 data. This remains a generic OSS contract with no organization-specific API,
 schema, identifier, directory layout, or data contract.
 
-## Future implementation gates
+## Remaining implementation and activation gates
 
-An implementation proposal must, before code is approved:
+For future generic provider extensions and before deployment activation,
+the responsible owners must:
 
 1. Specify the selected provider and document any direct-directory capability
    gap that justifies the optional API adapter.
@@ -354,7 +359,7 @@ represented as completed by this plan.
 
 | Requirement | Boundary disposition |
 |---|---|
-| REQ-01 | Status and Current baseline distinguish current Local plus LegacyAuth from future preferred direct AD/LDAP. |
+| REQ-01 | Status and Current baseline distinguish delivered Proof/staged migration from future generic direct AD/LDAP and pending activation. |
 | REQ-02 | Status, Scope, and Target boundary require a generic OSS boundary with no organization-specific dependency. |
 | REQ-03 | Scope and Provider types constrain the optional API adapter to a documented direct-directory capability gap. |
 | REQ-04 | Explicit provider selection requires exactly one authority and fail-closed handling with no fallback. |
@@ -368,7 +373,7 @@ represented as completed by this plan.
 | REQ-12 | Linking and JIT gives local terminal and eligibility state precedence before mutation, sessions, principals, or tokens. |
 | REQ-13 | Sessions, grants, and revalidation defines local checks, bounded upstream response, and the self-contained token caveat. |
 | REQ-14 | Data, claims, and MFA keeps MFA assurance local unless a verified provider-specific mapping exists. |
-| REQ-15 | Scope and Future implementation gates make this a documentation-only delivery. |
+| REQ-15 | Scope and remaining gates make this status update documentation only; no implementation or activation is authorized here. |
 
 ## Credential-migration requirement traceability
 
@@ -377,7 +382,7 @@ ceremony and do not replace the upstream-boundary requirement labels above.
 
 | Migration requirement | Acceptance disposition |
 |---|---|
-| REQ-01 | Status, Scope, and the migration introduction distinguish current Local plus LegacyAuth from future AD/LDAP and the future ceremony. |
+| REQ-01 | Status, Scope, and the migration introduction distinguish delivered gated migration from connected validation and runtime enablement. |
 | REQ-02 | Complete delivery with staged deployment and binding resolution require independently gated Stage 1 binding/profile behavior and Stage 2 migration/directory authentication, with a one-time `Required`/`Completed` record distinct from ordinary password state. |
 | REQ-03 | Binding resolution and Proof, ticket, and credential authority require one selected authority per submitted password, exact managed-directory resolution before reset, and no fallback. |
 | REQ-04 | Binding resolution and Proof require assured stable subject plus canonical account to immutable directory key/object mapping and prohibit mutable or raw-identifier substitutes. |
@@ -390,7 +395,7 @@ ceremony and do not replace the upstream-boundary requirement labels above.
 
 | Scenario | Acceptance disposition |
 |---|---|
-| SCN-01 | Current baseline and Status state that Local plus LegacyAuth remains active until the complete delivered AD/LDAP feature is explicitly enabled through its staged deployment switches. |
+| SCN-01 | Current baseline and Status describe local-password/Proof behavior and independently gated staged directory migration; retired LegacyAuth settings do not enable login. |
 | SCN-02 | Explicit provider selection denies unavailable, rejected, malformed, ambiguous, or timed-out selected upstreams without fallback. |
 | SCN-03 | Scope and Provider types permit the API adapter only for a documented directory capability gap and keep selection fail closed. |
 | SCN-04 | Authentication and profile result plus Linking and JIT require namespace/key-first resolution and assurance-gated matching. |

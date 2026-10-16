@@ -1,6 +1,6 @@
 <script setup>
 import {onMounted, onUnmounted, ref} from 'vue'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import {useI18n} from 'vue-i18n'
 import * as signalR from '@microsoft/signalr'
 
@@ -9,9 +9,11 @@ const { t } = useI18n()
 const alerts = ref([])
 const loading = ref(true)
 const error = ref(null)
+const hasData = ref(false)
 const connection = ref(null)
 
 const fetchAlerts = async () => {
+  if (loading.value && hasData.value) return
   try {
     loading.value = true
     error.value = null
@@ -28,6 +30,7 @@ const fetchAlerts = async () => {
     }
 
     alerts.value = await response.json()
+    hasData.value = true
   } catch (err) {
     console.error('Failed to fetch real-time alerts:', err)
     error.value = err.message || 'Failed to load alerts'
@@ -46,17 +49,19 @@ const startSignalRConnection = async () => {
     connection.value.on('SecurityAlertsUpdated', (updatedAlerts) => {
       // console.log('Received security alerts update:', updatedAlerts)
       alerts.value = updatedAlerts
+      hasData.value = true
+      error.value = null
     })
 
     connection.value.on('ReceiveSecurityAlerts', (updatedAlerts) => {
       // console.log('Received security alerts update:', updatedAlerts)
       alerts.value = updatedAlerts
-      loading.value = false
+      hasData.value = true
+      error.value = null
     })
 
     connection.value.onclose(() => {
       // console.log('SignalR connection stopped')
-      loading.value = false
     })
 
     await connection.value.start()
@@ -99,13 +104,21 @@ const formatTimestamp = (timestamp) => {
 <template>
   <div class="real-time-alerts">
 
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" />
+    <div class="mb-3 flex items-center justify-end gap-3">
+      <p v-if="loading && hasData" role="status" class="text-sm text-gray-600">{{ t('monitoring.refreshing') }}</p>
+      <button type="button" :disabled="loading" @click="fetchAlerts" class="text-sm text-blue-600 hover:text-blue-800 disabled:opacity-50">{{ t('monitoring.refresh') }}</button>
+    </div>
+    <LoadingPlaceholder v-if="loading && !hasData" :message="t('monitoring.loading')" />
+    <div v-if="error" role="alert" class="mb-4 rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+      {{ t('monitoring.loadFailed') }}
+      <span v-if="hasData">{{ t('monitoring.stale') }}</span>
+    </div>
 
-    <div v-else-if="alerts.length === 0" class="text-center py-8 text-gray-500">
+    <div v-if="hasData && alerts.length === 0" class="text-center py-8 text-gray-500">
       {{ t('monitoring.realTimeAlerts.noAlerts') }}
     </div>
 
-    <div v-else class="space-y-3">
+    <div v-else-if="hasData" class="space-y-3">
       <div
         v-for="alert in alerts"
         :key="alert.id"
