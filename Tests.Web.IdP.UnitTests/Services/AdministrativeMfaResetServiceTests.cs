@@ -78,6 +78,12 @@ public class AdministrativeMfaResetServiceTests
         fixture.Target.RecoveryCodes = "[\"retired-custom-code\"]";
         fixture.Db.UserTokens.Add(new IdentityUserToken<Guid> { UserId = fixture.Target.Id,
             LoginProvider = "[AspNetUserStore]", Name = "RecoveryCodes", Value = "retired-native-code" });
+        fixture.Db.UserTokens.Add(new IdentityUserToken<Guid> { UserId = fixture.Target.Id,
+            LoginProvider = global::Infrastructure.Services.AccountRecoveryCodeService.LoginProvider, Name = "Batch.v1", Value = "[]" });
+        var alreadyRetired = DateTime.UtcNow.AddDays(-1);
+        fixture.Db.UserCredentials.AddRange(
+            new UserCredential { UserId = fixture.Target.Id, CredentialId = [1], PublicKey = [2] },
+            new UserCredential { UserId = fixture.Target.Id, CredentialId = [3], PublicKey = [4], DisabledAtUtc = alreadyRetired });
         fixture.Db.UserSessions.Add(session);
         await fixture.Db.SaveChangesAsync();
         await AccountSecurityOperationSession.BeginAsync(fixture.Http, fixture.Actor,
@@ -88,8 +94,13 @@ public class AdministrativeMfaResetServiceTests
         Assert.False(fixture.Target.TwoFactorEnabled);
         Assert.False(fixture.Target.EmailMfaEnabled);
         Assert.Null(fixture.Target.EmailMfaCode);
-        Assert.Null(fixture.Target.RecoveryCodes);
-        Assert.Empty(fixture.Db.UserTokens.Where(token => token.UserId == fixture.Target.Id));
+        Assert.Equal("[]", fixture.Target.RecoveryCodes);
+        Assert.All(fixture.Db.UserTokens.Where(token => token.UserId == fixture.Target.Id), token =>
+            Assert.Equal(token.LoginProvider == "[AspNetUserStore]" ? string.Empty : "[]", token.Value));
+        var credentials = await fixture.Db.UserCredentials.OrderBy(key => key.Id).ToListAsync();
+        Assert.Equal(2, credentials.Count);
+        Assert.NotNull(credentials[0].DisabledAtUtc);
+        Assert.Equal(alreadyRetired, credentials[1].DisabledAtUtc);
         Assert.NotNull(session.RevokedUtc);
         fixture.Users.Verify(value => value.UpdateSecurityStampAsync(fixture.Target), Times.Once);
         fixture.Authorizations.Verify(value => value.TryRevokeAsync(fixture.Grant, It.IsAny<CancellationToken>()), Times.Once);
@@ -174,7 +185,7 @@ public class AdministrativeMfaResetServiceTests
             var auth = new Mock<IAuthenticationService>();
             auth.Setup(value => value.AuthenticateAsync(Http, IdentityConstants.ApplicationScheme))
                 .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, IdentityConstants.ApplicationScheme)));
-            _services = new ServiceCollection().AddSingleton<IApplicationDbContext>(Db).AddSingleton(Users.Object).AddSingleton(auth.Object).BuildServiceProvider();
+            _services = new ServiceCollection().AddSingleton<IApplicationDbContext>(Db).AddSingleton(Users.Object).AddSingleton(auth.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
             Http.RequestServices = _services;
             Http.Session = new MemorySession();
             Service = new(boundary.Object, authorization.Object, Users.Object, Db, Authorizations.Object, Tokens.Object,

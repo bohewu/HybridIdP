@@ -9,7 +9,7 @@
 @inject IBrandingService BrandingService
 @inject Microsoft.AspNetCore.Antiforgery.IAntiforgery Antiforgery
 @{
-    ViewData["Title"] = Localizer["TwoStepVerification"];
+    ViewData["Title"] = Localizer[Model.IsRecoveryOnly ? "RecoverVerificationMethod" : "ChooseVerificationMethod"];
     Layout = null;
     var currentCulture = HttpContext.Features.Get<IRequestCultureFeature>()?.RequestCulture.Culture.Name ?? "en-US";
     var productName = await BrandingService.GetProductNameAsync();
@@ -22,6 +22,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @productName</title>
+    <script async src="~/js/account-form-guard.js" asp-append-version="true"></script>
     
     @* Tailwind CSS *@
     @if (ViteService.IsDevelopment)
@@ -47,97 +48,109 @@
                         </svg>
                     </div>
                 </div>
-                <h1 class="text-2xl font-normal text-gray-900 mb-2">@Localizer["TwoStepVerification"]</h1>
+                <h1 class="text-2xl font-normal text-gray-900 mb-2">@ViewData["Title"]</h1>
                 <p class="mt-1 text-sm text-gray-500">
-                    @(Model.TotpMfaEnabled ? Localizer["EnterAuthenticatorCode"] : Localizer["LoginWithPasskey"])
+                    @Localizer[Model.IsRecoveryOnly ? "AccountRecoveryBeforeReplacement" : Model.Method == "totp" ? "EnterAuthenticatorCode" : "ChooseAvailableVerificationMethod"]
                 </p>
             </div>
             
             <div class="google-login-body">
-                <form method="post">
-                    @if (!ViewData.ModelState.IsValid)
-                    {
-                        <div asp-validation-summary="All" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
-                    }
-                    
-                    <input type="hidden" asp-for="ReturnUrl" />
-                    <input type="hidden" asp-for="RememberMe" />
-                    
-                    @if (Model.TotpMfaEnabled)
-                    {
-                        <div class="space-y-4">
-                            <!-- TOTP Code Input -->
+                @if (Model.IsMfaEnrollmentReauthentication)
+                {
+                    <div class="mb-6 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
+                         role="status"
+                         data-test-id="mfa-reauthentication-notice">
+                        @Localizer[Model.MfaReauthenticationNoticeKey]
+                    </div>
+                }
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div asp-validation-summary="All" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="mfa-error-summary"></div>
+                }
+
+                @if (Model.Method == null)
+                {
+                    <nav class="flex flex-col gap-3" aria-label="@Localizer["ChooseVerificationMethod"]" data-test-id="mfa-method-selector">
+                        @if (Model.TotpMfaEnabled)
+                        {
+                            <a asp-page="./LoginMfa" asp-route-method="totp" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" asp-route-recoveryPurpose="@Model.RecoveryPurpose"
+                               class="btn-google-outline w-full text-center" data-test-id="mfa-select-totp">@Localizer["UseAuthenticatorApp"]</a>
+                        }
+                        @if (Model.EmailMfaEnabled)
+                        {
+                            <a asp-page="./LoginMfa" asp-route-method="email" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" asp-route-recoveryPurpose="@Model.RecoveryPurpose"
+                               class="btn-google-outline w-full text-center" data-test-id="mfa-select-email">@Localizer["UseEmailCode"]</a>
+                        }
+                        @if (Model.PasskeyEnabled)
+                        {
+                            <a asp-page="./LoginMfa" asp-route-method="passkey" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" asp-route-recoveryPurpose="@Model.RecoveryPurpose"
+                               class="btn-google-outline w-full text-center" data-test-id="mfa-select-passkey">@Localizer["LoginWithPasskey"]</a>
+                        }
+                        @if (Model.RecoveryCodesAvailable)
+                        {
+                            <a asp-page="./LoginMfa" asp-route-method="recovery" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" asp-route-recoveryPurpose="@Model.RecoveryPurpose"
+                               class="btn-google-outline w-full text-center" data-test-id="mfa-select-recovery">@Localizer["UseRecoveryCode"]</a>
+                        }
+                    </nav>
+                }
+                else if (Model.Method == "passkey")
+                {
+                    <button type="button" id="passkeyLoginBtn" class="btn-google-blue w-full"
+                            data-test-id="mfa-passkey-submit" data-username="@Model.PasskeyUserName"
+                            data-return-url="@(Model.ReturnUrl ?? Url.Content("~/"))"
+                            data-error-no-passkeys="@Localizer["mfa.errors.noPasskeysRegistered"]"
+                            data-error-not-found="@Localizer["mfa.errors.passkeyNotRegistered"]">
+                        @Localizer["LoginWithPasskey"]
+                    </button>
+                }
+                else if (Model.Method is "totp" or "recovery")
+                {
+                    <form method="post" data-account-form>
+                        <input type="hidden" asp-for="ReturnUrl" />
+                        <input type="hidden" asp-for="RememberMe" />
+                        <input type="hidden" asp-for="Method" />
+                        @if (Model.Method == "totp")
+                        {
+                            <input type="hidden" asp-for="Input.RecoveryPurpose" />
                             <div class="form-group">
                                 <label asp-for="Input.TotpCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["VerificationCode"]</label>
-                                <input asp-for="Input.TotpCode"
-                                       class="input-google text-center text-2xl tracking-widest"
-                                       placeholder="000 000"
-                                       autocomplete="one-time-code"
-                                       inputmode="numeric"
-                                       pattern="[0-9]*"
-                                       maxlength="6"
-                                       autofocus
-                                       data-test-id="mfa-totp-code" />
+                                <input asp-for="Input.TotpCode" class="input-google text-center text-2xl tracking-widest"
+                                       placeholder="000 000" autocomplete="one-time-code" inputmode="numeric"
+                                       pattern="[0-9]*" maxlength="6" required autofocus data-test-id="mfa-totp-code" />
                                 <span asp-validation-for="Input.TotpCode" class="text-red-600 text-xs mt-1 block" data-test-id="mfa-code-error"></span>
                             </div>
-                            <!-- Recovery Code Section -->
+                        }
+                        else
+                        {
                             <div class="form-group">
-                                @{
-                                    var hasRecoveryCodeError = !ViewData.ModelState.IsValid && ViewData.ModelState.ContainsKey("Input.RecoveryCode");
-                                }
-                                <details class="text-sm" @(hasRecoveryCodeError ? "open" : "")>
-                                    <summary class="link-google cursor-pointer">@Localizer["UseRecoveryCode"]</summary>
-                                    <div class="mt-3">
-                                        <label asp-for="Input.RecoveryCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["RecoveryCode"]</label>
-                                        <input asp-for="Input.RecoveryCode"
-                                               class="input-google font-mono"
-                                               placeholder="XXXXX-XXXXX"
-                                               data-test-id="mfa-recovery-code" />
-                                        <span asp-validation-for="Input.RecoveryCode" class="text-red-600 text-xs mt-1 block"></span>
-                                    </div>
-                                </details>
+                                <label asp-for="Input.RecoveryCode" class="block text-sm font-medium text-gray-700 mb-2">@Localizer["RecoveryCode"]</label>
+                                <input asp-for="Input.RecoveryCode" class="input-google font-mono" autocomplete="off"
+                                       placeholder="@Localizer["RecoveryCodePlaceholder"]" required autofocus data-test-id="mfa-recovery-code" />
+                                <span asp-validation-for="Input.RecoveryCode" class="text-red-600 text-xs mt-1 block"></span>
                             </div>
-                        </div>
-                    }
-                
-                    <div class="flex items-center justify-between mt-8">
-                        <div class="flex flex-col gap-2">
-                            <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="link-google text-sm font-medium">
-                                @Localizer["BackToLogin"]
-                            </a>
-                            @if (Model.EmailMfaEnabled)
+                            @if (Model.CanSelectRecoveryEnrollment)
                             {
-                                <a asp-page="./LoginEmailOtp" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" class="link-google text-sm">
-                                    @Localizer["UseEmailCode"]
-                                </a>
+                                <label asp-for="Input.RecoveryPurpose" class="block text-sm font-medium text-gray-700 mt-4 mb-2">@Localizer["AccountRecoveryPurpose"]</label>
+                                <select asp-for="Input.RecoveryPurpose" class="input-google" data-test-id="mfa-recovery-purpose">
+                                    <option value="@Web.IdP.Helpers.MfaEnrollmentSession.RecoveryEnrollmentPurpose">@Localizer["AccountRecoveryReplaceVerificationMethod"]</option>
+                                    <option value="sign-in">@Localizer["AccountRecoverySignInOnly"]</option>
+                                </select>
                             }
-                        </div>
+                        }
+                        <button type="submit" class="btn-google-blue w-full mt-6" data-test-id="mfa-submit">@Localizer["Verify"]</button>
+                    </form>
+                }
 
-                        <div class="flex gap-2 ml-4">
-                            @if (Model.PasskeyEnabled)
-                            {
-                                <button type="button"
-                                        id="passkeyLoginBtn"
-                                        class="btn-google-outline"
-                                        data-test-id="mfa-passkey-submit"
-                                        data-username="@Model.PasskeyUserName"
-                                        data-return-url="@(Model.ReturnUrl ?? Url.Content("~/"))"
-                                        data-error-no-passkeys="@Localizer["mfa.errors.noPasskeysRegistered"]"
-                                        data-error-not-found="@Localizer["mfa.errors.passkeyNotRegistered"]">
-                                    @Localizer["LoginWithPasskey"]
-                                </button>
-                            }
-                            @if (Model.TotpMfaEnabled)
-                            {
-                                <button type="submit"
-                                        class="btn-google-blue"
-                                        data-test-id="mfa-submit">
-                                    @Localizer["Verify"]
-                                </button>
-                            }
-                        </div>
-                    </div>
-                </form>
+                <p class="mt-6 text-sm text-gray-600" data-test-id="mfa-lost-factor-guidance">@Localizer["AccountRecoveryLostFactorGuidance"]</p>
+                <div class="flex flex-col gap-3 mt-6">
+                    @if (Model.Method != null)
+                    {
+                        <a asp-page="./LoginMfa" asp-route-returnUrl="@Model.ReturnUrl" asp-route-rememberMe="@Model.RememberMe" asp-route-recoveryPurpose="@Model.RecoveryPurpose"
+                           class="link-google text-sm" data-test-id="mfa-other-methods">@Localizer["OtherVerificationMethods"]</a>
+                    }
+                    <a asp-page="./Login" asp-route-returnUrl="@Model.ReturnUrl" class="link-google text-sm font-medium">@Localizer["BackToLogin"]</a>
+                </div>
             </div>
         </div>
         

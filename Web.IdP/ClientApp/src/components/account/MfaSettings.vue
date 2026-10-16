@@ -20,6 +20,9 @@
 
     <!-- MFA Status Display -->
     <div v-else class="mfa-content">
+      <p class="mfa-summary" data-testid="mfa-overall-status" role="status">
+        {{ hasMfaEnabled ? t('mfa.otpSummaryEnabled') : t('mfa.otpSummaryDisabled') }}
+      </p>
       <!-- MFA Disabled State -->
       <div v-if="mfaStatus.enableTotpMfa && !mfaStatus.twoFactorEnabled" class="mfa-status mfa-disabled">
         <div class="status-icon">
@@ -30,13 +33,12 @@
           </svg>
         </div>
         <div class="status-text">
-          <h3>{{ t('mfa.notEnabled') }}</h3>
-          <p>{{ t('mfa.enableDescription') }}</p>
-          <p class="reauthentication-note">{{ t('mfa.reauthenticationNotice') }}</p>
+          <h3>{{ t('mfa.authenticatorTitle') }}</h3>
+          <p>{{ hasMfaEnabled ? t('mfa.authenticatorOptional') : t('mfa.authenticatorDescription') }}</p>
           <p v-if="totpSetupError" class="error-message" role="alert">{{ totpSetupError }}</p>
         </div>
-        <button class="btn-enable" @click="startSetup" :disabled="totpSetupLoading">
-          {{ totpSetupLoading ? t('mfa.redirectingToSignIn') : t('mfa.startSetup') }}
+        <button class="btn-enable" data-testid="totp-add" @click="startSetup()" :disabled="totpSetupLoading">
+          {{ totpSetupLoading ? t('mfa.redirectingToSignIn') : t('mfa.addAuthenticator') }}
         </button>
       </div>
 
@@ -49,14 +51,12 @@
           </svg>
         </div>
         <div class="status-text">
-          <h3>{{ t('mfa.enabled') }}</h3>
-          <p>{{ t('mfa.recoveryCodesLeft', { count: mfaStatus.recoveryCodesLeft }) }}</p>
+          <h3>{{ t('mfa.authenticatorTitle') }}</h3>
+          <p>{{ t('mfa.authenticatorEnabled') }}</p>
+          <p v-if="cannotRemoveFactor('totp')" id="totp-removal-policy" role="status" data-testid="totp-removal-policy">{{ t('mfa.addAnotherMethodBeforeRemoval') }}</p>
         </div>
         <div class="action-buttons">
-          <button class="btn-secondary" @click="openRegenerateModal">
-            {{ t('mfa.regenerateCodes') }}
-          </button>
-          <button class="btn-danger" @click="showDisableModal = true">
+          <button class="btn-danger" data-testid="totp-disable" :disabled="cannotRemoveFactor('totp') || totpSetupLoading" :title="cannotRemoveFactor('totp') ? t('mfa.addAnotherMethodBeforeRemoval') : undefined" :aria-describedby="cannotRemoveFactor('totp') ? 'totp-removal-policy' : undefined" @click="startSetup(true, 'totp-disable')">
             {{ t('mfa.disable') }}
           </button>
         </div>
@@ -76,21 +76,26 @@
             <p v-if="mfaStatus.emailMfaEnabled">{{ t('mfa.emailMfaEnabled') }}</p>
             <p v-else>{{ t('mfa.emailMfaDescription') }}</p>
             <p v-if="userEmail" class="masked-email">{{ maskedEmail }}</p>
+            <p v-if="mfaStatus.emailMfaEnabled && cannotRemoveFactor('email')" id="email-removal-policy" role="status" data-testid="email-removal-policy">{{ t('mfa.addAnotherMethodBeforeRemoval') }}</p>
           </div>
           <div class="action-buttons">
             <button 
               v-if="!mfaStatus.emailMfaEnabled" 
               class="btn-enable" 
-              @click="openEmailMfaSetup"
-              :disabled="emailMfaLoading"
+              @click="requestEmailMfaSetup"
+              data-testid="email-mfa-enable"
+              :disabled="emailMfaLoading || totpSetupLoading"
             >
               {{ emailMfaLoading ? '...' : t('mfa.enable') }}
             </button>
             <button 
               v-else 
               class="btn-danger" 
-              @click="disableEmailMfa"
-              :disabled="emailMfaLoading"
+              @click="startSetup(true, 'email-disable')"
+              data-testid="email-mfa-disable"
+              :disabled="emailMfaLoading || totpSetupLoading || cannotRemoveFactor('email')"
+              :title="cannotRemoveFactor('email') ? t('mfa.addAnotherMethodBeforeRemoval') : undefined"
+              :aria-describedby="cannotRemoveFactor('email') ? 'email-removal-policy' : undefined"
             >
               {{ emailMfaLoading ? '...' : t('mfa.disable') }}
             </button>
@@ -119,14 +124,14 @@
             </svg>
           </div>
           <div class="section-text">
-            <h3>{{ t('mfa.passkey.title') }}</h3>
+            <h3>{{ t('mfa.passkey.signInMethodTitle') }}</h3>
             <p>{{ t('mfa.passkey.description') }}</p>
           </div>
           <div class="section-action">
             <button 
               class="btn-enable" 
               @click="registerNewPasskey" 
-              :disabled="passkeyLoading || passkeyBlockedByPolicy"
+              :disabled="passkeyLoading || totpSetupLoading || passkeyBlockedByPolicy"
               :title="passkeyBlockedByPolicy ? t('mfa.passkey.requiresMfa') : ''"
               :class="{ 'btn-disabled': passkeyBlockedByPolicy }"
             >
@@ -136,7 +141,13 @@
           </div>
         </div>
 
-        <div v-if="passkeys.length > 0" class="passkey-list">
+        <p v-if="passkeyListLoading" role="status">{{ t('mfa.passkey.loading') }}</p>
+        <div v-else-if="passkeyListSessionExpired" class="passkey-list passkey-list-session-expired" role="status" data-testid="passkey-list-session-expired">
+          <p>{{ t('mfa.passkey.sessionExpired') }}</p>
+          <a class="btn-secondary" href="/Account/Login?returnUrl=%2FAccount%2FProfile">{{ t('mfa.passkey.signInAgain') }}</a>
+        </div>
+        <p v-else-if="passkeyListFailed" class="error-message" role="alert">{{ t('mfa.errors.listPasskeysFailed') }}</p>
+        <div v-else-if="passkeys.length > 0" class="passkey-list">
           <h4>{{ t('mfa.passkey.registered') }}</h4>
           <div v-for="pk in passkeys" :key="pk.id" class="passkey-item">
             <div class="pk-icon">
@@ -151,8 +162,9 @@
                 {{ t('mfa.passkey.createdAt') }}: {{ formatDate(pk.createdAt) }} | 
                 {{ t('mfa.passkey.lastUsed') }}: {{ pk.lastUsedAt ? formatDate(pk.lastUsedAt) : t('mfa.passkey.neverUsed') }}
               </p>
+              <p v-if="cannotRemoveFactor('passkey', pk.id)" :id="`passkey-removal-policy-${pk.id}`" role="status">{{ t('mfa.addAnotherMethodBeforeRemoval') }}</p>
             </div>
-            <button class="btn-pk-delete" @click="confirmDeletePasskey(pk)" :title="t('mfa.passkey.delete')">
+            <button class="btn-pk-delete" :data-testid="`passkey-delete-${pk.id}`" @click="confirmDeletePasskey(pk)" :aria-label="t('mfa.passkey.delete')" :title="cannotRemoveFactor('passkey', pk.id) ? t('mfa.addAnotherMethodBeforeRemoval') : t('mfa.passkey.delete')" :disabled="passkeyLoading || totpSetupLoading || cannotRemoveFactor('passkey', pk.id)" :aria-describedby="cannotRemoveFactor('passkey', pk.id) ? `passkey-removal-policy-${pk.id}` : undefined">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="3 6 5 6 21 6"></polyline>
                 <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
@@ -160,13 +172,36 @@
             </button>
           </div>
         </div>
+        <p v-else class="pk-meta" data-testid="passkey-list-empty">{{ t('mfa.passkey.noneRegistered') }}</p>
         
         <p v-if="passkeyError" class="error-message">{{ passkeyError }}</p>
         <p v-if="passkeySuccess" class="success-message">{{ passkeySuccess }}</p>
       </div>
     </div>
 
+    <div v-show="!loading">
+      <AccountRecoveryCodes ref="accountRecoveryCodes" :csrf-token="csrfToken" :busy="totpSetupLoading || emailMfaLoading || passkeyLoading || disableLoading || !!reauthenticationIntent" @status-changed="recoveryCodeStatus = $event" @saved="finishEnrollmentDisclosure" @reauthenticate="startSetup(false, 'account-recovery-codes')" />
+    </div>
     <RecoveryEmailSettings v-if="!loading" :csrf-token="csrfToken" />
+
+    <div v-if="reauthenticationIntent" class="modal-overlay" @click.self="cancelReauthentication" @keydown.esc="cancelReauthentication">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="mfa-reauthentication-title" aria-describedby="mfa-reauthentication-purpose" data-testid="mfa-reauthentication-notice" :aria-busy="totpSetupLoading">
+        <h2 id="mfa-reauthentication-title">{{ t('mfa.reauthenticationTitle') }}</h2>
+        <p id="mfa-reauthentication-purpose">{{ reauthenticationIntent.action === 'totp-disable' ? t('mfa.disableReauthenticationDescription') : t('mfa.reauthenticationDescription', { action: reauthenticationPurpose }) }}</p>
+        <p v-if="reauthenticationIntent.action === 'account-recovery-codes'">{{ t('mfa.accountRecoveryCodes.replaceWarning') }}</p>
+        <div v-if="losesLegacyRecoveryCodes(reauthenticationIntent.action)" data-testid="legacy-recovery-removal-warning">
+          <p>{{ t('mfa.accountRecoveryCodes.lastOtpRemovalWarning') }}</p>
+          <button type="button" class="btn-secondary" data-testid="legacy-recovery-regenerate-first" :disabled="totpSetupLoading" @click="regenerateBeforeRemoval">{{ t('mfa.accountRecoveryCodes.regenerateBeforeRemoval') }}</button>
+        </div>
+        <p v-if="totpSetupError" class="error-message" role="alert">{{ totpSetupError }}</p>
+        <div class="modal-actions">
+          <button ref="reauthenticationCancelButton" type="button" class="btn-cancel" data-testid="mfa-reauthentication-cancel" @click="cancelReauthentication" :disabled="totpSetupLoading">{{ t('common.cancel') }}</button>
+          <button type="button" class="btn-primary" data-testid="mfa-reauthentication-continue" @click="continueReauthentication" :disabled="totpSetupLoading">
+            {{ totpSetupLoading ? t('mfa.redirectingToSignIn') : t('mfa.continueReauthentication') }}
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Email MFA Verification Modal -->
     <div v-if="showEmailMfaModal" class="modal-overlay" @click.self="closeEmailMfaSetup">
@@ -180,9 +215,10 @@
         <p class="setup-instruction">
           {{ t('mfa.emailSetupDescription', { email: maskedEmail }) }}
         </p>
+        <p class="field-hint">{{ t('mfa.emailReauthenticationHint') }}</p>
 
         <p v-if="emailCodeSent" class="success-message" role="status">
-          {{ t('mfa.emailCodeSent') }}
+          {{ t('mfa.emailCodePending') }}
         </p>
         <p v-if="emailMfaModalError" class="error-message" role="alert">
           {{ emailMfaModalError }}
@@ -195,6 +231,9 @@
               id="email-mfa-code"
               ref="emailCodeInput"
               v-model.trim="emailMfaCode"
+              @input="syncEmailMfaCode"
+              @change="syncEmailMfaCode"
+              @focus="syncEmailMfaCode"
               type="text"
               inputmode="numeric"
               autocomplete="one-time-code"
@@ -203,8 +242,9 @@
               placeholder="000000"
               class="code-input"
               :disabled="emailMfaLoading"
+              aria-describedby="email-mfa-code-guidance"
             />
-            <p class="field-hint">{{ t('mfa.emailCodeHelp') }}</p>
+            <p id="email-mfa-code-guidance" class="field-hint" data-testid="email-mfa-code-guidance" role="status">{{ emailCodeGuidance }}</p>
           </div>
 
           <div class="modal-actions">
@@ -224,7 +264,8 @@
             <button
               type="submit"
               class="btn-primary"
-              :disabled="emailMfaLoading || !/^\d{6}$/.test(emailMfaCode)"
+              data-testid="email-mfa-verify"
+              :disabled="emailMfaLoading || !emailCodeSent || !/^\d{6}$/.test(emailMfaCode)"
             >
               {{ emailMfaLoading ? '...' : t('mfa.verifyAndEnable') }}
             </button>
@@ -234,82 +275,18 @@
     </div>
 
     <!-- Passkey Delete Confirmation Modal -->
-    <div v-if="passkeyToDelete" class="modal-overlay" @click.self="passkeyToDelete = null">
+    <div v-if="passkeyToDelete" class="modal-overlay" @click.self="!passkeyLoading && (passkeyToDelete = null)">
       <div class="modal-content">
         <h2>{{ t('mfa.passkey.deleteConfirmTitle') }}</h2>
         <p>{{ t('mfa.passkey.deleteConfirmMessage') }}</p>
         <p class="delete-target"><strong>{{ passkeyToDelete.deviceName }}</strong></p>
+        <p v-if="passkeyError" class="error-message" role="alert">{{ passkeyError }}</p>
         
         <div class="modal-actions">
-          <button class="btn-cancel" @click="passkeyToDelete = null">{{ t('common.cancel') }}</button>
-          <button class="btn-danger" @click="deletePasskey" :disabled="passkeyLoading">
+          <button class="btn-cancel" @click="passkeyToDelete = null" :disabled="passkeyLoading">{{ t('common.cancel') }}</button>
+          <button class="btn-danger" @click="deletePasskey" :disabled="passkeyLoading || cannotRemoveFactor('passkey', passkeyToDelete.id)">
             {{ passkeyLoading ? '...' : t('mfa.passkey.delete') }}
           </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Setup Modal -->
-    <div v-if="showSetupModal" class="modal-overlay" @click.self="cancelSetup">
-      <div class="modal-content setup-modal">
-        <h2>{{ t('mfa.setupTitle') }}</h2>
-        
-        <div v-if="!setupComplete" class="setup-steps">
-          <p class="setup-instruction">{{ t('mfa.scanQrCode') }}</p>
-          
-          <div class="qr-container">
-            <img v-if="setupInfo.qrCodeDataUri" :src="setupInfo.qrCodeDataUri" alt="QR Code" class="qr-code" />
-            <div v-else class="qr-placeholder">
-              <div class="spinner"></div>
-            </div>
-          </div>
-          
-          <div class="manual-key">
-            <p>{{ t('mfa.cantScan') }}</p>
-            <code class="shared-key">{{ setupInfo.sharedKey }}</code>
-          </div>
-          
-          <div class="verify-section">
-            <label>{{ t('mfa.enterCode') }}</label>
-            <input 
-              v-model="verifyCode"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              maxlength="6"
-              placeholder="000000"
-              class="code-input"
-              @keyup.enter="verifySetup"
-            />
-            <p v-if="setupError" class="error-message">{{ setupError }}</p>
-          </div>
-          
-          <div class="modal-actions">
-            <button class="btn-cancel" @click="cancelSetup">{{ t('common.cancel') }}</button>
-            <button class="btn-primary" @click="verifySetup" :disabled="verifyCode.length !== 6">
-              {{ t('mfa.verify') }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Recovery Codes Display -->
-        <div v-else class="recovery-codes-display">
-          <div class="success-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <circle cx="12" cy="12" r="10"></circle>
-              <polyline points="9 12 11 14 15 10"></polyline>
-            </svg>
-          </div>
-          <h3>{{ t('mfa.setupComplete') }}</h3>
-          <p class="warning-text">{{ t('mfa.saveRecoveryCodes') }}</p>
-          
-          <div class="recovery-codes-grid">
-            <code v-for="code in recoveryCodes" :key="code" class="recovery-code">{{ code }}</code>
-          </div>
-          
-          <div class="modal-actions">
-            <button class="btn-primary" @click="finishSetup">{{ t('mfa.done') }}</button>
-          </div>
         </div>
       </div>
     </div>
@@ -318,7 +295,8 @@
     <div v-if="showDisableModal" class="modal-overlay" @click.self="cancelDisable">
       <div class="modal-content">
         <h2>{{ t('mfa.disableTitle') }}</h2>
-        <p>{{ t('mfa.disableWarning') }}</p>
+        <p>{{ t(mfaStatus.emailMfaEnabled ? 'mfa.disableWarningWithEmail' : 'mfa.disableWarning') }}</p>
+        <p class="field-hint">{{ t(mfaStatus.hasPassword ? 'mfa.disablePasswordConfirmation' : 'mfa.disableTotpConfirmation') }}</p>
         
         <!-- Password verification for users with local password -->
         <div v-if="mfaStatus.hasPassword" class="password-section">
@@ -326,7 +304,10 @@
           <input 
             v-model="disablePassword"
             type="password"
+            autocomplete="current-password"
+            :placeholder="t('mfa.passwordPlaceholder')"
             class="password-input"
+            :disabled="disableLoading"
             @keyup.enter="disableMfa"
           />
         </div>
@@ -337,6 +318,7 @@
           <input 
             v-model="disableTotpCode"
             type="text"
+            :disabled="disableLoading"
             inputmode="numeric"
             pattern="[0-9]*"
             maxlength="6"
@@ -349,98 +331,23 @@
         <p v-if="disableError" class="error-message">{{ disableError }}</p>
         
         <div class="modal-actions">
-          <button class="btn-cancel" @click="cancelDisable">{{ t('common.cancel') }}</button>
-          <button class="btn-danger" @click="disableMfa">{{ t('mfa.disable') }}</button>
+          <button class="btn-cancel" @click="cancelDisable" :disabled="disableLoading">{{ t('common.cancel') }}</button>
+          <button class="btn-danger" @click="disableMfa" :disabled="disableLoading || totpSetupLoading || cannotRemoveFactor('totp')">{{ t('mfa.disable') }}</button>
         </div>
       </div>
     </div>
 
-    <!-- Regenerate Codes Modal -->
-    <div v-if="showRegenerateModal" class="modal-overlay" @click.self="cancelRegenerate">
-      <div class="modal-content" :aria-busy="regenerateLoading">
-        <h2>{{ t('mfa.regenerateTitle') }}</h2>
-        
-        <div v-if="!regeneratedCodes.length">
-          <p>{{ t('mfa.regenerateWarning') }}</p>
-
-          <div v-if="mfaStatus.hasPassword" class="password-section">
-            <label for="regenerate-password">{{ t('mfa.enterPasswordToRegenerate') }}</label>
-            <input
-              id="regenerate-password"
-              v-model="regeneratePassword"
-              data-testid="regenerate-password"
-              type="password"
-              autocomplete="current-password"
-              class="password-input"
-              :disabled="regenerateLoading"
-              :aria-describedby="regenerateError ? 'regenerate-error' : undefined"
-              @keyup.enter="regenerateCodes"
-            />
-          </div>
-
-          <div v-else class="password-section">
-            <label for="regenerate-totp">{{ t('mfa.enterTotpToRegenerate') }}</label>
-            <input
-              id="regenerate-totp"
-              v-model="regenerateTotpCode"
-              data-testid="regenerate-totp"
-              type="text"
-              inputmode="numeric"
-              pattern="[0-9]*"
-              maxlength="6"
-              autocomplete="one-time-code"
-              placeholder="000000"
-              class="code-input"
-              :disabled="regenerateLoading"
-              :aria-describedby="regenerateError ? 'regenerate-error' : undefined"
-              @keyup.enter="regenerateCodes"
-            />
-          </div>
-
-          <p
-            v-if="regenerateError"
-            id="regenerate-error"
-            class="error-message"
-            role="alert"
-          >
-            {{ regenerateError }}
-          </p>
-
-          <div class="modal-actions">
-            <button class="btn-cancel" :disabled="regenerateLoading" @click="cancelRegenerate">
-              {{ t('common.cancel') }}
-            </button>
-            <button
-              class="btn-primary"
-              data-testid="regenerate-submit"
-              :disabled="!canRegenerateCodes"
-              @click="regenerateCodes"
-            >
-              {{ regenerateLoading ? t('mfa.regenerating') : t('mfa.regenerate') }}
-            </button>
-          </div>
-        </div>
-        
-        <div v-else class="recovery-codes-display">
-          <p class="warning-text">{{ t('mfa.saveRecoveryCodes') }}</p>
-          <div class="recovery-codes-grid">
-            <code v-for="code in regeneratedCodes" :key="code" class="recovery-code">{{ code }}</code>
-          </div>
-          <div class="modal-actions">
-            <button class="btn-primary" @click="finishRegenerate">{{ t('mfa.done') }}</button>
-          </div>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, computed, nextTick } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useWebAuthn } from '../../composables/useWebAuthn';
 import { useEmailCodeCooldown } from '../../composables/useEmailCodeCooldown';
 import RecoveryEmailSettings from './RecoveryEmailSettings.vue';
+import AccountRecoveryCodes from './AccountRecoveryCodes.vue';
+import { saveMfaContinuation, takeMfaContinuation, clearMfaContinuation } from '../../composables/mfaContinuation';
 
 const { t } = useI18n();
 
@@ -455,6 +362,9 @@ const emit = defineEmits<{
 
 // State
 const loading = ref(true);
+const accountRecoveryCodes = ref<InstanceType<typeof AccountRecoveryCodes> | null>(null);
+const recoveryCodeStatus = ref({ remainingCodes: 0, legacyRemainingCodes: 0 });
+const pendingEnrollmentRefresh = ref(false);
 const mfaStatus = ref({
   twoFactorEnabled: false,
   hasAuthenticator: false,
@@ -463,7 +373,8 @@ const mfaStatus = ref({
   emailMfaEnabled: false,
   enableTotpMfa: true,
   enableEmailMfa: true,
-  enablePasskey: true
+  enablePasskey: true,
+  enforceMandatoryMfaEnrollment: false
 });
 
 const allMfaDisabled = computed(() => {
@@ -474,6 +385,8 @@ const allMfaDisabled = computed(() => {
 
 // Email MFA (Phase 20.3)
 const userEmail = ref('');
+const userId = ref('');
+let resumingSecurityAction = false;
 const userTimeZone = ref('');
 const emailMfaLoading = ref(false);
 const emailMfaError = ref('');
@@ -491,14 +404,26 @@ const {
 const emailSendButtonText = computed(() => {
   if (emailMfaLoading.value) return t('mfa.sendingCode');
   if (emailCooldownSeconds.value > 0) {
-    return t('mfa.resendCodeIn', { seconds: emailCooldownSeconds.value });
+    return t(emailCodeSent.value ? 'mfa.resendCodeIn' : 'mfa.sendCodeIn', { seconds: emailCooldownSeconds.value });
   }
   return emailCodeSent.value ? t('mfa.resendCode') : t('mfa.sendCode');
 });
+const emailCodeGuidance = computed(() => emailCodeSent.value
+  ? t('mfa.emailCodeHelp')
+  : emailCooldownSeconds.value > 0 ? t('mfa.emailCodeUnavailable') : t('mfa.emailCodeNeeded'));
+
+function syncEmailMfaCode() {
+  if (emailMfaLoading.value || !emailCodeInput.value) return;
+  emailMfaCode.value = emailCodeInput.value.value.replace(/\D/g, '').slice(0, 6);
+  emailCodeInput.value.value = emailMfaCode.value;
+}
 
 // Passkeys (Phase 20.4)
 const { registerPasskey } = useWebAuthn();
 const passkeys = ref<any[]>([]);
+const passkeyListSessionExpired = ref(false);
+const passkeyListFailed = ref(false);
+const passkeyListLoading = ref(true);
 const passkeyLoading = ref(false);
 const passkeyError = ref('');
 const passkeySuccess = ref('');
@@ -515,6 +440,26 @@ const passkeyBlockedByPolicy = computed(() => {
   return requireMfaForPasskey.value && !hasMfaEnabled.value;
 });
 
+function cannotRemoveFactor(factor: string, targetId: number | null = null) {
+  if (!mfaStatus.value.enforceMandatoryMfaEnrollment) return false;
+  const hasTotp = factor !== 'totp' && mfaStatus.value.enableTotpMfa && mfaStatus.value.twoFactorEnabled;
+  const hasEmail = factor !== 'email' && mfaStatus.value.enableEmailMfa && mfaStatus.value.emailMfaEnabled;
+  const hasPasskey = mfaStatus.value.enablePasskey && passkeys.value.some(key => factor !== 'passkey' || key.id !== targetId) &&
+    (!requireMfaForPasskey.value || hasTotp || hasEmail);
+  return !hasTotp && !hasEmail && !hasPasskey;
+}
+
+function losesLegacyRecoveryCodes(action: string | null) {
+  return recoveryCodeStatus.value.remainingCodes === 0 && recoveryCodeStatus.value.legacyRemainingCodes > 0 &&
+    ((action === 'totp-disable' && !mfaStatus.value.emailMfaEnabled) ||
+     (action === 'email-disable' && !mfaStatus.value.twoFactorEnabled));
+}
+
+async function regenerateBeforeRemoval() {
+  cancelReauthentication();
+  await startSetup(false, 'account-recovery-codes');
+}
+
 const maskedEmail = computed(() => {
   if (!userEmail.value) return '';
   const [local, domain] = userEmail.value.split('@');
@@ -525,15 +470,12 @@ const maskedEmail = computed(() => {
   return `${maskedLocal}@${domain}`;
 });
 
-// Setup Modal
-const showSetupModal = ref(false);
-const setupInfo = ref({ sharedKey: '', authenticatorUri: '', qrCodeDataUri: '' });
-const verifyCode = ref('');
-const setupError = ref('');
-const setupComplete = ref(false);
-const recoveryCodes = ref<string[]>([]);
 const totpSetupLoading = ref(false);
 const totpSetupError = ref('');
+const reauthenticationIntent = ref<{ forRemoval: boolean; action: string | null; targetId: number | null } | null>(null);
+const reauthenticationCancelButton = ref<HTMLButtonElement | null>(null);
+let reauthenticationReturnFocus: HTMLElement | null = null;
+const reauthenticationPurpose = computed(() => t(`mfa.reauthenticationActions.${reauthenticationIntent.value?.action ?? 'passkey-list'}`));
 
 // Disable Modal
 const showDisableModal = ref(false);
@@ -541,29 +483,27 @@ const disablePassword = ref('');
 const disableTotpCode = ref('');
 const disableError = ref('');
 
-// Regenerate Modal
-const showRegenerateModal = ref(false);
-const regeneratedCodes = ref<string[]>([]);
-const regeneratePassword = ref('');
-const regenerateTotpCode = ref('');
-const regenerateError = ref('');
-const regenerateLoading = ref(false);
-
-const canRegenerateCodes = computed(() => {
-  if (regenerateLoading.value) {
-    return false;
-  }
-
-  return mfaStatus.value.hasPassword
-    ? regeneratePassword.value.length > 0
-    : /^\d{6}$/.test(regenerateTotpCode.value);
-});
-
 onMounted(async () => {
+  window.addEventListener('pageshow', syncEmailMfaCode);
   await loadMfaStatus();
   await loadSecurityPolicy();
   await loadPasskeys();
+  const continuation = takeMfaContinuation(userId.value);
+  if (!continuation) return;
+  resumingSecurityAction = true;
+  try {
+    switch (continuation.action) {
+      case 'email-enable': if (mfaStatus.value.enableEmailMfa && !mfaStatus.value.emailMfaEnabled) openEmailMfaSetup(); break;
+      case 'email-disable': if (mfaStatus.value.emailMfaEnabled && !cannotRemoveFactor('email')) await disableEmailMfa(); break;
+      case 'passkey-register': if (mfaStatus.value.enablePasskey && !passkeyBlockedByPolicy.value) await registerNewPasskey(); break;
+      case 'totp-disable': if (mfaStatus.value.twoFactorEnabled && !cannotRemoveFactor('totp')) showDisableModal.value = true; break;
+      case 'passkey-delete': if (!cannotRemoveFactor('passkey', continuation.targetId)) passkeyToDelete.value = passkeys.value.find(key => key.id === continuation.targetId) || null; break;
+      case 'recovery-codes': accountRecoveryCodes.value?.resumeGeneration(); break;
+      case 'account-recovery-codes': accountRecoveryCodes.value?.resumeGeneration(); break;
+    }
+  } finally { resumingSecurityAction = false; }
 });
+onUnmounted(() => window.removeEventListener('pageshow', syncEmailMfaCode));
 
 async function loadSecurityPolicy() {
   try {
@@ -578,40 +518,56 @@ async function loadSecurityPolicy() {
 }
 
 async function loadPasskeys() {
+  passkeyListLoading.value = true;
+  passkeyListSessionExpired.value = false;
+  passkeyListFailed.value = false;
   try {
     const response = await fetch('/api/passkey/list', { credentials: 'include' });
     if (response.ok) {
       passkeys.value = await response.json();
+      passkeyError.value = '';
+    } else {
+      passkeys.value = [];
+      passkeyListSessionExpired.value = response.status === 401;
+      passkeyListFailed.value = !passkeyListSessionExpired.value;
     }
   } catch (err) {
+    passkeys.value = [];
+    passkeyListFailed.value = true;
     console.error('Failed to load passkeys:', err);
+  } finally {
+    passkeyListLoading.value = false;
   }
 }
 
 async function registerNewPasskey() {
+  if (passkeyLoading.value || totpSetupLoading.value) return;
   passkeyLoading.value = true;
   passkeyError.value = '';
   passkeySuccess.value = '';
   
   try {
-    await registerPasskey();
+    const result = await registerPasskey();
+    if (result?.accountRecoveryCodes) accountRecoveryCodes.value?.displayIssuedCodes(result.accountRecoveryCodes);
     passkeySuccess.value = t('mfa.passkey.registerSuccess');
     await loadPasskeys();
+    await accountRecoveryCodes.value?.loadStatus();
     setTimeout(() => { passkeySuccess.value = ''; }, 3000);
   } catch (err: any) {
     passkeyError.value = t(err.message) || t('mfa.errors.registerPasskeyFailed');
-    if (err.message === 'mfa.errors.freshAuthenticationRequired') await startSetup();
+    if (err.message === 'mfa.errors.freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(false, 'passkey-register');
   } finally {
     passkeyLoading.value = false;
   }
 }
 
 function confirmDeletePasskey(pk: any) {
+  if (cannotRemoveFactor('passkey', pk.id)) return;
   passkeyToDelete.value = pk;
 }
 
 async function deletePasskey() {
-  if (!passkeyToDelete.value) return;
+  if (!passkeyToDelete.value || passkeyLoading.value || cannotRemoveFactor('passkey', passkeyToDelete.value.id)) return;
   
   passkeyLoading.value = true;
   passkeyError.value = '';
@@ -623,12 +579,14 @@ async function deletePasskey() {
     });
     
     if (response.ok) {
+      passkeys.value = passkeys.value.filter(key => key.id !== passkeyToDelete.value.id);
       passkeyToDelete.value = null;
       await loadPasskeys();
+      await accountRecoveryCodes.value?.loadStatus();
     } else {
       const result = await response.json();
       passkeyError.value = result.error ? t(`mfa.errors.${result.error}`) : t('mfa.errors.deletePasskeyFailed');
-      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
+      if (result.error === 'freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(true, 'passkey-delete', passkeyToDelete.value?.id);
     }
   } catch (err) {
     passkeyError.value = t('mfa.errors.deletePasskeyFailed');
@@ -662,12 +620,14 @@ async function loadMfaStatus() {
     }
     // Also fetch user email for Email MFA display
     if (props.profile) {
+      userId.value = props.profile.userId || '';
       userEmail.value = props.profile.email || '';
       userTimeZone.value = props.profile.timeZone || '';
     } else {
       const profileResponse = await fetch('/api/profile', { credentials: 'include' });
       if (profileResponse.ok) {
         const profile = await profileResponse.json();
+        userId.value = profile.userId || '';
         userEmail.value = profile.email || '';
         userTimeZone.value = profile.timeZone || '';
       }
@@ -683,6 +643,11 @@ function openEmailMfaSetup() {
   showEmailMfaModal.value = true;
   emailMfaCode.value = '';
   emailMfaModalError.value = '';
+}
+
+async function requestEmailMfaSetup() {
+  if (emailMfaLoading.value || totpSetupLoading.value) return;
+  await startSetup(false, 'email-enable');
 }
 
 function closeEmailMfaSetup() {
@@ -705,16 +670,15 @@ async function sendEmailMfaCode() {
       credentials: 'include'
     });
     const result = await response.json().catch(() => ({}));
-    
+    emailCodeSent.value = result.hasPendingCode === true;
+
     if (response.ok) {
-      emailCodeSent.value = true;
       startEmailCooldown(result.remainingSeconds || 60);
       await nextTick();
       emailCodeInput.value?.focus();
     } else if (result.error === 'freshAuthenticationRequired') {
-      await startSetup();
+      if (!resumingSecurityAction) await startSetup(false, 'email-enable');
     } else if (result.remainingSeconds) {
-      emailCodeSent.value = true;
       startEmailCooldown(result.remainingSeconds);
     } else {
       emailMfaModalError.value = t('mfa.errors.sendCodeFailed');
@@ -727,7 +691,8 @@ async function sendEmailMfaCode() {
 }
 
 async function verifyEmailMfa() {
-  if (!/^\d{6}$/.test(emailMfaCode.value)) return;
+  syncEmailMfaCode();
+  if (emailMfaLoading.value || !emailCodeSent.value || !/^\d{6}$/.test(emailMfaCode.value)) return;
 
   emailMfaLoading.value = true;
   emailMfaModalError.value = '';
@@ -744,6 +709,7 @@ async function verifyEmailMfa() {
       body: JSON.stringify({ code: emailMfaCode.value })
     });
     const result = await response.json().catch(() => ({}));
+    if (typeof result.hasPendingCode === 'boolean') emailCodeSent.value = result.hasPendingCode;
 
     if (response.ok && result.success) {
       showEmailMfaModal.value = false;
@@ -751,11 +717,17 @@ async function verifyEmailMfa() {
       emailCodeSent.value = false;
       stopEmailCooldown();
       await loadMfaStatus();
+      const hasIssuedCodes = result.accountRecoveryCodes?.length > 0;
+      if (hasIssuedCodes) {
+        pendingEnrollmentRefresh.value = true;
+        accountRecoveryCodes.value?.displayIssuedCodes(result.accountRecoveryCodes);
+      }
+      await accountRecoveryCodes.value?.loadStatus();
       emailMfaSuccess.value = t('mfa.emailMfaEnabled');
-      emit('status-changed');
+      if (!hasIssuedCodes) emit('status-changed');
       setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
     } else if (result.error === 'freshAuthenticationRequired') {
-      await startSetup();
+      if (!resumingSecurityAction) await startSetup(false, 'email-enable');
     } else {
       emailMfaModalError.value = result.message || t('mfa.errors.invalidOrExpiredCode');
     }
@@ -766,7 +738,14 @@ async function verifyEmailMfa() {
   }
 }
 
+function finishEnrollmentDisclosure() {
+  if (!pendingEnrollmentRefresh.value) return;
+  pendingEnrollmentRefresh.value = false;
+  emit('status-changed');
+}
+
 async function disableEmailMfa() {
+  if (emailMfaLoading.value || totpSetupLoading.value || cannotRemoveFactor('email')) return;
   emailMfaLoading.value = true;
   emailMfaError.value = '';
   emailMfaSuccess.value = '';
@@ -779,13 +758,17 @@ async function disableEmailMfa() {
     
     if (response.ok) {
       await loadMfaStatus();
+      await loadPasskeys();
+      await accountRecoveryCodes.value?.loadStatus();
       emailMfaSuccess.value = t('mfa.emailMfaDisabled');
       emit('status-changed');
       setTimeout(() => { emailMfaSuccess.value = ''; }, 3000);
     } else {
       const result = await response.json();
-      emailMfaError.value = result.message || t('mfa.errors.toggleFailed');
-      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
+      emailMfaError.value = result.error === 'mandatoryMfaEnforced' ? t('mfa.addAnotherMethodBeforeRemoval')
+        : result.error === 'alternateSignInRequired' ? t('mfa.errors.alternateSignInRequired')
+        : result.message || t('mfa.errors.toggleFailed');
+      if (result.error === 'freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(true, 'email-disable');
     }
   } catch (err) {
     emailMfaError.value = t('mfa.errors.toggleFailed');
@@ -794,12 +777,50 @@ async function disableEmailMfa() {
   }
 }
 
-async function startSetup(forRemoval = false) {
+async function startSetup(forRemoval = false, action: string | null = 'totp-add', targetId: number | null = null) {
+  if (totpSetupLoading.value || reauthenticationIntent.value) return;
+  if ((action === 'totp-disable' && cannotRemoveFactor('totp')) || (action === 'email-disable' && cannotRemoveFactor('email')) ||
+      (action === 'passkey-delete' && cannotRemoveFactor('passkey', targetId))) return;
+  reauthenticationReturnFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  showEmailMfaModal.value = false;
+  showDisableModal.value = false;
+  passkeyToDelete.value = null;
+  emailMfaCode.value = '';
+  disablePassword.value = '';
+  disableTotpCode.value = '';
+  totpSetupError.value = '';
+  reauthenticationIntent.value = { forRemoval: forRemoval === true, action, targetId };
+  await nextTick();
+  reauthenticationCancelButton.value?.focus();
+}
+
+function cancelReauthentication() {
+  if (totpSetupLoading.value) return;
+  reauthenticationIntent.value = null;
+  totpSetupError.value = '';
+  reauthenticationReturnFocus?.focus();
+}
+
+async function continueReauthentication() {
+  await beginReauthentication(reauthenticationIntent.value);
+}
+
+async function beginReauthentication(intent: { forRemoval: boolean; action: string | null; targetId: number | null } | null) {
+  if (totpSetupLoading.value || !intent) return;
+  const { forRemoval, action, targetId } = intent;
   totpSetupLoading.value = true;
   totpSetupError.value = '';
+  let redirecting = false;
+  if (action) saveMfaContinuation(userId.value, action, targetId);
+  else clearMfaContinuation();
 
   try {
-    const response = await fetch(forRemoval === true ? '/api/account/mfa/reauthenticate?forRemoval=true' : '/api/account/mfa/reauthenticate', {
+    const parameters = new URLSearchParams();
+    if (forRemoval === true) parameters.set('forRemoval', 'true');
+    else if (action !== 'totp-add') parameters.set('returnToProfile', 'true');
+    if (action) parameters.set('action', action);
+    const url = `/api/account/mfa/reauthenticate?${parameters}`;
+    const response = await fetch(url, {
       method: 'POST',
       credentials: 'include'
     });
@@ -812,53 +833,21 @@ async function startSetup(forRemoval = false) {
       throw new Error('Reauthentication URL was not returned');
     }
 
+    redirecting = true;
     window.location.assign(result.loginUrl);
   } catch (err) {
+    clearMfaContinuation();
     totpSetupError.value = t('mfa.errors.setupFailed');
   } finally {
-    totpSetupLoading.value = false;
+    if (!redirecting) totpSetupLoading.value = false;
   }
 }
 
-async function verifySetup() {
-  setupError.value = '';
-  
-  try {
-    const response = await fetch('/api/account/mfa/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ code: verifyCode.value })
-    });
-    
-    const result = await response.json();
-    if (result.success) {
-      recoveryCodes.value = result.recoveryCodes || [];
-      setupComplete.value = true;
-    } else {
-      // Translate error key from API (e.g., 'invalidCode' -> mfa.errors.invalidCode)
-      const errorKey = result.error ? `mfa.errors.${result.error}` : 'mfa.errors.invalidCode';
-      setupError.value = t(errorKey);
-    }
-  } catch (err) {
-    setupError.value = t('mfa.errors.verifyFailed');
-  }
-}
-
-function cancelSetup() {
-  showSetupModal.value = false;
-  setupInfo.value = { sharedKey: '', authenticatorUri: '', qrCodeDataUri: '' };
-  verifyCode.value = '';
-  setupError.value = '';
-}
-
-function finishSetup() {
-  showSetupModal.value = false;
-  loadMfaStatus();
-  emit('status-changed');
-}
+const disableLoading = ref(false);
 
 async function disableMfa() {
+  if (disableLoading.value || totpSetupLoading.value || cannotRemoveFactor('totp')) return;
+  disableLoading.value = true;
   disableError.value = '';
   
   try {
@@ -879,117 +868,37 @@ async function disableMfa() {
       disablePassword.value = '';
       disableTotpCode.value = '';
       await loadMfaStatus();
+      await loadPasskeys();
+      await accountRecoveryCodes.value?.loadStatus();
       emit('status-changed');
     } else {
       const result = await response.json();
       // Translate error key from API (e.g., 'invalidPassword' -> mfa.errors.invalidPassword)
       const errorKey = result.error ? `mfa.errors.${result.error}` : 'mfa.errors.disableFailed';
       disableError.value = t(errorKey);
-      if (result.error === 'freshAuthenticationRequired') await startSetup(true);
+      if (result.error === 'freshAuthenticationRequired' && !resumingSecurityAction) await startSetup(true, 'totp-disable');
     }
   } catch (err) {
     disableError.value = t('mfa.errors.disableFailed');
-  }
+  } finally { disableLoading.value = false; }
 }
 
 function cancelDisable() {
+  if (disableLoading.value) return;
   showDisableModal.value = false;
   disablePassword.value = '';
   disableTotpCode.value = '';
   disableError.value = '';
 }
 
-function clearRegenerateProof() {
-  regeneratePassword.value = '';
-  regenerateTotpCode.value = '';
-}
-
-function openRegenerateModal() {
-  regeneratedCodes.value = [];
-  clearRegenerateProof();
-  regenerateError.value = '';
-  showRegenerateModal.value = true;
-}
-
-function cancelRegenerate() {
-  if (regenerateLoading.value) {
-    return;
-  }
-
-  showRegenerateModal.value = false;
-  regeneratedCodes.value = [];
-  clearRegenerateProof();
-  regenerateError.value = '';
-}
-
-async function regenerateCodes() {
-  if (regenerateLoading.value) {
-    return;
-  }
-
-  regenerateError.value = '';
-
-  if (!canRegenerateCodes.value) {
-    regenerateError.value = mfaStatus.value.hasPassword
-      ? t('mfa.errors.passwordRequired')
-      : t('mfa.errors.totpRequired');
-    return;
-  }
-
-  regenerateLoading.value = true;
-
-  try {
-    const payload = mfaStatus.value.hasPassword
-      ? { password: regeneratePassword.value }
-      : { totpCode: regenerateTotpCode.value };
-
-    const response = await fetch('/api/account/mfa/recovery-codes', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify(payload)
-    });
-    
-    if (response.ok) {
-      const result = await response.json();
-      regeneratedCodes.value = result.recoveryCodes || [];
-      clearRegenerateProof();
-      regenerateError.value = '';
-    } else {
-      let errorKey = '';
-      try {
-        const result = await response.json();
-        errorKey = result?.error || '';
-      } catch {
-        // Use the localized fallback below when the response has no JSON error body.
-      }
-
-      if (errorKey === 'freshAuthenticationRequired') {
-        await startSetup(true);
-        return;
-      }
-      const knownErrors = ['passwordRequired', 'invalidPassword', 'totpRequired', 'invalidCode'];
-      regenerateError.value = knownErrors.includes(errorKey)
-        ? t(`mfa.errors.${errorKey}`)
-        : t('mfa.errors.regenerateFailed');
-    }
-  } catch {
-    regenerateError.value = t('mfa.errors.regenerateFailed');
-  } finally {
-    regenerateLoading.value = false;
-  }
-}
-
-function finishRegenerate() {
-  showRegenerateModal.value = false;
-  regeneratedCodes.value = [];
-  clearRegenerateProof();
-  regenerateError.value = '';
-  loadMfaStatus();
-}
 </script>
 
 <style scoped>
+.mfa-summary {
+  margin: 0 0 1rem;
+  font-weight: 600;
+}
+
 .mfa-settings {
   padding: 20px 24px;
 }
@@ -1140,7 +1049,9 @@ function finishRegenerate() {
 }
 
 .btn-secondary:disabled,
-.btn-secondary:disabled:hover {
+.btn-secondary:disabled:hover,
+.btn-danger:disabled,
+.btn-danger:disabled:hover {
   background: #f8f9fa;
   color: #9aa0a6;
   border-color: #e4e7eb;
@@ -1424,6 +1335,28 @@ function finishRegenerate() {
   margin-top: 20px;
 }
 
+.passkey-list-session-expired {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+}
+
+.passkey-list-session-expired p {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.875rem;
+}
+
+.passkey-list-session-expired .btn-secondary {
+  flex-shrink: 0;
+}
+
 .passkey-list h4 {
   font-size: 13px;
   font-weight: 500;
@@ -1492,6 +1425,14 @@ function finishRegenerate() {
 .btn-pk-delete:hover {
   background: #fce8e6;
   color: #c5221f;
+}
+
+.btn-pk-delete:disabled,
+.btn-pk-delete:disabled:hover {
+  background: #f8f9fa;
+  color: #9aa0a6;
+  cursor: not-allowed;
+  opacity: 0.75;
 }
 
 .btn-pk-delete svg {

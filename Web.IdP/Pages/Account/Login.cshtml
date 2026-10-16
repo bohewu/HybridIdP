@@ -51,6 +51,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>@ViewData["Title"] - @productName</title>
+    <script async src="~/js/account-form-guard.js" asp-append-version="true"></script>
     
     @* Tailwind CSS *@
     @if (ViteService.IsDevelopment)
@@ -95,7 +96,7 @@
                     <div class="mb-6 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800"
                          role="status"
                          data-test-id="mfa-reauthentication-notice">
-                        @Localizer["MfaEnrollmentReauthenticationNotice"]
+                        @Localizer[Model.MfaReauthenticationNoticeKey]
                     </div>
                 }
 
@@ -147,7 +148,7 @@
                     </div>
                 }
 
-                <form method="post">
+                <form method="post" data-account-form>
                     <div asp-validation-summary="ModelOnly" class="bg-red-50 text-red-700 p-3 rounded text-sm border border-red-200 mb-6" role="alert" data-test-id="login-error-summary"></div>
                     
                     @if (!string.IsNullOrWhiteSpace(notices.FormMessage))

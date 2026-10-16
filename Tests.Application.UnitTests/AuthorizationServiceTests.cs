@@ -31,6 +31,86 @@ namespace Tests.Application.UnitTests
 {
     public class AuthorizationServiceTests
     {
+        [Fact]
+        public async Task RequiredMfa_ShouldChallengeRemainingAccountCodeInsteadOfInitialEnrollment()
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true };
+            SetupMockUsers(user);
+            var application = new object();
+            _mockApplicationManager.Setup(value => value.FindByClientIdAsync("client", It.IsAny<CancellationToken>())).ReturnsAsync(application);
+            _mockApplicationManager.Setup(value => value.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableDictionary<string, JsonElement>.Empty);
+            var codes = Mock.Of<IAccountRecoveryCodeService>(value => value.GetStatusAsync(user.Id, It.IsAny<CancellationToken>()) ==
+                Task.FromResult(new AccountRecoveryCodeStatusDto(true, 1)));
+            using var services = new ServiceCollection().AddSingleton(codes).BuildServiceProvider();
+            _mockHttpContextAccessor.Setup(value => value.HttpContext).Returns(new DefaultHttpContext { RequestServices = services });
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", user.Id.ToString()), new Claim("amr", "pwd")], "Test"));
+            var result = Assert.IsType<RedirectResult>(await _authorizationService.HandleAuthorizeRequestAsync(principal,
+                new OpenIddictRequest { ClientId = "client", AcrValues = "mfa" }, null));
+            Assert.StartsWith("/Account/LoginMfa?", result.Url);
+        }
+
+        [Theory]
+        [InlineData("fresh", true)]
+        [InlineData("cookie-only", false)]
+        [InlineData("expired", false)]
+        [InlineData("other-subject", false)]
+        [InlineData("retired-stamp", false)]
+        [InlineData("history-only", false)]
+        public async Task RequiredMfa_ShouldContinueOnlyFreshFirstPasswordEnrollment(string condition, bool directSetup)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, SecurityStamp = "current" };
+            SetupMockUsers(user);
+            SetupAuthorizationClient(new object(), requireMfa: true);
+            await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            var values = new Dictionary<string, byte[]>();
+            var session = new Mock<ISession>();
+            session.Setup(value => value.Set(It.IsAny<string>(), It.IsAny<byte[]>()))
+                .Callback<string, byte[]>((key, bytes) => values[key] = bytes);
+            session.Setup(value => value.Remove(It.IsAny<string>())).Callback<string>(key => values.Remove(key));
+            session.Setup(value => value.TryGetValue(It.IsAny<string>(), out It.Ref<byte[]>.IsAny))
+                .Returns((string key, out byte[] bytes) => values.TryGetValue(key, out bytes!));
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([
+                new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("amr", "pwd"),
+                new Claim(_mockUserManager.Object.Options.ClaimsIdentity.SecurityStampClaimType, user.SecurityStamp)], IdentityConstants.ApplicationScheme));
+            var auth = new Mock<IAuthenticationService>();
+            auth.Setup(value => value.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>())).ReturnsAsync(AuthenticateResult.NoResult());
+            auth.Setup(value => value.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
+                .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, IdentityConstants.ApplicationScheme)));
+            var codes = new Mock<IAccountRecoveryCodeService>();
+            codes.Setup(value => value.GetStatusAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new AccountRecoveryCodeStatusDto(false, 0));
+            using var services = new ServiceCollection().AddSingleton<IApplicationDbContext>(db).AddSingleton(auth.Object)
+                .AddSingleton(_mockUserManager.Object).AddSingleton(codes.Object).AddSingleton(_mockPasskeyService.Object).BuildServiceProvider();
+            var http = new DefaultHttpContext { Session = session.Object, RequestServices = services, User = principal };
+            http.Request.Path = "/connect/authorize";
+            http.Request.QueryString = new QueryString("?client_id=client&state=preserved");
+            _mockHttpContextAccessor.Setup(value => value.HttpContext).Returns(http);
+            if (condition != "cookie-only")
+            {
+                Web.IdP.Helpers.AuthenticationMethodSession.Replace(session.Object, user, "pwd");
+                Assert.True(await Web.IdP.Helpers.MfaEnrollmentSession.TryBeginInitialAfterPasswordAsync(http, user));
+                Web.IdP.Helpers.AuthenticationMethodSession.Consume(session.Object);
+                var initial = System.Text.Json.Nodes.JsonNode.Parse(session.Object.GetString("MfaEnrollment:Initial")!)!;
+                if (condition == "expired") initial["ExpiresUtc"] = DateTimeOffset.UtcNow.AddSeconds(-1);
+                if (condition == "other-subject") initial["UserId"] = Guid.NewGuid();
+                if (condition == "retired-stamp") initial["SecurityStamp"] = "retired";
+                session.Object.SetString("MfaEnrollment:Initial", initial.ToJsonString());
+            }
+            if (condition == "history-only") codes.Setup(value => value.GetStatusAsync(user.Id, It.IsAny<CancellationToken>())).ReturnsAsync(new AccountRecoveryCodeStatusDto(true, 0));
+            var result = Assert.IsType<RedirectResult>(await _authorizationService.HandleAuthorizeRequestAsync(principal,
+                new OpenIddictRequest { ClientId = "client", ResponseType = "code" }, null));
+            if (directSetup)
+            {
+                Assert.StartsWith("/Account/MfaSetup?", result.Url);
+                Assert.Contains("state%3Dpreserved", result.Url);
+                Assert.True(Web.IdP.Helpers.MfaEnrollmentSession.HasFreshProof(session.Object, user.Id));
+                auth.Verify(value => value.SignOutAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<AuthenticationProperties>()), Times.Never);
+            }
+            else Assert.StartsWith("/Account/Login?", result.Url);
+            Assert.False(await Web.IdP.Helpers.MfaEnrollmentSession.TryContinueInitialAfterPasswordAsync(http, user));
+        }
+
         [Theory]
         [InlineData("login", null)]
         [InlineData(null, 0L)]
@@ -61,7 +141,7 @@ namespace Tests.Application.UnitTests
                 .Returns(Task.CompletedTask);
             var context = new DefaultHttpContext { Session = new Mock<ISession>().Object,
                 RequestServices = new Microsoft.Extensions.DependencyInjection.ServiceCollection()
-                    .AddSingleton(authentication.Object).BuildServiceProvider() };
+                    .AddSingleton(authentication.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider() };
             _mockHttpContextAccessor.Setup(a => a.HttpContext).Returns(context);
 
             var result = await _authorizationService.HandleAuthorizeRequestAsync(principal,
@@ -84,6 +164,7 @@ namespace Tests.Application.UnitTests
         [InlineData(true, null, "pwd")]
         [InlineData(true, null, "hwk")]
         [InlineData(false, "mfa", "pwd")]
+        [InlineData(true, null, "mfa")]
         public async Task HandleAuthorizeSubmitAsync_ShouldRejectDirectConsentWithoutRequiredMfa(bool clientRequiresMfa, string? acr, string amr)
         {
             var client = new object();
@@ -91,7 +172,10 @@ namespace Tests.Application.UnitTests
             _mockApplicationManager.Setup(m => m.GetIdAsync(client, It.IsAny<CancellationToken>())).ReturnsAsync(Guid.NewGuid().ToString());
             _mockApplicationManager.Setup(m => m.GetPropertiesAsync(client, It.IsAny<CancellationToken>())).ReturnsAsync(
                 ImmutableDictionary<string, JsonElement>.Empty.Add(AuthConstants.Properties.RequireMfa, JsonSerializer.SerializeToElement(clientRequiresMfa)));
-            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("amr", amr)], IdentityConstants.ApplicationScheme));
+            var user = new ApplicationUser { Id = Guid.NewGuid(), SecurityStamp = "current" };
+            SetupMockUsers(user);
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", user.Id.ToString()),
+                new Claim("amr", amr), new Claim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, "retired")], IdentityConstants.ApplicationScheme));
             var result = await _authorizationService.HandleAuthorizeSubmitAsync(principal,
                 new OpenIddictRequest { ClientId = "test-client", AcrValues = acr }, "accept", []);
             var denied = Assert.IsType<ForbidResult>(result);
@@ -731,7 +815,7 @@ namespace Tests.Application.UnitTests
                     EnforceMandatoryMfaEnrollment = globallyRequiresMfa
                 });
 
-            var context = new DefaultHttpContext();
+            var context = new DefaultHttpContext { RequestServices = new ServiceCollection().AddSingleton<IAccountRecoveryCodeService>(Mock.Of<IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()) == Task.FromResult(new AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider() };
             context.Features.Set<ISessionFeature>(new TestSessionFeature
             {
                 Session = new Mock<ISession>().Object
@@ -1002,18 +1086,21 @@ namespace Tests.Application.UnitTests
         }
 
         [Theory]
-        [InlineData(AuthConstants.Amr.Mfa, false)]
-        [InlineData(AuthConstants.Amr.HardwareKey, true)]
+        [InlineData(AuthConstants.Amr.Mfa, false, "current")]
+        [InlineData(AuthConstants.Amr.Mfa, true, "retired")]
+        [InlineData(AuthConstants.Amr.Mfa, true, null)]
+        [InlineData(AuthConstants.Amr.HardwareKey, true, "current")]
         public async Task HandleAuthorizeRequestAsync_WhenClientRequiresMfaAndPrincipalHasEvidence_DoesNotRedirect(
-            string amrValue, bool requiresStepUp)
+            string amrValue, bool requiresStepUp, string? binding)
         {
-            var user = new ApplicationUser { Id = Guid.NewGuid(), TwoFactorEnabled = true };
+            var user = new ApplicationUser { Id = Guid.NewGuid(), TwoFactorEnabled = true, SecurityStamp = "current" };
             SetupMockUsers(user);
 
             var principal = new ClaimsPrincipal(new ClaimsIdentity(
                 [
                     new Claim(OpenIddictConstants.Claims.Subject, user.Id.ToString()),
-                    new Claim(AuthConstants.ClaimTypes.Amr, amrValue)
+                    new Claim(AuthConstants.ClaimTypes.Amr, amrValue),
+                    new Claim(Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim, binding ?? "")
                 ],
                 "Test"));
             var request = new OpenIddictRequest
@@ -1029,7 +1116,7 @@ namespace Tests.Application.UnitTests
                 .ReturnsAsync(new SecurityPolicy());
             _mockHttpContextAccessor
                 .Setup(accessor => accessor.HttpContext)
-                .Returns(new DefaultHttpContext());
+                .Returns(new DefaultHttpContext { RequestServices = new ServiceCollection().AddSingleton<IAccountRecoveryCodeService>(Mock.Of<IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()) == Task.FromResult(new AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider() });
 
             var result = await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
 

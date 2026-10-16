@@ -55,6 +55,9 @@ public partial class LoginTotpModel : PageModel
     
     [BindProperty(SupportsGet = true)]
     public bool RememberMe { get; set; }
+    public bool IsMfaEnrollmentReauthentication =>
+        MfaEnrollmentSession.HasPending(HttpContext.Session);
+    public string MfaReauthenticationNoticeKey => MfaEnrollmentSession.GetPendingNoticeKey(HttpContext.Session);
     
     /// <summary>
     /// Indicates if user also has Email MFA enabled (for showing switch link).
@@ -175,9 +178,10 @@ public partial class LoginTotpModel : PageModel
         if (!string.IsNullOrWhiteSpace(Input.RecoveryCode))
         {
             var cleanCode = Input.RecoveryCode.Replace(" ", "").Replace("-", "");
-            var usedCustomCode = await _mfaService.ValidateRecoveryCodeAsync(user, cleanCode, cancellationToken);
-            var succeeded = usedCustomCode ||
-                await _mfaService.ValidateNativeRecoveryCodeAsync(user, cleanCode, cancellationToken);
+            var accountCodes = HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>();
+            var operation = AccountSecurityOperationSession.GetRecoveryOperationBinding(HttpContext, user);
+            var succeeded = await accountCodes.RedeemAsync(user, cleanCode, operation, cancellationToken);
+            var independentCode = succeeded && accountCodes.HasRedemptionProof(user, operation);
             
             if (succeeded)
             {
@@ -190,16 +194,14 @@ public partial class LoginTotpModel : PageModel
                 var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, user);
 
                 RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, user.Id);
-                AccountSecurityOperationSession.MarkVerified(HttpContext, user, "recovery");
-                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, "recovery");
+                AccountSecurityOperationSession.MarkVerified(HttpContext, user, independentCode ? "account-recovery" : "recovery");
+                await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, user, independentCode ? "account-recovery" : "recovery");
                 await _signInManager.SignInWithClaimsAsync(user, isPersistent: RememberMe, claims);
                 AuthenticationMethodSession.Consume(HttpContext.Session);
                 await _userManagementService.UpdateLastLoginAsync(user.Id, cancellationToken);
                 _logger.LogInformation("User logged in with recovery code.");
                 
-                var remainingCodes = usedCustomCode
-                    ? await _mfaService.CountRecoveryCodesAsync(user, cancellationToken)
-                    : await _userManager.CountRecoveryCodesAsync(user);
+                var remainingCodes = (await accountCodes.GetStatusAsync(user.Id, cancellationToken)).TotalRemainingCodes;
                 if (remainingCodes <= 3)
                 {
                     _logger.LogWarning("User {UserName} has only {Count} recovery codes left.", user.UserName, remainingCodes);

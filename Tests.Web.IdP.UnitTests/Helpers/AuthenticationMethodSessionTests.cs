@@ -15,6 +15,21 @@ namespace Tests.Web.IdP.UnitTests.Helpers;
 public class AuthenticationMethodSessionTests
 {
     [Fact]
+    public void HasFreshPassword_ShouldRequirePerformedPassword_AndNotAddingAnImportedMethod()
+    {
+        var session = new MemorySession();
+        var user = new ApplicationUser { Id = Guid.NewGuid(), SecurityStamp = "verified-stamp" };
+        AuthenticationMethodSession.Add(session, user, AuthConstants.Amr.Password);
+        Assert.False(AuthenticationMethodSession.HasFreshPassword(session, user));
+        AuthenticationMethodSession.Replace(session, user, AuthConstants.Amr.Password);
+        Assert.True(AuthenticationMethodSession.HasFreshPassword(session, user));
+        AuthenticationMethodSession.Add(session, user, AuthConstants.Amr.HardwareKey);
+        Assert.True(AuthenticationMethodSession.HasFreshPassword(session, user));
+        AuthenticationMethodSession.Consume(session);
+        Assert.False(AuthenticationMethodSession.HasFreshPassword(session, user));
+    }
+
+    [Fact]
     public void CreateClaims_LocalPasswordAndOtp_PreservesTruthfulMethods()
     {
         var session = new MemorySession();
@@ -159,7 +174,7 @@ public class AuthenticationMethodSessionTests
         var identity = new ClaimsIdentity([
             new Claim(ClaimTypes.NameIdentifier, cookieState == "other-subject" ? Guid.NewGuid().ToString() : user.Id.ToString()),
             new Claim("AspNet.Identity.SecurityStamp", cookieState == "old-stamp" ? "old-stamp" : user.SecurityStamp),
-            new Claim("amr", "ext")], IdentityConstants.ApplicationScheme);
+            new Claim("amr", "pwd")], IdentityConstants.ApplicationScheme);
         if (cookieState != "legacy") identity.AddClaim(new Claim(
             AuthorizationAuthenticationSession.AssuranceVersionClaim, AuthorizationAuthenticationSession.AssuranceVersion));
         var authentication = new Mock<IAuthenticationService>();
@@ -169,8 +184,9 @@ public class AuthenticationMethodSessionTests
         using var services = new ServiceCollection().AddSingleton(authentication.Object).AddSingleton(users.Object).BuildServiceProvider();
         var context = new DefaultHttpContext { Session = session, RequestServices = services };
         await AuthenticationMethodSession.AddForEnrollmentAsync(context, user, "mfa", "otp");
-        Assert.Equal(carriesPrimary ? new[] { "ext", "mfa", "otp" } : new[] { "mfa", "otp" },
+        Assert.Equal(carriesPrimary ? new[] { "pwd", "mfa", "otp" } : new[] { "mfa", "otp" },
             AuthenticationMethodSession.Get(session, user));
+        Assert.False(AuthenticationMethodSession.HasFreshPassword(session, user));
     }
 
 }

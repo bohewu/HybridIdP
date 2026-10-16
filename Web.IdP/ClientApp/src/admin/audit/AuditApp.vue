@@ -8,8 +8,9 @@ import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 import { exportToCsv as exportToCsvUtil, exportToExcel as exportToExcelUtil } from '@/utils/exportUtils'
+import { auditEventTypeLabel, auditEventDetails } from '@/utils/auditEventLabels'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const auditEvents = ref([])
 const loading = ref(true)
@@ -34,6 +35,8 @@ const page = ref(1)
 const pageSize = ref(25)
 const totalCount = ref(0)
 const sort = ref('timestamp:desc')
+const eventTypes = ref([])
+let latestRequest = 0
 
 // Load permissions on mount
 onMounted(async () => {
@@ -47,16 +50,26 @@ onMounted(async () => {
     return
   }
 
-  fetchAuditEvents()
+  await Promise.all([fetchAuditEvents(), fetchEventTypes()])
 })
 
+const fetchEventTypes = async () => {
+  try {
+    const response = await fetch('/api/admin/audit/event-types')
+    if (response.ok) eventTypes.value = await response.json()
+  } catch (err) {
+    console.error('Failed to load audit event types:', err)
+  }
+}
+
 const fetchAuditEvents = async () => {
+  const request = ++latestRequest
   loading.value = true
   error.value = null
 
   try {
     const params = new URLSearchParams({
-      page: page.value.toString(),
+      pageNumber: page.value.toString(),
       pageSize: pageSize.value.toString(),
       sort: sort.value,
       ...Object.fromEntries(
@@ -70,13 +83,15 @@ const fetchAuditEvents = async () => {
     }
 
     const data = await response.json()
+    if (request !== latestRequest) return
     auditEvents.value = data.items || []
     totalCount.value = data.totalCount || 0
   } catch (err) {
+    if (request !== latestRequest) return
     error.value = err.message
     console.error('Failed to fetch audit events:', err)
   } finally {
-    loading.value = false
+    if (request === latestRequest) loading.value = false
   }
 }
 
@@ -98,11 +113,13 @@ const handlePageSizeChange = (newPageSize) => {
 }
 
 const handleRefresh = () => {
+  fetchEventTypes()
   fetchAuditEvents()
 }
 
 const handleSortChange = (newSort) => {
   sort.value = newSort
+  page.value = 1
   fetchAuditEvents()
 }
 
@@ -144,9 +161,9 @@ const exportToCsv = () => {
 
   const rows = auditEvents.value.map(event => [
     formatDate(event.timestamp),
-    event.eventType,
-    event.user || t('audit.system'),
-    event.details,
+    auditEventTypeLabel(event.eventType, t, te),
+    event.user || event.userId || t('audit.system'),
+    auditEventDetails(event, t),
     event.ipAddress || t('audit.unknown')
   ])
 
@@ -165,9 +182,9 @@ const exportToExcel = async () => {
 
   const rows = auditEvents.value.map(event => [
     formatDate(event.timestamp),
-    event.eventType,
-    event.user || t('audit.system'),
-    event.details,
+    auditEventTypeLabel(event.eventType, t, te),
+    event.user || event.userId || t('audit.system'),
+    auditEventDetails(event, t),
     event.ipAddress || t('audit.unknown')
   ])
 
@@ -193,6 +210,7 @@ const exportToExcel = async () => {
       />
 
       <AuditLogFilters
+        :event-types="eventTypes"
         :filters="filters"
         @filters-change="handleFiltersChange"
       />

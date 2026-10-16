@@ -35,7 +35,7 @@ public sealed class PasskeyEnrollmentProviderTests(OperationalAdminBootstrapProv
         await using var scope = services.CreateAsyncScope();
         var users = scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
         var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "enrollment-user" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "enrollment-user", PasswordHash = "existing-password-hash" };
         Assert.True((await users.CreateAsync(user)).Succeeded);
         var originalStamp = user.SecurityStamp;
         var existing = new UserCredential { UserId = user.Id, CredentialId = [9], PublicKey = [8] };
@@ -62,7 +62,7 @@ public sealed class PasskeyEnrollmentProviderTests(OperationalAdminBootstrapProv
                         var competingDb = competingScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                         var removal = new PasskeyService(fido.Object, competingUsers, competingDb,
                             NullLogger<PasskeyService>.Instance, policy.Object);
-                        Assert.True(await removal.DeletePasskeyAsync(user.Id, existing.Id));
+                        Assert.Equal(MfaRemovalResult.Succeeded, await removal.DeletePasskeyAsync(user.Id, existing.Id));
                         Assert.NotEqual(originalStamp, current.SecurityStamp);
                     }
                 }

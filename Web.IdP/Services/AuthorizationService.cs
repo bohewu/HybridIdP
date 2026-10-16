@@ -216,6 +216,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 mfaRequired = true;
             }
 
+            AuthorizationAuthenticationSession.StripStaleMfa(userPrincipal, user);
             if (mfaRequired)
             {
                 var hasMfaClaim = MfaEnrollmentSession.HasMfa(userPrincipal);
@@ -233,16 +234,18 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
                     var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken);
                     var hasPasskeys = passkeys.Count > 0;
+                    var hasAccountCodes = (await HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+                        .GetStatusAsync(user.Id, cancellationToken)).RemainingCodes > 0;
 
                     // Check if user has capability to perform MFA.
-                    if (user.TwoFactorEnabled || user.EmailMfaEnabled || hasPasskeys)
+                    if (user.TwoFactorEnabled || user.EmailMfaEnabled || hasPasskeys || hasAccountCodes)
                     {
                         // User has MFA enrolled but session is not MFA (e.g. just password login).
                         // Challenge step-up.
                         var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
                         
                         // If user only has Email MFA, direct them there
-                        if (user.EmailMfaEnabled && !user.TwoFactorEnabled && !hasPasskeys) 
+                        if (user.EmailMfaEnabled && !user.TwoFactorEnabled && !hasPasskeys && !hasAccountCodes) 
                         {
                              return new RedirectResult($"/Account/LoginEmailOtp?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}");
                         }
@@ -257,11 +260,13 @@ namespace Web.IdP.Services // Keep consistent namespace case
                         // Store the "enforced by acr_values" flag in session for security (not URL param)
                         _httpContextAccessor.HttpContext?.Session.SetString("MfaEnforcedByAcr", "true");
                         var returnUrl = Microsoft.AspNetCore.Http.Extensions.UriHelper.GetEncodedPathAndQuery(Request);
+                        var setupUrl = $"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}";
+                        if (await MfaEnrollmentSession.TryContinueInitialAfterPasswordAsync(HttpContext, user, cancellationToken))
+                            return new RedirectResult(setupUrl);
                         if (await AccountSecurityOperationSession.BeginAsync(HttpContext, user,
                                 AccountSecurityOperationSession.MfaEnrollmentPurpose, user.Id.ToString(), cancellationToken) == null)
                             return new RedirectResult("/Account/Login");
                         MfaEnrollmentSession.Begin(HttpContext.Session, user.Id, securityStamp: user.SecurityStamp);
-                        var setupUrl = $"/Account/MfaSetup?returnUrl={System.Net.WebUtility.UrlEncode(returnUrl)}";
                         return new RedirectResult(await AccountSecurityOperationSession.GetLoginUrlAsync(HttpContext, user, setupUrl));
                     }
                 }
@@ -388,6 +393,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                         identity.AddClaim(new Claim("amr", amrValue));
                     }
 
+                    AuthorizationAuthenticationSession.CopyMfaBinding(userPrincipal, identity);
                     // Set ACR if requested and present
                     if (acrValues.Contains("mfa") && userPrincipal.FindAll("amr").Any(c => c.Value == AuthConstants.Amr.Mfa))
                     {
@@ -474,6 +480,11 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     });
             }
 
+            var assuranceUserId = userPrincipal.FindFirstValue(ClaimTypes.NameIdentifier) ?? userPrincipal.GetClaim(Claims.Subject);
+            var assuranceUser = Guid.TryParse(assuranceUserId, out var assuranceId)
+                ? await _db.Users.AsNoTracking().SingleOrDefaultAsync(value => value.Id == assuranceId, cancellationToken) : null;
+            if (assuranceUser == null) return LifecycleDenied();
+            AuthorizationAuthenticationSession.StripStaleMfa(userPrincipal, assuranceUser);
             // User denied consent -> audit and forbid
             var requiresMfa = ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(application, cancellationToken)) ||
                 request.GetAcrValues().Any(v => v.Equals("mfa", StringComparison.OrdinalIgnoreCase)) ||
@@ -631,6 +642,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 identity.AddClaim(new Claim("amr", amrValue));
             }
 
+            AuthorizationAuthenticationSession.CopyMfaBinding(userPrincipal, identity);
             // Set ACR if requested and present
             var acrValuesSubmit = request.GetAcrValues();
             if (acrValuesSubmit.Contains("mfa") && userPrincipal.FindAll("amr").Any(c => c.Value == AuthConstants.Amr.Mfa))
@@ -833,6 +845,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                     yield break;
 
                 // Never include the security stamp in the access and identity tokens, as it's a secret value.
+                case AuthorizationAuthenticationSession.MfaSecurityStampClaim:
                 case "AspNet.Identity.SecurityStamp":
                     yield break;
 

@@ -150,10 +150,20 @@ Factor changes continue through the existing authorized security workflows.
 - **Anonymous options**: Submitted usernames are ignored; public options have no account-specific credential descriptors. Anonymous login uses discoverable credentials.
 - **Historical keys**: Account-specific descriptors are available only for the server-resolved application cookie or temporary two-factor cookie after password/external proof. TOTP and email challenges link to the existing MFA method selector. Assertions are bound to that protected subject and options are consumed on each attempt.
 - **Inventory limits**: Stored credentials do not record discoverability. Registration date, credential type and authenticator model cannot identify non-discoverable keys reliably. Existing credentials are preserved; do not bulk-delete them based on those fields.
+- **Profile inventory access**: A complete application-cookie sign-in may read its own passkey names and timestamps without a new MFA ceremony or enrollment proof. The read checks the cookie subject and current security stamp, account eligibility and migration issuance restrictions. It returns only the existing inventory DTO, never credential material. Missing or retired sessions cannot read the list; a partial sign-in retains the existing initial-enrollment gate. Listing does not create or refresh management proof. Registration and removal keep their separate reauthentication requirements.
 - **Credential retirement**: `UserCredentials.DisabledAtUtc` disables an individual key while retaining its record. Disabled keys cannot authenticate, satisfy enrollment or privileged-role MFA checks, consume the active-key limit, or appear in active-key lists and WebAuthn descriptors. Verification also fails if the credential is disabled before its usage update commits.
+- **Self-service factor removal**: Removing a passkey or disabling TOTP/email MFA still rotates the account security stamp. Only the same-subject application cookie with the fresh, stamp-bound proof authorizing that removal may carry the committed stamp forward; this preserves its original authentication evidence and expiry, then consumes the management proof. Other cookies retain the retired stamp and remain subject to stamp validation. A concurrent stamp change cannot be adopted, and bearer-only requests do not create a cookie. Administrative reset also retires all active passkeys and invalidates both recovery-code families.
 - **Rebinding**: Retirement does not disable the account or external login. Users authenticate through another working method, complete any existing TOTP/email MFA, and register a new discoverable credential under current policy. The old credential never becomes active through sign-in or registration; new registration uses a new credential ID. If `RequireMfaForPasskey` is enabled, TOTP/email enrollment is required first. Operators must confirm another usable sign-in method before retiring a user's last key. Existing sessions and issued tokens follow their existing lifetime policy.
-- **Authentication assurance**: Passkey and user-presence AMR values are recorded for a successful passkey assertion; MFA is recorded only when validated authenticator data confirms user verification.
+- **Authentication assurance**: Passkey and user-presence AMR values are recorded for a successful passkey assertion. MFA is recorded when validated authenticator data confirms user verification, or when the assertion completes a fresh password first factor for the same account. The combined ceremony requires account-bound assertion options, the current protected temporary two-factor cookie, and unexpired password proof bound to the account and security stamp. It preserves `pwd`, `hwk`, `user` and `mfa`, then consumes the pending proof and temporary cookie. Application-cookie AMR, factor registration and invalid pending evidence cannot supply fresh password proof; a direct presence-only assertion remains non-MFA.
 - **MFA requirements**: Authorization, device approval, token redemption, refresh, and factor management require the performed `mfa` evidence. A hardware-key (`hwk`) claim alone does not satisfy MFA.
+
+A fresh presence-only assertion retains its short-lived `hwk`/`user` ceremony
+and a subject/stamp-bound temporary two-factor cookie so a required-MFA request
+can continue through Email OTP or TOTP with its original authorization return
+URL. An existing valid temporary cookie retains its nonce and expiry. Ordinary
+non-MFA sign-in remains available; only successful additional verification adds
+`mfa`. This continuation is established by the verified assertion, not by
+copying an old application cookie's authentication methods.
 
 Device approval and device-code redemption independently recheck current global
 mandatory MFA, even when the client does not require it. The browser cookie and
@@ -170,12 +180,84 @@ grants cannot perform a passkey assertion: an active passkey enrollment does
 not satisfy mandatory MFA, so enrolled accounts must use an interactive flow.
 The existing enrollment grace for accounts without active factors is retained.
 
+### Account backup codes and lost-factor recovery
+
+Account backup codes are independent of the existing custom/native OTP recovery
+codes. The first authorized successful ordinary factor enrollment issues ten
+codes if this account has no factor or batch history. Each code contains 128 random bits. The
+reserved Identity UserTokens provider `HybridIdP.AccountRecoveryCodes` stores
+only domain/account-bound SHA-256 hashes and an exhausted-batch marker. No schema
+migration is needed. Exhaustion does not trigger automatic issuance on another
+registration, and disabling OTP does not remove these account codes.
+
+Credential registration and first issuance share a transaction and the Identity
+user concurrency version. Generation and one-use redemption also advance that
+version. Failed writes roll back and discard tracked changes before a later
+Identity save can occur. Raw codes are returned once, after commit, in a
+`no-store` response, and are never recorded in logs or audit details.
+
+`GET /api/account/recovery-codes` returns `hasBatch` (any historical batch),
+`remainingCodes` (independent account codes only), `hasLegacyBatch`,
+`legacyRemainingCodes` (usable custom/Identity OTP backups) and
+`totalRemainingCodes`. Legacy backups remain OTP-dependent, including native
+5-5 codes and the custom ten-character password-hashed codes. Empty legacy
+stores and exhausted account batches retain their history markers. No upgrade,
+second-factor addition or exhausted batch silently generates another batch.
+Genuine first TOTP, Email OTP or passkey enrollment issues one account batch
+in the same transaction as the verified factor; both OTP APIs return optional
+`accountRecoveryCodes`, matching passkey enrollment. Explicit regeneration
+replaces the account batch and invalidates custom and Identity OTP codes under
+one transaction and user concurrency version. The older
+`POST /api/account/mfa/recovery-codes` uses that same generation operation and
+retains its stricter TOTP-enabled/password-or-TOTP confirmation and
+`recoveryCodes` response compatibility. All raw-code responses are `no-store`.
+`POST /api/account/recovery-codes` requires antiforgery protection, a current
+application cookie, current lifecycle/migration eligibility and fresh performed
+MFA management proof. Reauthentication uses the distinct
+`action=account-recovery-codes` on `/api/account/mfa/reauthenticate`. Generation
+consumes that proof; passkey registration also consumes its authorizing proof
+and creates no new management authority. Existing genuine initial user-verified
+passkey enrollment keeps its sign-in completion behavior.
+
+LoginMfa and LoginTotp use the same account/custom/Identity recovery verifier.
+The protected LoginMfa challenge accepts account backup codes even with OTP off.
+Successful redemption produces scoped subject/stamp/operation-bound evidence
+only after commit. It remains usable for that operation when the last code was
+redeemed. The ceremony adds actual `mfa` evidence without inventing `pwd` or
+`otp`. Current temporary/application cookie stamps, account eligibility, lockout,
+rate limiting and migration gates still apply. Ordinary optional-MFA password
+sign-in remains available; backup capability prevents password-only initial
+factor enrollment and mandatory-MFA enrollment/grace bypasses. Backup codes are
+not ordinary enrolled factors for privileged-role eligibility or mandatory
+last-factor removal rules.
+
+For an ordinary LoginMfa challenge, choosing to add a replacement verification
+method binds account-code redemption to that enrollment purpose. Its committed
+receipt grants a five-minute, subject/current-stamp-bound enrollment-only
+continuation to MfaSetup, including after the final code. Successful enrollment
+consumes it; it cannot authorize factor removal or code regeneration. Choosing
+sign-in only or using an OTP recovery code does not grant this continuation.
+The original safe local return URL is retained for completion. Standalone
+passkey registration with no OTP and no active key still requires user
+verification, including accounts with a historical or exhausted code batch.
+
+When all saved factors are lost, an administrator can use the existing
+`Users.ResetMfa` workflow after fresh operator MFA and a recorded reason. Its
+transaction retires every active passkey, preserves credential rows and earlier
+retirement timestamps, invalidates both account and OTP recovery codes while
+retaining batch history markers, rotates
+the stamp and retains existing session/OAuth revocation and protected-role
+checks. Legacy accounts without saved account codes require this recovery path;
+password knowledge alone cannot replace a lost enrolled key.
+
 ### Authentication assurance and cookie rollout
 
 Principal generation does not import browser-session AMR. Pending ceremony
 methods are bound to the verified account ID and current security stamp, expire
 within the existing Identity temporary two-factor cookie's five-minute lifetime,
-and are consumed after successful full sign-in. Missing, malformed, legacy,
+and are consumed after completed MFA or ordinary non-passkey full sign-in.
+A presence-only passkey retains only its own evidence for an additional factor.
+Missing, malformed, legacy,
 expired or mismatched pending state contributes no inherited methods. A direct
 factor-only reauthentication records the performed factor without inventing a
 password method; recovery codes do not invent OTP proof.
@@ -197,6 +279,17 @@ impersonation and impersonation revert create no inherited AMR or `auth_time`:
 being the same Person or a recorded actor is not authentication proof for the new
 subject. Subsequent assurance requirements require a real ceremony.
 
+Fresh MFA sign-in binds assurance to the account security stamp in internal
+`idp_mfa_security_stamp`. The binding has no access-token or ID-token destination;
+it persists inside authorization codes, refresh tokens and device grants.
+Authorization GET/consent and token/device issuance reject absent or stale
+binding when MFA is required. Optional issuance strips obsolete `mfa`, `otp`
+and MFA ACR. Ordinary factor removal preserves the authorized primary account
+session but clears its MFA assurance and pending management proof. Subsequent
+required clients lead to verification or replacement setup. Stamp carry during
+seed creation preserves the old binding verbatim and cannot make it current.
+Already-issued tokens keep their existing lifetime.
+
 ### Factor removal and one-time proof consumption
 
 Recovery-code regeneration also requires fresh performed-MFA management proof,
@@ -205,7 +298,9 @@ either API requires the same enrollment authority. Initial enrollment stores the
 current security stamp in both its server session and temporary cookie; every
 pending two-factor sign-in rejects missing or retired stamps. Only authorized
 TOTP seed creation can carry that exact stamp transition into enrollment proof.
-Resetting or retiring TOTP removes custom and Identity recovery codes. Password
+Removing the final OTP disables custom and Identity recovery codes while
+retaining empty history markers. Removing TOTP while Email OTP remains retains
+usable legacy backups. Independent account codes survive ordinary removals. Password
 confirmations share the configured account lockout budget and login rate limit.
 Atomic email-code attempt writes advance the Identity concurrency stamp and
 reload the tracked user so later Identity writes cannot restore an old budget.
@@ -219,11 +314,42 @@ evidence; mixed identities must agree on the subject and assurance. A bearer
 may omit `auth_time` and present the fresh server-session proof. The browser
 session and antiforgery requirements of the reauthentication and passkey APIs
 still apply. This path does not depend on recovery-email rollout switches.
+Before direct or OTP-dependent retirement of the final usable passkey, an
+account with no local password, linked external/contract provider, directory
+binding or migration authority is rejected with `alternateSignInRequired`.
+Account recovery codes cannot replace a primary sign-in route. This narrow check
+preserves existing source authority; it does not require a local password from
+directory or provider accounts or attest upstream availability.
+
 Successful removal consumes the management proof. Expired, password-only,
 initial-enrollment or security-stamp-mismatched proofs cannot authorize removal.
 The optional `forRemoval=true` reauthentication intent selects a fixed Profile
 return after sign-in; the default enrollment return remains MFA Setup. Neither
-intent changes the sign-in requirements or automatically repeats a removal.
+intent changes the sign-in requirements. The optional `returnToProfile=true`
+also selects that fixed return for enrollment. The optional `action` accepts only
+the existing account-security actions; invalid values are rejected before the
+ceremony starts. A typed server pending action supplies localized purpose on
+the password, Email OTP, TOTP and passkey selector pages. Successful verification
+carries it into the existing user/stamp-bound five-minute proof. An authorized
+MFA Setup GET takes the `totp-add` navigation hint once and directly opens TOTP
+setup; taking the hint does not consume or replace enrollment authority.
+Email OTP Enable starts this confirmation before displaying enrollment send or
+code entry, then resumes the same Email setup. The Profile UI keeps a five-minute,
+same-account tab-local intent to resume email enrollment, email removal or passkey
+registration once after reauthentication. It consumes that UI intent before the
+retry; the intent grants no authority and every API still checks fresh server
+proof. Password/TOTP confirmation and passkey-removal dialogs reopen without
+persisting their secret input or silently removing another factor.
+
+The Profile UI reports existing TOTP or Email OTP enrollment as two-step
+verification being enabled, and labels the authenticator app separately as an
+additional method. Every requested factor-management reauthentication presents
+its purpose and requires confirmation before signing out; cancelling sends no
+reauthentication request and changes no stored continuation. Email send cooldown
+is separate from challenge state:
+only `hasPendingCode=true` permits verification during cooldown. A consumed or
+expired code cannot be restored by a cooldown response; request a new code when
+the real send cooldown ends. These UI states grant no authentication authority.
 
 Removal checks current account/Person eligibility and computes the qualifying
 methods remaining after any required passkey cascade, including policy-disabled
@@ -277,6 +403,14 @@ because their authority is the application cookie.
 The recovery-email selection flow retains its additional cookie/session-bound
 validation. When that feature is disabled, existing high-assurance bearer-only
 recovery clients remain supported; cookie requests use the shared CSRF filter.
+
+The local `/Account/Logout` Razor Page retains automatic antiforgery validation.
+A rejected POST redirects only to a fresh local confirmation page with a
+localized explanation; it cannot run the sign-out handler or carry a supplied
+return URL forward. The fresh page identifies the current account and requires
+a new valid submission. An anonymous session receives guidance without a logout
+form. This page-specific recovery does not alter CSRF failures on other pages,
+APIs or the OIDC end-session endpoint.
 
 ### Lifecycle Cookie Validation
 
@@ -590,7 +724,7 @@ with the normal login page. Verified-email automatic matching and authenticated
 profile linking use the same completion boundary; provider AMR is not local MFA.
 A pending link expires after five minutes and binds the subject, security stamp,
 provider/key and a nonce in the protected temporary MFA cookie. Successful TOTP,
-email OTP, recovery or user-verified passkey completion marks only that request
+email OTP, recovery or qualifying passkey MFA completion marks only that request
 for association. Cookie refresh, unrelated login and factor-management
 reauthentication do not complete an abandoned intent. Completion rechecks current
 eligibility, collision and provider limits. An authorized initial TOTP seed
@@ -603,7 +737,7 @@ confirmation, never on the strength of the candidate provider or an old cookie.
 Authenticated profile linking additionally requires a new five-minute operation
 bound to the current subject, security stamp and selected provider. Only a
 successful existing password, enabled TOTP/email factor, recovery code or
-user-verified existing passkey ceremony grants it. Old cookie AMR, provider AMR,
+qualifying existing passkey MFA ceremony grants it. Old cookie AMR, provider AMR,
 cookie refresh and factor enrollment do not grant it. The provider callback must
 carry the same nonce; completion consumes the operation. Passwordless accounts
 may use an existing factor or passkey. An external-only account without an
@@ -614,13 +748,14 @@ Generic cookie refresh cannot mint an enrollment proof. Assertion `id` and
 `rawId` must decode to the same credential at the shared verification boundary;
 operation proofs use that credential's canonical ID.
 
-Administrative TOTP/email MFA reset requires `users.reset_mfa`, an interactive
+Administrative MFA/passkey reset requires `users.reset_mfa`, an interactive
 operator cookie, a fresh existing-MFA ceremony bound to the target account, and
 a nonempty reason of at most 500 characters. M2M and impersonated operators are
 denied. Protected-role targets require the operator's full active IdP Admin role
 and current Admin membership. Reset rotates the security stamp, revokes
 UserSessions and stored OpenIddict authorizations/tokens, and records actor,
-target and reason. Passkeys remain registered. Cookie stamp checks use their
+target and reason. Active passkeys are retired and both recovery-code families
+are invalidated; previously retired credential timestamps are preserved. Cookie stamp checks use their
 configured validation interval (one minute by default); offline validation of
 issued JWTs remains subject to the client's token validation and lifetime.
 

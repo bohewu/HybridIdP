@@ -49,6 +49,8 @@ public class MfaSetupModel : PageModel
     public int RemainingGraceDays { get; private set; }
     public bool IsMfaEnforced { get; private set; }
     public bool ShowGracePeriod { get; private set; }
+    public bool IsManagement { get; private set; }
+    public string? ResumeMethod { get; private set; }
 
     public async Task<IActionResult> OnGetAsync()
     {
@@ -61,6 +63,9 @@ public class MfaSetupModel : PageModel
             return RedirectToPage("./Login");
         }
 
+        var application = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        IsManagement = application.Succeeded && application.Principal?.Identity?.IsAuthenticated == true &&
+            application.Principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value == user.Id.ToString();
         await PromotePartialPrincipalForAntiforgeryAsync(user);
         _signInManager.Context.Items["MfaEnforcementUser"] = user; // Internal tracking
         
@@ -104,6 +109,7 @@ public class MfaSetupModel : PageModel
         }
 
         ShowGracePeriod = policy.EnforceMandatoryMfaEnrollment && !IsMfaEnforced;
+        ResumeMethod = MfaEnrollmentSession.TakeSetupMethod(HttpContext.Session, user);
 
         return Page();
     }

@@ -83,7 +83,9 @@ public partial class MfaSetupApiController : ControllerBase
             EmailMfaEnabled = user.EmailMfaEnabled,
             EnableTotpMfa = policy.EnableTotpMfa,
             EnableEmailMfa = policy.EnableEmailMfa,
-            EnablePasskey = policy.EnablePasskey
+            EnablePasskey = policy.EnablePasskey,
+            RequireMfaForPasskey = policy.RequireMfaForPasskey,
+            EnforceMandatoryMfaEnrollment = policy.EnforceMandatoryMfaEnrollment
         });
     }
 
@@ -96,10 +98,11 @@ public partial class MfaSetupApiController : ControllerBase
         var policy = await _securityPolicyService.GetCurrentPolicyAsync();
         return Ok(new MfaSetupPolicyResponse
         {
-            RequireMfaForPasskey = policy.RequireMfaForPasskey,
             EnableTotpMfa = policy.EnableTotpMfa,
             EnableEmailMfa = policy.EnableEmailMfa,
-            EnablePasskey = policy.EnablePasskey
+            EnablePasskey = policy.EnablePasskey,
+            RequireMfaForPasskey = policy.RequireMfaForPasskey,
+            EnforceMandatoryMfaEnrollment = policy.EnforceMandatoryMfaEnrollment
         });
     }
 
@@ -188,14 +191,14 @@ public partial class MfaSetupApiController : ControllerBase
                 AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
             AuthenticationMethodSession.Consume(HttpContext.Session);
 
-            // Generate recovery codes
-            var recoveryCodes = await _mfaService.GenerateRecoveryCodesAsync(user, 10, ct);
+            var recoveryCodes = _mfaService.TakeInitialRecoveryCodes(user);
+            Response.Headers.CacheControl = "no-store";
             MfaEnrollmentSession.Consume(HttpContext.Session);
 
             return Ok(new MfaSetupVerifyResponse
             {
                 Success = true,
-                RecoveryCodes = recoveryCodes.ToList()
+                AccountRecoveryCodes = recoveryCodes?.ToList()
             });
         }
 
@@ -235,18 +238,20 @@ public partial class MfaSetupApiController : ControllerBase
         }
 
         var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user, ct);
+        var hasPendingCode = EmailMfaChallenge.HasPendingCode(user);
         if (!success)
         {
             return StatusCode(429, new
             {
                 success = false,
                 remainingSeconds,
+                hasPendingCode,
                 error = "rateLimitExceeded"
             });
         }
 
         LogEmailMfaCodeSent(user.Id);
-        return Ok(new { success = true, remainingSeconds });
+        return Ok(new { success = true, remainingSeconds, hasPendingCode });
     }
 
     /// <summary>
@@ -308,7 +313,7 @@ public partial class MfaSetupApiController : ControllerBase
         var isValid = await _mfaService.VerifyAndEnableEmailMfaAsync(user, request.Code, ct);
         if (!isValid)
         {
-            return Ok(new { success = false, error = "invalidOrExpiredCode" });
+            return Ok(new { success = false, error = "invalidOrExpiredCode", hasPendingCode = EmailMfaChallenge.HasPendingCode(user) });
         }
 
         LogEmailMfaEnabled(user.Id);
@@ -330,8 +335,8 @@ public partial class MfaSetupApiController : ControllerBase
             AuthenticationMethodSession.CreateClaims(HttpContext.Session, user));
         AuthenticationMethodSession.Consume(HttpContext.Session);
         MfaEnrollmentSession.Consume(HttpContext.Session);
-
-        return Ok(new { success = true });
+        Response.Headers.CacheControl = "no-store";
+        return Ok(new { success = true, accountRecoveryCodes = _mfaService.TakeInitialRecoveryCodes(user) });
     }
 
     /// <summary>
@@ -407,14 +412,17 @@ public record MfaSetupStatusResponse
     public bool EnableTotpMfa { get; init; }
     public bool EnableEmailMfa { get; init; }
     public bool EnablePasskey { get; init; }
+    public bool RequireMfaForPasskey { get; init; }
+    public bool EnforceMandatoryMfaEnrollment { get; init; }
 }
 
 public record MfaSetupPolicyResponse
 {
-    public bool RequireMfaForPasskey { get; init; }
     public bool EnableTotpMfa { get; init; }
     public bool EnableEmailMfa { get; init; }
     public bool EnablePasskey { get; init; }
+    public bool RequireMfaForPasskey { get; init; }
+    public bool EnforceMandatoryMfaEnrollment { get; init; }
 }
 
 public record MfaSetupTotpResponse
@@ -434,6 +442,7 @@ public record MfaSetupVerifyResponse
     public bool Success { get; init; }
     public string? Error { get; init; }
     public List<string>? RecoveryCodes { get; init; }
+    public List<string>? AccountRecoveryCodes { get; init; }
 }
 
 #endregion

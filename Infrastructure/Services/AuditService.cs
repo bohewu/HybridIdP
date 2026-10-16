@@ -195,9 +195,15 @@ public class AuditService : IAuditService,
         return (actorUserId, subjectUserId);
     }
 
+    public async Task<IEnumerable<string>> GetEventTypesAsync(CancellationToken cancellationToken = default) =>
+        await _db.AuditEvents.AsNoTracking()
+            .Where(e => e.EventType != "")
+            .Select(e => e.EventType).Distinct().OrderBy(type => type)
+            .ToListAsync(cancellationToken);
+
     public async Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter, CancellationToken cancellationToken = default)
     {
-        var query = _db.AuditEvents.AsQueryable();
+        var query = _db.AuditEvents.AsNoTracking();
 
         if (!string.IsNullOrEmpty(filter.EventType))
         {
@@ -206,7 +212,9 @@ public class AuditService : IAuditService,
 
         if (!string.IsNullOrEmpty(filter.UserId))
         {
-            query = query.Where(e => e.UserId == filter.UserId);
+            var matchingUsers = _db.Users.Where(user => user.Email == filter.UserId || user.UserName == filter.UserId)
+                .Select(user => user.Id.ToString());
+            query = query.Where(e => e.UserId == filter.UserId || matchingUsers.Contains(e.UserId!));
         }
 
         if (filter.StartDate.HasValue)
@@ -224,10 +232,24 @@ public class AuditService : IAuditService,
             query = query.Where(e => e.IPAddress == filter.IPAddress);
         }
 
+        if (!string.IsNullOrEmpty(filter.Search))
+        {
+            query = query.Where(e => e.Details != null && e.Details.Contains(filter.Search));
+        }
+
         var totalCount = await query.CountAsync(cancellationToken);
 
-        var items = await query
-            .OrderByDescending(e => e.Timestamp)
+        var orderedQuery = filter.Sort switch
+        {
+            "timestamp:asc" => query.OrderBy(e => e.Timestamp).ThenBy(e => e.Id),
+            "eventType:asc" => query.OrderBy(e => e.EventType).ThenByDescending(e => e.Timestamp).ThenByDescending(e => e.Id),
+            "eventType:desc" => query.OrderByDescending(e => e.EventType).ThenByDescending(e => e.Timestamp).ThenByDescending(e => e.Id),
+            "user:asc" => query.OrderBy(e => e.UserId).ThenByDescending(e => e.Timestamp).ThenByDescending(e => e.Id),
+            "user:desc" => query.OrderByDescending(e => e.UserId).ThenByDescending(e => e.Timestamp).ThenByDescending(e => e.Id),
+            _ => query.OrderByDescending(e => e.Timestamp).ThenByDescending(e => e.Id)
+        };
+
+        var items = await orderedQuery
             .Skip((filter.PageNumber - 1) * filter.PageSize)
             .Take(filter.PageSize)
             .Select(e => new AuditEventDto

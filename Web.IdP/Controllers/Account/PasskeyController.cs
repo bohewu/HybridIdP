@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Threading.Tasks;
+using System.Security.Claims;
 using Core.Application;
 using Core.Application.Interfaces;
 using Core.Domain;
@@ -149,7 +150,9 @@ public partial class PasskeyController : ControllerBase
         }
 
         var completesInitialEnrollment = !user.TwoFactorEnabled && !user.EmailMfaEnabled &&
-            (await _passkeyService.GetUserPasskeysAsync(user.Id, ct)).Count == 0;
+            (await _passkeyService.GetUserPasskeysAsync(user.Id, ct)).Count == 0 &&
+            !(await HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
+                .GetStatusAsync(user.Id, ct)).HasBatch;
         if (completesInitialEnrollment && !await CanIssueFullCookieAsync(user, ct))
         {
             return BadRequest(new { success = false, error = "Authentication failed" });
@@ -173,6 +176,9 @@ public partial class PasskeyController : ControllerBase
 
         if (result.Success)
         {
+            Response.Headers.CacheControl = "no-store";
+            MfaEnrollmentSession.Consume(HttpContext.Session);
+            AccountSecurityOperationSession.Consume(HttpContext);
             LogPasskeyRegistered(user.UserName);
             await _auditService.LogEventAsync(
                 Core.Domain.Constants.AuditEventTypes.PasskeyRegistered,
@@ -203,7 +209,9 @@ public partial class PasskeyController : ControllerBase
                 AuthenticationMethodSession.Consume(HttpContext.Session);
             }
 
-            return Ok(new { success = true });
+            return result.AccountRecoveryCodes == null
+                ? Ok(new { success = true })
+                : Ok(new { success = true, accountRecoveryCodes = result.AccountRecoveryCodes });
         }
 
         return BadRequest(new { success = false, error = result.Error });
@@ -215,8 +223,36 @@ public partial class PasskeyController : ControllerBase
     {
         var user = await GetAuthenticatedUserAsync();
         if (user == null) return Unauthorized();
-        if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
-            return StatusCode(403, new { error = "freshAuthenticationRequired" });
+
+        var application = await HttpContext.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        if (application.Succeeded)
+        {
+            // Reading one's own inventory does not grant factor-management authority.
+            var subject = application.Principal.FindFirstValue(ClaimTypes.NameIdentifier);
+            var stampType = _userManager.Options?.ClaimsIdentity.SecurityStampClaimType
+                ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+            if (application.Principal.Identity?.IsAuthenticated != true ||
+                !Guid.TryParse(subject, out var subjectId) || subjectId != user.Id)
+                return StatusCode(403, new { error = "accessDenied" });
+            if (string.IsNullOrEmpty(user.SecurityStamp) ||
+                application.Principal.FindFirstValue(stampType) != user.SecurityStamp)
+            {
+                await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
+                return Unauthorized(new { error = "sessionExpired" });
+            }
+            if (!user.IsActive || user.IsDeleted || user.RequiresPasswordChange ||
+                !await _lifecycleEligibility.IsEligibleAsync(user.Id, ct) ||
+                !await _migrationIssuanceGuard.CanIssueAsync(user.Id, ct))
+                return StatusCode(403, new { error = "accessDenied" });
+        }
+        else
+        {
+            var partial = await HttpContext.AuthenticateAsync(IdentityConstants.TwoFactorUserIdScheme);
+            if (!partial.Succeeded) return Unauthorized(new { error = "sessionExpired" });
+            // Keep the existing initial-enrollment boundary for partial sign-ins.
+            if (!await MfaEnrollmentSession.IsAuthorizedAsync(HttpContext, user, _passkeyService, ct, requireFreshProof: false))
+                return StatusCode(403, new { error = "freshAuthenticationRequired" });
+        }
         
         var passkeys = await _passkeyService.GetUserPasskeysAsync(user.Id, ct);
         return Ok(passkeys);
@@ -252,12 +288,15 @@ public partial class PasskeyController : ControllerBase
             }
         }
 
+        var previousStamp = user.SecurityStamp;
         var result = await _passkeyService.DeletePasskeyAsync(user.Id, id, ct);
-        if (!result)
-        {
+        if (result == MfaRemovalResult.AlternateSignInRequired)
+            return BadRequest(new { error = "alternateSignInRequired" });
+        if (result != MfaRemovalResult.Succeeded)
             return NotFound(new { error = "Passkey not found" });
-        }
 
+        if (!await MfaEnrollmentSession.CarryAuthorizedStampAsync(HttpContext, user, previousStamp, ct, retireMfaAssurance: true))
+            await HttpContext.SignOutAsync(IdentityConstants.ApplicationScheme);
         MfaEnrollmentSession.Consume(HttpContext.Session);
 
         LogPasskeyDeleted(user.Id, id);
@@ -385,27 +424,35 @@ public partial class PasskeyController : ControllerBase
                 return BadRequest(new { success = false, error = "Authentication failed" });
             }
             
-            if (result.UserVerified)
+            // Only a protected, same-account pending password ceremony can combine
+            // with this verified assertion. Application-cookie AMR is not fresh proof.
+            var pendingUser = await TwoFactorAuthenticationSession.GetUserAsync(HttpContext, _userManager);
+            var hasFreshPassword = boundUserId == result.User.Id.ToString() &&
+                pendingUser?.Id == result.User.Id &&
+                AuthenticationMethodSession.HasFreshPassword(HttpContext.Session, result.User);
+            var qualifiedMfa = result.UserVerified || hasFreshPassword;
+            if (hasFreshPassword)
             {
-                AuthenticationMethodSession.Replace(
-                    HttpContext.Session, result.User,
+                AuthenticationMethodSession.Add(HttpContext.Session, result.User,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence,
                     Core.Domain.Constants.AuthConstants.Amr.Mfa);
             }
             else
             {
-                AuthenticationMethodSession.Replace(
-                    HttpContext.Session, result.User,
+                AuthenticationMethodSession.Replace(HttpContext.Session, result.User,
                     Core.Domain.Constants.AuthConstants.Amr.HardwareKey,
                     Core.Domain.Constants.AuthConstants.Amr.UserPresence);
+                if (qualifiedMfa)
+                    AuthenticationMethodSession.Add(HttpContext.Session, result.User,
+                        Core.Domain.Constants.AuthConstants.Amr.Mfa);
             }
 
             // Issue cookie with amr claims
             var claims = AuthenticationMethodSession.CreateClaims(HttpContext.Session, result.User);
 
             RecoveryReauthenticationSession.MarkFullCompletion(HttpContext, result.User.Id, hardware: true);
-            if (result.UserVerified)
+            if (qualifiedMfa)
             {
                 var credentialId = clientResponse.TryGetProperty("id", out var id) && id.ValueKind == System.Text.Json.JsonValueKind.String
                     ? Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(
@@ -414,7 +461,20 @@ public partial class PasskeyController : ControllerBase
                 await PendingExternalLoginLink.MarkMfaCompletionAsync(HttpContext, result.User, "passkey", credentialId);
             }
             await _signInManager.SignInWithClaimsAsync(result.User, isPersistent: false, claims);
-            AuthenticationMethodSession.Consume(HttpContext.Session);
+            if (qualifiedMfa)
+            {
+                AuthenticationMethodSession.Consume(HttpContext.Session);
+                await HttpContext.SignOutAsync(IdentityConstants.TwoFactorUserIdScheme);
+            }
+            else if (pendingUser?.Id != result.User.Id)
+            {
+                // A presence-only assertion still permits ordinary sign-in, but a
+                // required-MFA continuation needs the protected temporary ceremony.
+                // Keep only this assertion's hwk/user evidence; never import cookie AMR.
+                // An existing valid partial cookie retains its nonce and expiry.
+                await HttpContext.SignInAsync(IdentityConstants.TwoFactorUserIdScheme,
+                    new ClaimsPrincipal(TwoFactorAuthenticationSession.CreateIdentity(result.User, _userManager)));
+            }
             await _userManagementService.UpdateLastLoginAsync(result.User.Id, ct);
             LogPasskeyLogin(result.User.UserName);
             return Ok(new { success = true, username = result.User.UserName });

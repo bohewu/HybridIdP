@@ -35,7 +35,8 @@ namespace Web.IdP.Services
         ICredentialMigrationStateStore credentialMigrationStateStore,
         IStage2CredentialMigrationService stage2CredentialMigrationService,
         IMigrationIssuanceGuard migrationIssuanceGuard,
-        global::Infrastructure.Authorization.IApiScopeUsagePolicy scopeUsage) : ITokenService
+        global::Infrastructure.Authorization.IApiScopeUsagePolicy scopeUsage,
+        IAccountRecoveryCodeService accountRecoveryCodes) : ITokenService
     {
         private readonly ICurrentUserLifecycleEligibility _lifecycleEligibility = lifecycleEligibility;
         private readonly UserManager<ApplicationUser> _userManager = userManager;
@@ -356,7 +357,16 @@ namespace Web.IdP.Services
         {
             var application = await _applicationManager.FindByClientIdAsync(request.ClientId!, cancellationToken);
             if (application == null) return false;
-            return !ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(application, cancellationToken)) ||
+            var requiresMfa = ClientMfaPolicy.RequiresMfa(await _applicationManager.GetPropertiesAsync(application, cancellationToken)) ||
+                principal?.GetClaim(Claims.AuthenticationContextReference) == "mfa";
+            if (principal != null)
+            {
+                var subject = principal.GetClaim(Claims.Subject);
+                var user = string.IsNullOrEmpty(subject) ? null : await _userManager.FindByIdAsync(subject);
+                if (user == null) return false;
+                Web.IdP.Helpers.AuthorizationAuthenticationSession.StripStaleMfa(principal, user);
+            }
+            return !requiresMfa ||
                 (principal != null && Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(principal));
         }
 
@@ -474,7 +484,9 @@ namespace Web.IdP.Services
 
             var policy = await _securityPolicyService.GetCurrentPolicyAsync();
             var clientRequiresMfa = ClientMfaPolicy.RequiresMfa(
-                await _applicationManager.GetPropertiesAsync(application, cancellationToken));
+                await _applicationManager.GetPropertiesAsync(application, cancellationToken)) ||
+                principal.GetClaim(Claims.AuthenticationContextReference) == "mfa";
+            Web.IdP.Helpers.AuthorizationAuthenticationSession.StripStaleMfa(principal, user);
             var amrValues = principal.GetClaims(AuthConstants.ClaimTypes.Amr)
                 .Distinct(StringComparer.Ordinal);
             var hasMfaEvidence = Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(principal);
@@ -518,6 +530,8 @@ namespace Web.IdP.Services
                 .SetClaim(Claims.PreferredUsername, await _userManager.GetUserNameAsync(user));
 
             identity.SetClaim(Claims.AuthenticationTime, Web.IdP.Helpers.AuthorizationAuthenticationSession.GetAuthenticationTime(principal));
+            Web.IdP.Helpers.AuthorizationAuthenticationSession.CopyMfaBinding(principal, identity);
+            identity.SetClaim(Claims.AuthenticationContextReference, principal.GetClaim(Claims.AuthenticationContextReference));
 
             foreach (var amrValue in amrValues)
             {
@@ -615,7 +629,8 @@ namespace Web.IdP.Services
             var hasPasskey = await _db.UserCredentials
                 .AsNoTracking()
                 .AnyAsync(credential => credential.UserId == user.Id && credential.DisabledAtUtc == null, cancellationToken);
-            if (hasPasskey)
+            var hasAccountCodes = (await accountRecoveryCodes.GetStatusAsync(user.Id, cancellationToken)).RemainingCodes > 0;
+            if (hasPasskey || hasAccountCodes)
             {
                 return false;
             }
@@ -676,8 +691,8 @@ namespace Web.IdP.Services
                 }
 
                 var policy = await _securityPolicyService.GetCurrentPolicyAsync();
-                if ((policy.EnforceMandatoryMfaEnrollment && !Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(schemePrincipal)) ||
-                    !await SatisfiesClientMfaAsync(request, schemePrincipal, cancellationToken))
+                if (!await SatisfiesClientMfaAsync(request, schemePrincipal, cancellationToken) ||
+                    (policy.EnforceMandatoryMfaEnrollment && !Web.IdP.Helpers.MfaEnrollmentSession.HasMfa(schemePrincipal)))
                 {
                     return new ForbidResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme,
                         new AuthenticationProperties(new Dictionary<string, string?>
@@ -724,6 +739,7 @@ namespace Web.IdP.Services
                 identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user));
                 identity.SetClaim(Claims.AuthenticationTime, Web.IdP.Helpers.AuthorizationAuthenticationSession.GetAuthenticationTime(schemePrincipal));
                 identity.SetClaims(AuthConstants.ClaimTypes.Amr, schemePrincipal.GetClaims(AuthConstants.ClaimTypes.Amr));
+                Web.IdP.Helpers.AuthorizationAuthenticationSession.CopyMfaBinding(schemePrincipal, identity);
 
                 if (!await HasCurrentScopePermissionsAsync(request, schemePrincipal, cancellationToken)) return InvalidPasswordGrant();
                 var requestedScopes = schemePrincipal.GetScopes().ToList();
@@ -829,6 +845,7 @@ namespace Web.IdP.Services
                     }
                     yield break;
 
+                case Web.IdP.Helpers.AuthorizationAuthenticationSession.MfaSecurityStampClaim:
                 case "AspNet.Identity.SecurityStamp":
                     yield break;
 

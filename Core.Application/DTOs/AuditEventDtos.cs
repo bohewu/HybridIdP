@@ -1,3 +1,5 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace Core.Application.DTOs;
 
 /// <summary>
@@ -24,7 +26,11 @@ public sealed class AuditEventFilterDto
     public DateTime? StartDate { get; set; }
     public DateTime? EndDate { get; set; }
     public string? IPAddress { get; set; }
+    public string? Search { get; set; }
+    public string? Sort { get; set; }
+    [Range(1, int.MaxValue)]
     public int PageNumber { get; set; } = 1;
+    [Range(1, 100)]
     public int PageSize { get; set; } = 20;
 }
 

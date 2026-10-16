@@ -11,14 +11,36 @@ document.addEventListener('DOMContentLoaded', function() {
         pleaseWaitThenRetry: btn.dataset.textPleaseWait,
         sending: btn.dataset.textSending,
         sendFailed: btn.dataset.textSendFailed,
+        codePending: btn.dataset.textCodePending,
+        codeNeeded: btn.dataset.textCodeNeeded,
+        codeUnavailable: btn.dataset.textCodeUnavailable,
         sendCodeUrl: btn.dataset.sendCodeUrl
     };
 
     const btnText = btn.querySelector('.btn-text');
     const countdownSpan = btn.querySelector('.countdown');
     const msg = document.getElementById('emailCodeSentMsg');
+    const form = btn.closest('form');
+    const codeInput = form?.querySelector('[name="Input.EmailCode"]');
+    const verifyButton = form?.querySelector('[data-test-id="mfa-submit"]');
+    const guidance = document.getElementById('emailCodeGuidance');
+    let codeSent = form?.dataset.emailCodeSent === 'true';
+    let remainingSeconds = 0;
     let countdownInterval;
     let messageTimeout;
+
+    function updateVerifyButton() {
+        if (verifyButton) verifyButton.disabled = form.dataset.submitting === 'true' || !codeSent || !/^\d{6}$/.test(codeInput?.value || '');
+        if (guidance) guidance.textContent = codeSent ? i18n.codePending
+            : remainingSeconds > 0 ? i18n.codeUnavailable : i18n.codeNeeded;
+    }
+    function syncCodeInput() {
+        codeInput.value = codeInput.value.replace(/\D/g, '').slice(0, 6);
+        updateVerifyButton();
+    }
+    ['input', 'change', 'focus'].forEach(event => codeInput?.addEventListener(event, syncCodeInput));
+    window.addEventListener('pageshow', () => { if (codeInput) syncCodeInput(); });
+    updateVerifyButton();
 
     function showMessage(text, tone) {
         if (messageTimeout) clearTimeout(messageTimeout);
@@ -32,7 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     async function sendCode() {
-        if (btn.disabled) return;
+        if (btn.disabled || form?.dataset.submitting === 'true') return;
         
         btn.disabled = true;
         btn.setAttribute('aria-busy', 'true');
@@ -49,8 +71,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
             
-            if (response.ok) {
-                const data = await response.json();
+            const data = await response.json();
+            codeSent = data.hasPendingCode === true;
+            if (form) form.dataset.emailCodeSent = String(codeSent);
+            updateVerifyButton();
+            if (response.ok && data.success === true && codeSent) {
                 
                 // Show success message
                 showMessage(i18n.emailCodeSent, 'text-green-600');
@@ -59,10 +84,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 startCountdown(data.remainingSeconds || 60);
             } else {
                 // Handle error (e.g. rate limit hit)
-                const data = await response.json();
                 if (data.remainingSeconds) {
                     startCountdown(data.remainingSeconds);
-                    showMessage(i18n.pleaseWaitThenRetry, 'text-amber-600');
+                    showMessage(codeSent ? i18n.pleaseWaitThenRetry : i18n.codeUnavailable, 'text-amber-600');
                 } else {
                     btn.disabled = false;
                     btnText.textContent = originalText;
@@ -80,22 +104,23 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function startCountdown(seconds) {
-        let remaining = seconds;
+        remainingSeconds = Math.max(0, Math.ceil(Number(seconds) || 0));
         
         // Update UI state
         btn.disabled = true;
         btn.classList.add('opacity-50', 'cursor-not-allowed');
-        btnText.textContent = i18n.resend;
-        countdownSpan.textContent = `(${remaining})`;
+        btnText.textContent = codeSent ? i18n.resend : i18n.sendCode;
+        countdownSpan.textContent = `(${remainingSeconds})`;
         countdownSpan.classList.remove('hidden');
+        updateVerifyButton();
         
         if (countdownInterval) clearInterval(countdownInterval);
         
         countdownInterval = setInterval(() => {
-            remaining--;
-            countdownSpan.textContent = `(${remaining})`;
+            remainingSeconds--;
+            countdownSpan.textContent = `(${remainingSeconds})`;
             
-            if (remaining <= 0) {
+            if (remainingSeconds <= 0) {
                 clearInterval(countdownInterval);
                 resetButton();
             }
@@ -103,11 +128,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function resetButton() {
-        btn.disabled = false;
+        remainingSeconds = 0;
+        btn.disabled = form?.dataset.submitting === 'true';
         btn.classList.remove('opacity-50', 'cursor-not-allowed');
-        btnText.textContent = i18n.sendCode;
+        btnText.textContent = codeSent ? i18n.resend : i18n.sendCode;
         countdownSpan.classList.add('hidden');
+        updateVerifyButton();
     }
 
     btn.addEventListener('click', sendCode);
+    const initialRemainingSeconds = Number(btn.dataset.remainingSeconds) || 0;
+    if (initialRemainingSeconds > 0) startCountdown(initialRemainingSeconds);
+    else resetButton();
 });

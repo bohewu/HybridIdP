@@ -97,6 +97,9 @@ public class LinkExternalLoginControllerSecurityTests
         using var services = new ServiceCollection()
             .AddSingleton(authenticationService.Object)
             .AddSingleton<IApplicationDbContext>(db)
+            .AddSingleton<IAccountRecoveryCodeService>(Mock.Of<IAccountRecoveryCodeService>(codes =>
+                codes.GetStatusAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()) ==
+                Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0))))
             .AddSingleton(userManager.Object)
             .BuildServiceProvider();
         var httpContext = new DefaultHttpContext

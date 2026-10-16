@@ -36,7 +36,9 @@
              data-remaining-grace-days="@Model.RemainingGraceDays"
              data-is-mfa-enforced="@Model.IsMfaEnforced.ToString().ToLower()"
              data-show-grace-period="@Model.ShowGracePeriod.ToString().ToLower()"
+             data-is-management="@Model.IsManagement.ToString().ToLower()"
              data-return-url="@Model.ReturnUrl"
+             data-resume-method="@Model.ResumeMethod"
              data-csrf-token="@csrfToken">
         </div>
         

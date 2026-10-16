@@ -117,6 +117,29 @@ public class AccountSecurityOperationSessionTests
             AccountSecurityOperationSession.MfaResetPurpose, "target"));
     }
 
+    [Fact]
+    public async Task AccountCode_ShouldRequireCommittedReceiptAndAuthorizeLastCodeForExactOperation()
+    {
+        using var fixture = new Fixture();
+        var codes = (await fixture.AccountCodes.GenerateAsync(fixture.User))!;
+        foreach (var code in codes.Take(9)) Assert.True(await fixture.AccountCodes.RedeemAsync(fixture.User, code, "old-op"));
+        var nonce = await AccountSecurityOperationSession.BeginAsync(fixture.Http, fixture.User,
+            AccountSecurityOperationSession.MfaEnrollmentPurpose, fixture.User.Id.ToString());
+        MfaEnrollmentSession.Begin(fixture.Http.Session, fixture.User.Id, true, securityStamp: fixture.User.SecurityStamp);
+        AccountSecurityOperationSession.MarkVerified(fixture.Http, fixture.User, "password");
+        AccountSecurityOperationSession.MarkVerified(fixture.Http, fixture.User, "account-recovery");
+        Assert.False(await AccountSecurityOperationSession.IsAuthorizedAsync(fixture.Http, fixture.User,
+            AccountSecurityOperationSession.MfaEnrollmentPurpose, fixture.User.Id.ToString()));
+        Assert.True(await fixture.AccountCodes.RedeemAsync(fixture.User, codes[^1], nonce!));
+        Assert.Equal(0, (await fixture.AccountCodes.GetStatusAsync(fixture.User.Id)).RemainingCodes);
+        AccountSecurityOperationSession.MarkVerified(fixture.Http, fixture.User, "account-recovery");
+        Assert.True(await AccountSecurityOperationSession.IsAuthorizedAsync(fixture.Http, fixture.User,
+            AccountSecurityOperationSession.MfaEnrollmentPurpose, fixture.User.Id.ToString()));
+        var cookie = await fixture.Http.AuthenticateAsync(IdentityConstants.ApplicationScheme);
+        Assert.True(MfaEnrollmentSession.CompletePending(fixture.Http, cookie.Principal!));
+        Assert.True(MfaEnrollmentSession.HasFreshProof(fixture.Http.Session, fixture.User.Id));
+    }
+
     private sealed class Fixture : IDisposable
     {
         public ApplicationDbContext Db { get; } = new(new DbContextOptionsBuilder<ApplicationDbContext>()
@@ -124,9 +147,13 @@ public class AccountSecurityOperationSessionTests
         public ApplicationUser User { get; } = new() { Id = Guid.NewGuid(), IsActive = true, SecurityStamp = "existing", Email = "user@example.test" };
         public DefaultHttpContext Http { get; } = new();
         private readonly ServiceProvider _services;
+        public Infrastructure.Services.AccountRecoveryCodeService AccountCodes { get; }
 
         public Fixture()
         {
+            Db.Users.Add(User);
+            Db.SaveChanges();
+            AccountCodes = new Infrastructure.Services.AccountRecoveryCodeService(Db);
             var users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
             var auth = new Mock<IAuthenticationService>();
             auth.Setup(value => value.SignOutAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<AuthenticationProperties>())).Returns(Task.CompletedTask);
@@ -135,7 +162,7 @@ public class AccountSecurityOperationSessionTests
                     [new Claim(ClaimTypes.NameIdentifier, User.Id.ToString()), new Claim(users.Object.Options.ClaimsIdentity.SecurityStampClaimType, "existing"),
                      new Claim(AuthConstants.ClaimTypes.Amr, AuthConstants.Amr.Mfa)], IdentityConstants.ApplicationScheme)), IdentityConstants.ApplicationScheme)));
             _services = new ServiceCollection().AddSingleton<IApplicationDbContext>(Db).AddSingleton(users.Object)
-                .AddSingleton(auth.Object).BuildServiceProvider();
+                .AddSingleton(auth.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(AccountCodes).BuildServiceProvider();
             Http.RequestServices = _services;
             Http.Session = new MemorySession();
         }

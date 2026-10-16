@@ -61,10 +61,16 @@ public sealed class AdministrativeMfaResetService(
         target.EmailMfaCode = null;
         target.EmailMfaCodeExpiry = null;
         target.EmailMfaVerificationAttempts = 0;
-        target.RecoveryCodes = null;
+        if (target.RecoveryCodes != null) target.RecoveryCodes = "[]";
         var nativeCodes = await db.UserTokens.Where(token => token.UserId == targetId &&
-            token.LoginProvider == "[AspNetUserStore]" && token.Name == "RecoveryCodes").ToListAsync(ct);
-        db.UserTokens.RemoveRange(nativeCodes);
+            ((token.LoginProvider == "[AspNetUserStore]" && token.Name == "RecoveryCodes") ||
+             token.LoginProvider == global::Infrastructure.Services.AccountRecoveryCodeService.LoginProvider)).ToListAsync(ct);
+        foreach (var code in nativeCodes)
+            code.Value = code.LoginProvider == "[AspNetUserStore]" ? string.Empty : "[]";
+        var activeCredentials = await db.UserCredentials.Where(credential =>
+            credential.UserId == targetId && credential.DisabledAtUtc == null).ToListAsync(ct);
+        var retiredAt = DateTime.UtcNow;
+        foreach (var credential in activeCredentials) credential.DisabledAtUtc = retiredAt;
         EnsureSucceeded(await users.UpdateAsync(target));
 
         var sessions = await db.UserSessions.Where(session => session.UserId == targetId && session.RevokedUtc == null).ToListAsync(ct);

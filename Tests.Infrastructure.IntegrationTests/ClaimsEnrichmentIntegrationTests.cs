@@ -133,7 +133,7 @@ public class ClaimsEnrichmentIntegrationTests : IDisposable
             Options.Create(new CredentialMigrationOptions()),
             migrationStateStore.Object,
             stage2CredentialMigrationService.Object,
-            migrationIssuanceGuard.Object, Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanUseScopesAsync(Moq.It.IsAny<object>(), Moq.It.IsAny<IEnumerable<string>>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)));
+            migrationIssuanceGuard.Object, Moq.Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>(p => p.CanUseScopesAsync(Moq.It.IsAny<object>(), Moq.It.IsAny<IEnumerable<string>>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(true)), new global::Infrastructure.Services.AccountRecoveryCodeService(_db));
     }
 
     public void Dispose()

@@ -10,6 +10,7 @@ namespace Web.IdP.Helpers;
 public static class AuthorizationAuthenticationSession
 {
     public const string PreserveTimeKey = "Identity:PreserveAuthenticationTime";
+    public const string MfaSecurityStampClaim = "idp_mfa_security_stamp";
     public const string AssuranceVersionClaim = "idp_assurance_version";
     public const string AssuranceVersion = "1";
     private const string PreserveAssuranceKey = "Identity:PreserveAssurance";
@@ -49,6 +50,26 @@ public static class AuthorizationAuthenticationSession
     public static bool HasCurrentAssuranceVersion(ClaimsPrincipal? principal) =>
         principal?.FindAll(AssuranceVersionClaim).Select(claim => claim.Value).SequenceEqual([AssuranceVersion]) == true;
 
+    public static bool HasCurrentMfa(ClaimsPrincipal principal, Core.Domain.ApplicationUser user) =>
+        !string.IsNullOrEmpty(user.SecurityStamp) && MfaEnrollmentSession.HasMfa(principal) &&
+        principal.FindAll(MfaSecurityStampClaim).Select(claim => claim.Value).SequenceEqual([user.SecurityStamp]);
+
+    public static void StripStaleMfa(ClaimsPrincipal principal, Core.Domain.ApplicationUser user)
+    {
+        if (!HasCurrentMfa(principal, user)) ClearMfa(principal);
+    }
+
+    public static void ClearMfa(ClaimsPrincipal principal)
+    {
+        foreach (var identity in principal.Identities)
+            foreach (var claim in identity.Claims.Where(claim => claim.Type == MfaSecurityStampClaim ||
+                ((claim.Type is "amr" or ClaimTypes.AuthenticationMethod) && claim.Value is "mfa" or "otp") ||
+                (claim.Type == "acr" && claim.Value == "mfa")).ToArray()) identity.RemoveClaim(claim);
+    }
+
+    public static void CopyMfaBinding(ClaimsPrincipal source, ClaimsIdentity destination) =>
+        destination.SetClaim(MfaSecurityStampClaim, source.FindFirstValue(MfaSecurityStampClaim));
+
     public static void PreserveAssurance(HttpContext context, ClaimsPrincipal principal)
     {
         context.Items[PreserveAssuranceKey] = principal.Clone();
@@ -66,10 +87,11 @@ public static class AuthorizationAuthenticationSession
             (!authorizedStampChange && stamp != refreshed.FindFirstValue(stampType)) || subject == null || subject != refreshed.FindFirstValue(ClaimTypes.NameIdentifier) ||
             !HasCurrentAssuranceVersion(current)) return;
         foreach (var claim in current.Claims.Where(IsAssuranceClaim)) identity.AddClaim(claim);
+        // The MFA binding is copied unchanged; a stamp transition never refreshes its authority.
     }
 
     private static bool IsAssuranceClaim(Claim claim) => claim.Type is
-        "amr" or ClaimTypes.AuthenticationMethod or "auth_time" or AssuranceVersionClaim;
+        "amr" or ClaimTypes.AuthenticationMethod or "auth_time" or AssuranceVersionClaim or MfaSecurityStampClaim;
 
     public static bool RequiresChallenge(ISession session, ClaimsPrincipal principal, OpenIddictRequest request,
         bool forceLogin, TimeProvider? clock = null)
@@ -85,13 +107,20 @@ public static class AuthorizationAuthenticationSession
         if (context.Principal?.Identity is not ClaimsIdentity identity) return;
         if (context.HttpContext.Items.Remove(PreserveAssuranceKey, out var preserved) && preserved is ClaimsPrincipal current)
         {
-            // The only callers are the authorized enrollment seed and external-login removal transitions.
+            // Only authorized factor transitions and external-login removal preserve this evidence.
             CopyAssurance(current, context.Principal,
                 context.HttpContext.RequestServices.GetService<UserManager<Core.Domain.ApplicationUser>>()?
                     .Options.ClaimsIdentity.SecurityStampClaimType, authorizedStampChange: true);
             foreach (var claim in identity.FindAll(CeremonyClaim).ToArray()) identity.RemoveClaim(claim);
             return;
         }
+        // Cookie refresh and authorized stamp transitions use CopyAssurance instead.
+        foreach (var claim in identity.FindAll(MfaSecurityStampClaim).ToArray()) identity.RemoveClaim(claim);
+        var stampType = context.HttpContext.RequestServices.GetService<UserManager<Core.Domain.ApplicationUser>>()?
+            .Options.ClaimsIdentity.SecurityStampClaimType ?? new IdentityOptions().ClaimsIdentity.SecurityStampClaimType;
+        var stamp = identity.FindFirst(stampType)?.Value;
+        if (MfaEnrollmentSession.HasMfa(context.Principal) && !string.IsNullOrEmpty(stamp))
+            identity.AddClaim(new Claim(MfaSecurityStampClaim, stamp));
         foreach (var claim in identity.FindAll(AssuranceVersionClaim).ToArray()) identity.RemoveClaim(claim);
         identity.AddClaim(new Claim(AssuranceVersionClaim, AssuranceVersion));
         foreach (var claim in identity.FindAll("auth_time").Concat(identity.FindAll(CeremonyClaim)).ToArray())

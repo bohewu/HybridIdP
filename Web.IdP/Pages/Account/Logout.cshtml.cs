@@ -1,11 +1,14 @@
 using Core.Domain;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Web.IdP.Helpers;
+using Web.IdP.Attributes;
 
 namespace Web.IdP.Pages.Account;
 
+[LogoutAntiforgeryRecovery]
 public class LogoutModel : PageModel
 {
     private readonly SignInManager<ApplicationUser> _signInManager;
@@ -20,10 +23,14 @@ public class LogoutModel : PageModel
     }
 
     public bool ShowLogoutPrompt { get; set; } = true;
+    public bool ConfirmationExpired { get; private set; }
+    public string CurrentAccountName => User.Identity?.Name ?? User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
 
-    public IActionResult OnGet()
+    public IActionResult OnGet(bool confirmationExpired = false)
     {
-        if (!User.Identity?.IsAuthenticated ?? true)
+        ConfirmationExpired = confirmationExpired;
+        ShowLogoutPrompt = User.Identity?.IsAuthenticated == true;
+        if (!ShowLogoutPrompt && !ConfirmationExpired)
         {
             // User is not authenticated, redirect to home
             return RedirectToPage("/Index");

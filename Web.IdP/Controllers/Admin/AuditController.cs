@@ -36,6 +36,16 @@ public class AuditController : ControllerBase
     }
 
     /// <summary>
+    /// List the exact event types present in the audit log.
+    /// </summary>
+    [HttpGet("event-types")]
+    [HasPermission(Permissions.Audit.Read)]
+    public async Task<ActionResult> GetEventTypes(CancellationToken cancellationToken = default)
+    {
+        return Ok(await _auditService.GetEventTypesAsync(cancellationToken));
+    }
+
+    /// <summary>
     /// Export a specific audit event.
     /// </summary>
     [HttpGet("events/{id}/export")]

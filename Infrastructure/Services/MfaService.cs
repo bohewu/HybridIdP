@@ -34,6 +34,15 @@ public class MfaService : IMfaService
     private readonly ApplicationDbContext _dbContext;
     private readonly ILogger<MfaService> _logger;
     private readonly TimeProvider _timeProvider;
+    private (Guid UserId, IReadOnlyList<string> Codes)? _initialCodes;
+
+    public IReadOnlyList<string>? TakeInitialRecoveryCodes(ApplicationUser user)
+    {
+        var result = _initialCodes is { } batch && batch.UserId == user.Id ? batch.Codes : null;
+        _initialCodes = null;
+        return result;
+    }
+
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
     private const int EmailMfaCodeLifetimeMinutes = 10;
     private const int EmailMfaCooldownSeconds = 60;
@@ -121,7 +130,35 @@ public class MfaService : IMfaService
         var previous = _dbContext.Entry(user).CurrentValues.Clone();
         user.LastTotpValidatedWindow = matchedWindow;
         if (enable) user.TwoFactorEnabled = true;
-        return await PersistProofAsync(user, previous, () => _userManager.UpdateAsync(user), ct);
+        return enable ? await PersistEnrollmentAsync(user, previous, ct)
+            : await PersistProofAsync(user, previous, () => _userManager.UpdateAsync(user), ct);
+    }
+
+    private async Task<bool> PersistEnrollmentAsync(ApplicationUser user, PropertyValues previous, CancellationToken ct)
+    {
+        _initialCodes = null;
+        var codes = new AccountRecoveryCodeService(_dbContext);
+        await using var transaction = _dbContext.Database.IsRelational()
+            ? await _dbContext.Database.BeginTransactionAsync(ct) : null;
+        var committed = false;
+        try
+        {
+            var batch = await codes.StageInitialBatchAsync(user, ct);
+            if (!await PersistProofAsync(user, previous, () => _userManager.UpdateAsync(user), ct)) return false;
+            if (transaction != null) await transaction.CommitAsync(ct);
+            committed = true;
+            if (batch != null) _initialCodes = (user.Id, batch);
+            return true;
+        }
+        catch (DbUpdateException) { return false; }
+        finally
+        {
+            if (!committed)
+            {
+                if (transaction != null) await transaction.RollbackAsync(CancellationToken.None);
+                await DiscardFailedProofAsync(user, previous);
+            }
+        }
     }
 
     public Task<MfaRemovalResult> DisableMfaAsync(ApplicationUser user, CancellationToken ct = default) =>
@@ -129,35 +166,8 @@ public class MfaService : IMfaService
 
     public async Task<IEnumerable<string>> GenerateRecoveryCodesAsync(ApplicationUser user, int count = 10, CancellationToken ct = default)
     {
-        ct.ThrowIfCancellationRequested();
-
-        var codes = new List<string>();
-        var hashedCodes = new List<string>();
-
-        for (int i = 0; i < count; i++)
-        {
-            var code = Guid.NewGuid().ToString("N").Substring(0, 10).ToUpperInvariant();
-            codes.Add(code);
-            hashedCodes.Add(_passwordHasher.HashPassword(user, code));
-        }
-
-        var previousRecoveryCodes = user.RecoveryCodes;
-        user.RecoveryCodes = System.Text.Json.JsonSerializer.Serialize(hashedCodes);
-        try
-        {
-            var updateResult = await _userManager.UpdateAsync(user);
-            if (!updateResult.Succeeded)
-            {
-                throw new InvalidOperationException("Recovery codes could not be persisted.");
-            }
-        }
-        catch
-        {
-            user.RecoveryCodes = previousRecoveryCodes;
-            throw;
-        }
-
-        return codes;
+        return await new AccountRecoveryCodeService(_dbContext).GenerateAsync(user, ct)
+            ?? throw new InvalidOperationException("Recovery codes could not be persisted.");
     }
 
     public async Task<bool> ValidateRecoveryCodeAsync(ApplicationUser user, string code, CancellationToken ct = default)
@@ -301,17 +311,10 @@ public class MfaService : IMfaService
         }
 
         // Rate Limiting Check
-        var cacheKey = GetEmailMfaCooldownKey(user.Id);
-        var cachedValue = await _cache.GetStringAsync(cacheKey, ct);
-        
-        if (!string.IsNullOrEmpty(cachedValue) && long.TryParse(cachedValue, out long expireTicks))
+        var remainingSeconds = await GetEmailMfaCooldownRemainingSecondsAsync(user, ct);
+        if (remainingSeconds > 0)
         {
-             var validAfter = new DateTimeOffset(expireTicks, TimeSpan.Zero);
-             var remaining = (int)(validAfter - DateTimeOffset.UtcNow).TotalSeconds;
-             if (remaining > 0)
-             {
-                 return (false, remaining);
-             }
+            return (false, remainingSeconds);
         }
 
         // Generate a uniformly distributed 6-digit numeric code, including leading zeroes.
@@ -334,14 +337,26 @@ public class MfaService : IMfaService
         await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
 
         // Set Cooldown
-        var cooldownExpiry = DateTimeOffset.UtcNow.AddSeconds(EmailMfaCooldownSeconds);
+        var cooldownExpiry = _timeProvider.GetUtcNow().AddSeconds(EmailMfaCooldownSeconds);
         await _cache.SetStringAsync(
-            cacheKey, 
+            GetEmailMfaCooldownKey(user.Id),
             cooldownExpiry.Ticks.ToString(), 
             new DistributedCacheEntryOptions { AbsoluteExpiration = cooldownExpiry }, 
             ct);
         
         return (true, EmailMfaCooldownSeconds);
+    }
+
+    public async Task<int> GetEmailMfaCooldownRemainingSecondsAsync(ApplicationUser user, CancellationToken ct = default)
+    {
+        var cachedValue = await _cache.GetStringAsync(GetEmailMfaCooldownKey(user.Id), ct);
+        if (string.IsNullOrEmpty(cachedValue) || !long.TryParse(cachedValue, out var expireTicks))
+        {
+            return 0;
+        }
+
+        var validAfter = new DateTimeOffset(expireTicks, TimeSpan.Zero);
+        return Math.Max(0, (int)Math.Ceiling((validAfter - _timeProvider.GetUtcNow()).TotalSeconds));
     }
 
     public Task<bool> VerifyEmailMfaCodeAsync(ApplicationUser user, string code, CancellationToken ct = default) =>
@@ -400,6 +415,7 @@ public class MfaService : IMfaService
             return false;
         }
 
+        var previous = _dbContext.Entry(user).CurrentValues.Clone();
         var previousCode = user.EmailMfaCode;
         var previousExpiry = user.EmailMfaCodeExpiry;
         var previousAttempts = user.EmailMfaVerificationAttempts;
@@ -414,17 +430,15 @@ public class MfaService : IMfaService
             user.EmailMfaEnabled = true;
         }
 
-        var updateResult = await _userManager.UpdateAsync(user);
-        if (updateResult.Succeeded)
+        var persisted = enableEmailMfa
+            ? await PersistEnrollmentAsync(user, previous, ct)
+            : await PersistProofAsync(user, previous, () => _userManager.UpdateAsync(user), ct);
+        if (persisted)
         {
             await ClearEmailMfaCooldownAsync(user.Id, ct);
             return true;
         }
 
-        user.EmailMfaCode = previousCode;
-        user.EmailMfaCodeExpiry = previousExpiry;
-        user.EmailMfaVerificationAttempts = previousAttempts;
-        user.EmailMfaEnabled = wasEmailMfaEnabled;
         return false;
     }
 
@@ -456,21 +470,21 @@ public class MfaService : IMfaService
             .ToListAsync(ct);
         var remainingTotp = !totp && user.TwoFactorEnabled;
         var remainingEmail = totp && user.EmailMfaEnabled;
-        var retirePasskeys = policy.RequireMfaForPasskey && !remainingTotp && !remainingEmail;
+        var retirePasskeys = policy.RequireMfaForPasskey &&
+            !(policy.EnableTotpMfa && remainingTotp) && !(policy.EnableEmailMfa && remainingEmail);
         if (policy.EnforceMandatoryMfaEnrollment &&
             !(policy.EnableTotpMfa && remainingTotp) && !(policy.EnableEmailMfa && remainingEmail) &&
             !(policy.EnablePasskey && !retirePasskeys && passkeys.Count > 0))
             return MfaRemovalResult.MandatoryFactorRequired;
+        if (retirePasskeys && passkeys.Count > 0 &&
+            !await PasskeyService.HasAlternatePrimaryAuthorityAsync(_dbContext, user, ct))
+            return MfaRemovalResult.AlternateSignInRequired;
 
         var previous = _dbContext.Entry(user).CurrentValues.Clone();
         if (totp)
         {
             user.TwoFactorEnabled = false;
             user.LastTotpValidatedWindow = null;
-            user.RecoveryCodes = null;
-            var nativeCodes = await _dbContext.UserTokens.Where(token => token.UserId == user.Id &&
-                token.LoginProvider == "[AspNetUserStore]" && token.Name == "RecoveryCodes").ToListAsync(ct);
-            _dbContext.UserTokens.RemoveRange(nativeCodes);
         }
         else
         {
@@ -478,7 +492,15 @@ public class MfaService : IMfaService
             user.EmailMfaCode = null;
             user.EmailMfaCodeExpiry = null;
             user.EmailMfaVerificationAttempts = 0;
-            if (!user.TwoFactorEnabled) user.RecoveryCodes = null;
+
+        }
+        if (!user.TwoFactorEnabled && !user.EmailMfaEnabled)
+        {
+            if (user.RecoveryCodes != null) user.RecoveryCodes = "[]";
+            var nativeCodes = await _dbContext.UserTokens.Where(token => token.UserId == user.Id &&
+                token.LoginProvider == AccountRecoveryCodeService.NativeProvider &&
+                token.Name == AccountRecoveryCodeService.NativeName).ToListAsync(ct);
+            foreach (var native in nativeCodes) native.Value = string.Empty;
         }
         user.SecurityStamp = Guid.NewGuid().ToString();
         if (retirePasskeys)

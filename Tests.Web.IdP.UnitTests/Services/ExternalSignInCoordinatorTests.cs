@@ -290,7 +290,7 @@ public class ExternalSignInCoordinatorTests
 
             var services = new ServiceCollection()
                 .AddSingleton(AuthenticationService.Object)
-                .BuildServiceProvider();
+                .AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
             Session = new MemorySession();
             HttpContext = new DefaultHttpContext
             {

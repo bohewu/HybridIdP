@@ -48,7 +48,11 @@ using System.Security.Cryptography.X509Certificates;
 
 
 var builder = WebApplication.CreateBuilder(args);
-builder.ConfigurePublicOrigin();
+var migrateOnly = DatabaseMigrationLifecycle.IsMigrateOnly(args);
+if (!migrateOnly)
+{
+    builder.ConfigurePublicOrigin();
+}
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
     serverOptions.AddServerHeader = false;
@@ -77,8 +81,6 @@ builder.Services.AddCustomPlatformServices(builder.Configuration, redisEnabled, 
 var databaseProvider = Environment.GetEnvironmentVariable("DATABASE_PROVIDER")
     ?? builder.Configuration["DatabaseProvider"]
     ?? "SqlServer";
-var migrateOnly = DatabaseMigrationLifecycle.IsMigrateOnly(args);
-
 if (migrateOnly && !DatabaseMigrationLifecycle.IsSupportedProvider(databaseProvider))
 {
     Console.Error.WriteLine("Database migration failed. Category: configuration.");
@@ -98,7 +100,8 @@ var connectionString = databaseProvider.Equals("PostgreSQL", StringComparison.Or
     : builder.Configuration.GetConnectionString("SqlServerConnection") ?? throw new InvalidOperationException("Connection string 'SqlServerConnection' not found.");
 
 // Register Custom Identity and Access (DbContext, Identity, OpenIddict, Authorization)
-builder.Services.AddCustomIdentityAndAccess(builder.Configuration, builder.Environment, databaseProvider, connectionString);
+builder.Services.AddCustomIdentityAndAccess(builder.Configuration, builder.Environment, databaseProvider, connectionString,
+    migrateOnly: migrateOnly);
 
 if (migrateOnly)
 {

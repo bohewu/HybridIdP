@@ -38,6 +38,8 @@ namespace Core.Application
         /// <returns>Tuple of items and total count</returns>
         Task<(IEnumerable<AuditEventDto> items, int totalCount)> GetEventsAsync(AuditEventFilterDto filter, CancellationToken cancellationToken = default);
 
+        Task<IEnumerable<string>> GetEventTypesAsync(CancellationToken cancellationToken = default);
+
         /// <summary>
         /// Exports audit events for a specific event ID.
         /// </summary>

@@ -77,6 +77,26 @@ When running in `Development` environment, the following additional data is seed
 
 ## 3. Automated Tests
 
+### Stale local logout confirmation
+
+`LogoutModelTests` uses a bounded loopback Razor host with real automatic
+antiforgery and result filters, synthetic principals and a mocked sign-out
+boundary. It covers identity changes, anonymous stale submissions, missing,
+tampered and foreign-browser tokens, fresh confirmation, localized copy,
+encoded current-account names, safe recovery redirects and unchanged unrelated
+CSRF/400 results. Each test stops and disposes its own host. Run only this class:
+
+```powershell
+dotnet test Tests.Web.IdP.UnitTests/Tests.Web.IdP.UnitTests.csproj --filter FullyQualifiedName~LogoutModelTests
+```
+
+For browser verification, leave Logout open in one tab and begin an MFA
+reauthentication in another. Submit the old Logout form while the application
+session is absent, then repeat after signing in as another account. Verify the
+explanation, current account when present, and that only a fresh explicit POST
+signs out. Check `en-US` and `zh-TW`. The focused fixture does not establish a
+real cookie, MFA, browser or deployed session roundtrip.
+
 ### Recovery identity verification and email selection (offline)
 
 Read the [integration bundle](RECOVERY_IDENTITY_VERIFICATION_INTEGRATION.md)
@@ -405,6 +425,10 @@ Check the database tables `ApiResources` and `ApiResourceScopes` to confirm `com
 
 本專案支援多種 MFA 方式，包含 TOTP、Email OTP 以及 Passkey。
 
+For the complete Email OTP and TOTP account-operation regression checklist,
+use the [OTP operation matrix](OTP_OPERATION_MATRIX.md). Record browser results
+separately from unit tests and incomplete or interrupted cases.
+
 ### TOTP (驗證碼產生器)
 - **手動測試**: 進入「個人設定」 -> 「MFA 設定」 -> 「Setup Authenticator」，使用手機 App (Microsoft/Google Authenticator) 掃描。
 - **技巧**: 複製密鑰並使用網頁版工具 (如 [totp.app](https://totp.app/))，無需手機。
@@ -473,3 +497,74 @@ Focused product tests cover shadow-account routing, exact binding and required
 Proof actions; Profile contract/limits, source association, local hashing, removal
 and failed confirmation; bounded typed conditions and Boolean UserInfo. These
 fixtures do not establish live producer implementation or production freshness.
+
+
+### Account backup codes and lost passkeys
+
+Focused backend coverage is in `AccountRecoveryCodeServiceTests` (real SQLite
+transactions and separate DbContexts), `AccountRecoveryCodesControllerTests`,
+`AccountSecurityOperationSessionTests`, `MfaEnrollmentSessionTests`,
+`LoginMfaModelPasskeyTests`, `AdministrativeMfaResetServiceTests`,
+`TokenServiceTests` and `AuthorizationServiceTests`. FIDO attestation verification
+is mocked in the transaction tests; these are persistence/authorization tests,
+not hardware-authenticator or production-provider acceptance.
+
+Exercise first passkey registration with OTP off: the response displays ten
+account backup codes once, subsequent registrations do not regenerate them, and
+an exhausted batch remains exhausted. Enter a saved code from the protected
+LoginMfa challenge, including the final code, and confirm replay fails. Confirm
+an old security-stamp cookie cannot consume a code. Regeneration requires fresh
+MFA and invalidates the old batch; removing OTP preserves account backup codes.
+
+With one saved account code and a lost active passkey, select replacement
+enrollment on LoginMfa during ordinary or required-MFA login. Confirm MfaSetup
+can register a replacement without a second code and returns to the original
+local authorization URL. Reusing the consumed enrollment proof, another user,
+a changed stamp, an expired proof or an unselected purpose must not authorize
+registration. The enrollment-only continuation must reject removal and code
+regeneration. A historical batch must not relax zero-key registration UV.
+
+With mandatory MFA enabled, account-code-only users must use LoginMfa and cannot
+obtain password-grant enrollment grace. With optional MFA, ordinary password
+sign-in remains available, but password-only proof cannot enroll a replacement
+factor while recovery capability remains. Account codes do not allow removal of
+the last ordinary factor under mandatory MFA or satisfy privileged-role factor
+eligibility.
+
+For administrative recovery, use the existing scoped operator MFA/reason flow.
+Verify all active keys are retired, older retired timestamps are preserved, both
+recovery-code families are invalidated, and existing session/token revocations
+remain intact. Preserve real user factors when running browser checks; use
+isolated fixture accounts and a disposable local database.
+
+### Unified recovery-code upgrade and stamp-bound assurance
+
+Use `AccountRecoveryCodeServiceTests` and `MfaServiceTests` for real SQLite
+first TOTP/Email/passkey enrollment transactions, failed-write rollback and
+later-save safety, cross-store regeneration, custom/native verification, and
+live/exhausted legacy history. Legacy batches suppress automatic issuance when
+adding another factor; explicit regeneration retires all prior code families.
+`AuthorizationAuthenticationSessionTests`, `AuthorizationServiceTests`,
+`TokenServiceTests` and `DeviceFlowServiceTests` cover current, missing and
+retired stamp bindings, optional AMR stripping, and internal claim destinations.
+Controller removal tests confirm the retained account cookie loses obsolete
+MFA and management proof.
+
+For a real upgrade check, preserve an isolated legacy TOTP account and its
+custom/native code hashes across the new build. Confirm an old code still works,
+adding a passkey produces no second batch, and explicit regeneration makes every
+old family unusable. Repeat genuine first enrollment for TOTP, Email and a
+user-verified passkey. Under optional global policy remove the final ordinary
+factor, retain Profile access, then visit a required-MFA client and complete
+fresh verification/replacement setup; the pre-removal cookie, authorization code,
+refresh token and device approval must not satisfy required MFA. Under mandatory
+global policy the final usable factor remains protected, including disabled
+method policy and passkey dependency cascades. These focused checks do not prove
+production rollout, physical authenticators or provider interoperability.
+
+The final-primary-passkey removal regression is covered in `PasskeyServiceTests`
+and `MfaServiceTests`: direct deletion and either OTP dependency cascade must
+preserve all state for accounts with no alternate primary authority, including
+accounts retaining backup codes. Local-password, external/contract-linked and
+directory/migration accounts retain their existing removal policy. Controller
+coverage checks the localized `alternateSignInRequired` response.

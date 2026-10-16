@@ -1,10 +1,11 @@
 <script setup>
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { auditEventTypeLabel, auditEventDetails } from '@/utils/auditEventLabels'
 import Pagination from '@/components/common/Pagination.vue'
 import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
 
-const { t } = useI18n()
+const { t, te } = useI18n()
 
 const props = defineProps({
   auditEvents: { type: Array, required: true },
@@ -26,23 +27,8 @@ const totalPages = computed(() => {
   return Math.ceil(props.totalCount / props.pageSize)
 })
 
-const recoveryEventTypes = new Set([
-  'RecoveryAddressChangeStarted',
-  'RecoveryAddressVerified',
-  'RecoveryAddressRevoked',
-  'AdminRecoveryAddressReplaced',
-  'AdminMigrationOtpResent',
-  'AdminResetApprovalIssued',
-  'AdminResetApprovalConsumed'
-])
-
-const eventTypeLabel = (eventType) => recoveryEventTypes.has(eventType)
-  ? t(`audit.eventTypes.${eventType}`)
-  : eventType
-
-const eventDetails = (event) => recoveryEventTypes.has(event.eventType)
-  ? t('audit.recovery.recordedOutcome')
-  : event.details
+const eventTypeLabel = (eventType) => auditEventTypeLabel(eventType, t, te)
+const eventDetails = (event) => auditEventDetails(event, t)
 
 const formatDate = (dateString) => {
   if (!dateString) return t('audit.never')
@@ -197,7 +183,7 @@ const getSortIcon = (field) => {
                 </span>
               </td>
               <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                {{ event.user || t('audit.system') }}
+                {{ event.user || event.userId || t('audit.system') }}
               </td>
               <td class="px-6 py-4 text-sm text-gray-900 max-w-xs truncate" :title="eventDetails(event)">
                 {{ eventDetails(event) }}
