@@ -47,13 +47,13 @@ public static class AuthenticationMethodSession
     {
         var authentication = await context.AuthenticateAsync(IdentityConstants.ApplicationScheme);
         var principal = authentication.Principal;
-        if (authentication.Succeeded && AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(principal) &&
-            principal!.FindFirstValue(ClaimTypes.NameIdentifier) == user.Id.ToString() &&
+        if (authentication.Succeeded && principal is not null && AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(principal) &&
+            principal.FindFirstValue(ClaimTypes.NameIdentifier) == user.Id.ToString() &&
             !string.IsNullOrEmpty(user.SecurityStamp))
         {
             var stampType = context.RequestServices.GetRequiredService<UserManager<ApplicationUser>>()
                 .Options.ClaimsIdentity.SecurityStampClaimType;
-            if (principal!.FindFirstValue(stampType) == user.SecurityStamp)
+            if (principal.FindFirstValue(stampType) == user.SecurityStamp)
                 Add(context.Session, user, principal.Claims.Where(claim =>
                         claim.Type is AuthConstants.ClaimTypes.Amr or ClaimTypes.AuthenticationMethod)
                     .Select(claim => claim.Value).ToArray());
