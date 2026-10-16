@@ -407,7 +407,7 @@ public static class ServiceCollectionExtensions
         return services;
     }
 
-    public static IServiceCollection AddCustomIdentityAndAccess(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment, string databaseProvider, string connectionString)
+    public static IServiceCollection AddCustomIdentityAndAccess(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment, string databaseProvider, string connectionString, bool migrateOnly = false)
     {
         // Configure Data Protection to persist keys to a specific directory (for Docker deployments)
         var keysDirectory = configuration["DataProtection:KeysDirectory"] ?? "/app/keys";
@@ -436,6 +436,9 @@ public static class ServiceCollectionExtensions
             options.UseOpenIddict<Guid>();
         });
         services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
+
+        // Schema-only execution must not require website identities or signing certificates.
+        if (migrateOnly) return services;
 
         // Add Identity
         services.AddIdentity<ApplicationUser, ApplicationRole>()

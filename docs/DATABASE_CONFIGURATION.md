@@ -594,7 +594,9 @@ npm test
 
 ### 使用 `update-db.ps1` 腳本
 
-位於 `deployment/` 目錄下的 `update-db.ps1` 腳本可以協助您設定正確的環境變數並執行 `dotnet ef` 命令。
+位於 `deployment/` 目錄下的 `update-db.ps1` 會設定本次執行所需的環境變數，並呼叫應用程式的 `--migrate-only` 入口。需要 .NET 10 SDK；不需要 Docker、`dotnet-ef`、網站 issuer 或 PFX 憑證。
+
+目前 checkout 決定 migration 版本，連線字串決定目標資料庫。執行前請確認已有可還原的備份，且本機可連線至目標資料庫。腳本只更新 schema，不執行 seed、不啟動網站、不部署或重啟現有 IdP。
 
 **腳本位置:** `deployment/update-db.ps1`
 
@@ -604,36 +606,33 @@ npm test
 
 #### 使用範例
 
-**1. SQL Server 更新**
+從 repository 根目錄執行以下範例。SQL Server 使用 `SqlServer`；PostgreSQL 則將 `$provider` 改為 `PostgreSQL`，並輸入該資料庫的完整連線字串。
 
 ```powershell
-.\deployment\update-db.ps1 -Provider SqlServer -ConnectionString "Server=10.0.0.5,1433;Database=hybridauth_idp;User Id=sa;Password=YourStrong!Passw0rd;TrustServerCertificate=True;Encrypt=True"
+$provider = 'SqlServer'
+$secret = Read-Host 'Database connection string' -AsSecureString
+$connection = [System.Net.NetworkCredential]::new('', $secret).Password
+try {
+    .\deployment\update-db.ps1 -Provider $provider -ConnectionString $connection
+} finally {
+    Remove-Variable connection, secret
+}
 ```
 
-**2. PostgreSQL 更新**
+腳本內部的 `try/finally` 會在成功或失敗時還原原本的 process 環境變數及工作目錄；migration 失敗會拋出錯誤。範例外層的 `finally` 則移除本機連線字串變數的參考。這些清理不會還原資料庫，也不會撤銷已提交的 migration。
 
-```powershell
-.\deployment\update-db.ps1 -Provider PostgreSQL -ConnectionString "Host=10.0.0.5;Port=5432;Database=hybridauth_idp;Username=postgres;Password=password"
-```
+Linux／Docker 的 `deployment/migrate-db.sh` 使用 `set -euo pipefail`，migration 容器失敗時會回傳非零 exit code；使用 `bash` 或直接執行，不要以 `source` 載入目前 shell。它只啟動一次性的 schema migration 容器，不重啟現有 IdP。完整參數、固定 image 與備份確認方式請見[部署指南的 schema migration 步驟](DEPLOYMENT_GUIDE.md#operator-controlled-schema-migration)。只做 DB migration 時，成功完成後即可結束，不需要接著部署。
 
 ### 手動執行步驟
 
-若無法使用腳本，您也可以手動執行（原理與腳本相同）：
-
-1. **設定環境變數**：指定 Provider 與 ConnectionString。
-2. **切換目錄**：進入對應的 `Infrastructure.Migrations.*` 目錄。
-3. **執行命令**：執行 `dotnet ef database update ...`。
-
-詳細手動指令請參考腳本內容或上方 [Migration 管理](#migration-管理) 章節，重點在於在執行命令前先設定好環境變數：
+腳本底層使用以下 schema-only 命令，取代舊的 `dotnet ef database update --startup-project ..\Web.IdP` 執行方式：
 
 ```powershell
-# SQL Server 範例
-$env:DATABASE_PROVIDER="SqlServer"
-$env:ConnectionStrings__SqlServerConnection="Server=..."
-
-cd Infrastructure.Migrations.SqlServer
-dotnet ef database update --startup-project ..\Web.IdP --context ApplicationDbContext
+# 從 Web.IdP 目錄執行；須先設定目標 Provider 與完整連線字串。
+dotnet run --no-launch-profile -- --migrate-only
 ```
+
+手動呼叫須自行管理 `DATABASE_PROVIDER`、所選的 `ConnectionStrings__SqlServerConnection` 或 `ConnectionStrings__PostgreSqlConnection`，以及 Production 環境設定與執行後清理。一般操作請使用上方腳本，讓它負責設定及還原這些值。失敗時先檢查錯誤與 migration history，再決定後續處理。
 
 ---
 

@@ -216,6 +216,16 @@ The same procedure applies to SQL Server and PostgreSQL. In `deployment/.env`, s
    ```
 
 3. Verify that the command exits successfully. `--migrate-only` performs schema migration only: it does not seed data, start an HTTP listener, or run AD, provider, or credential-migration workflows.
+
+   For schema-only maintenance, stop here after successful completion. Steps 4
+   and 5 belong to a later application deployment, not the migration command.
+
+   Invoke the Bash script with `bash ./migrate-db.sh ...` or `./migrate-db.sh ...`,
+   rather than sourcing it into the current shell. It uses `set -euo pipefail`;
+   a failed migration container returns a nonzero script exit code. Its exported
+   variables stay in the script process, and `--rm` removes the one-off container
+   when it exits. The script does not restart the existing IdP service.
+
 4. Deploy that same unchanged image and wait for deployment readiness:
 
    ```bash
@@ -228,6 +238,33 @@ The same procedure applies to SQL Server and PostgreSQL. In `deployment/.env`, s
 When `DatabaseMigration__ApplyOnStartup=false`, a normal application startup inspects pending migrations and fails before readiness if any remain. Do not work around that failure by enabling automatic startup migration on a production host; use the schema-only procedure instead.
 
 To roll back, roll back the application image separately. Do not automatically run EF Core `Down` migrations. Restore the database from the verified operator backup only when a schema rollback is genuinely required.
+
+For a schema-only update from a Windows source checkout with the .NET 10 SDK,
+use `deployment/update-db.ps1`. The checkout supplies the migration version;
+the connection string selects the target database. Confirm a restorable backup
+and database connectivity first. This path does not require Docker, `dotnet-ef`,
+website issuer settings or PFX files, and does not seed data, start the website,
+deploy an image or restart an existing service. Process environment overrides
+are restored when the script finishes.
+
+```powershell
+# Run from the repository root.
+$secret = Read-Host 'SQL Server connection string' -AsSecureString
+$connection = [System.Net.NetworkCredential]::new('', $secret).Password
+try {
+    .\deployment\update-db.ps1 -Provider SqlServer -ConnectionString $connection
+} finally {
+    Remove-Variable connection, secret
+}
+```
+
+The script's internal `try/finally` restores the original process environment
+and working directory on success or failure. A migration failure raises an
+error. The caller's `finally` in the example removes the local credential
+variable references even when that error occurs. These cleanup steps do not
+restore the database or undo already committed migrations. If execution fails,
+inspect the failure and migration history before continuing; do not proceed to
+deployment on a failed result.
 
 ---
 
