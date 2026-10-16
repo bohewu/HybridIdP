@@ -94,7 +94,8 @@ public static class WebApplicationExtensions
         }
         else
         {
-            app.UseWhen(context => context.Request.Path == "/health/ready",
+            app.UseWhen(context => context.Request.Path == "/health/ready" ||
+                context.Request.Path.StartsWithSegments("/api/admin/dashboard/health"),
                 branch => branch.UseRateLimiter());
         }
 

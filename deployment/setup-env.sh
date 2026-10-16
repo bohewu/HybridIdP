@@ -615,9 +615,9 @@ echo ""
 echo "5. Wait for readiness, then check discovery through the configured public HTTPS origin:"
 echo ""
 if [ -n "$readiness_service" ]; then
-    echo "   docker compose -f $compose_file -f docker-compose.ghcr-image.yml --env-file .env exec -T $readiness_service wget -q -O - http://idp-service/health/ready"
+    echo "   docker compose -f $compose_file -f docker-compose.ghcr-image.yml --env-file .env exec -T $readiness_service wget -q -O - --header 'Host: $public_authority' http://idp-service/health/ready"
 else
-    echo "   curl --fail http://localhost:8080/health/ready"
+    echo "   curl --fail --header 'Host: $public_authority' http://localhost:8080/health/ready"
 fi
 echo "   curl --fail ${oidc_issuer}.well-known/openid-configuration"
 echo "   Open $oidc_issuer after both checks succeed. Do not use a public /health/ready URL behind Nginx."

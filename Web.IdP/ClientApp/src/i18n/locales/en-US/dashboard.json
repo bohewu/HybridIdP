@@ -13,7 +13,18 @@
       "refresh": "Refresh",
       "lastUpdated": "Last updated: {time}",
       "noData": "No health data available.",
-      "status": "Status"
+      "status": "Status",
+      "checking": "Checking system health...",
+      "statuses": {
+        "Healthy": "Healthy",
+        "Degraded": "Degraded",
+        "Unhealthy": "Unhealthy"
+      },
+      "checks": {
+        "sqlserver": "SQL Server",
+        "postgresql": "PostgreSQL",
+        "redis": "Redis"
+      }
   },
   "cards": {
     "clients": {

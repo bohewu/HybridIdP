@@ -431,8 +431,27 @@ container:idp-service AND "Login"
 
 | Endpoint | 用途 |
 |----------|------|
-| `/health` | 整體健康狀態 |
+| `/health` | Public shallow liveness; no database or Redis checks |
+| `/health/ready` | Internal dependency readiness; trusted loopback/proxy network only |
+| `/api/admin/dashboard/health` | Sanitized dependency status; authenticated `monitoring.read` authority required |
 | `/metrics` | Prometheus metrics (需授權) |
+
+The admin dashboard reads dependency status from `GET /api/admin/dashboard/health`.
+It reuses the registered health checks for SQL Server or PostgreSQL and, when
+enabled, Redis. Completed checks return HTTP 200 with `status` (`Healthy`,
+`Degraded`, or `Unhealthy`), `checkedAtUtc`, and `entries` containing only each
+registered dependency's `status`. Entry keys are `sqlserver`, `postgresql`, and
+`redis`; absent registrations produce no entry. Descriptions, exceptions,
+connection strings, addresses, and health-check data are never returned.
+Responses use `Cache-Control: no-store`.
+
+Anonymous requests receive HTTP 401 and authenticated callers without the
+existing monitoring authority receive HTTP 403 before dependency checks run.
+The admin endpoint shares the internal readiness concurrency limit of two
+requests with no queue, including when general rate limiting is disabled.
+Keep `/health/ready` blocked at public gateways; the admin endpoint does not
+change its trusted-network policy. The public `/health` endpoint remains
+independent of dependency availability.
 
 ### 監控腳本
 

@@ -37,11 +37,11 @@
 @import './google-style.css';
 
 @layer base {
-    :where(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):not(:disabled):not([aria-disabled="true"]) {
+    :where(button, select, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):not(:disabled):not([aria-disabled="true"]) {
         cursor: pointer;
     }
 
-    :where(button, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):is(:disabled, [aria-disabled="true"]) {
+    :where(button, select, input[type="button"], input[type="submit"], input[type="reset"], [role="button"]):is(:disabled, [aria-disabled="true"]) {
         cursor: not-allowed;
     }
 }

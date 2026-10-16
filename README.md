@@ -90,6 +90,8 @@ The new application no longer reads `LegacyAuth__*`; configure Provider Proof 1.
 
 Keep the original `.env`, Legacy links, existing accounts and their MFA/Passkey/recovery data. A matching username, email or GUID-shaped key is not identity proof. Follow the [existing-account upgrade procedure](docs/DEPLOYMENT_GUIDE.md#upgrading-existing-legacy-api-accounts) for preview, apply, minimal configuration changes and rollback.
 
+Clients displaying user names must request, be allowed, and be granted the OIDC `profile` scope, then reauthorize. In 1.6.x, `name` and `preferred_username` require `profile`; a custom `employee-id` scope does not imply it. `sub` remains the local UserId, and token claim nesting is unchanged. See the [client compatibility note](docs/DEPLOYMENT_GUIDE.md#unified-api-login-and-profile-upgrade).
+
 ---
 
 ## ⚖️ License

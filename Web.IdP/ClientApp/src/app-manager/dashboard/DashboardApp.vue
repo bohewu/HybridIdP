@@ -1,5 +1,5 @@
 <template>
-  <div class="max-w-5xl mx-auto py-8">
+  <div class="px-4 py-6">
     <!-- Welcome Header -->
     <div class="mb-10 text-center">
       <h1 class="text-3xl font-normal text-gray-900 mb-2">{{ $t('app-manager.Welcome') }}, {{ displayName }}</h1>
@@ -7,7 +7,8 @@
     </div>
 
     <!-- Stats Cards -->
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8"
+         v-loading="{ loading: loading, overlay: true, message: $t('dashboard.loading') }">
       <!-- Clients Card -->
       <a href="/Admin/Clients" class="block p-6 bg-white border border-gray-200 rounded-lg hover:border-blue-300 transition-colors group">
         <div class="flex items-center gap-4">
@@ -115,6 +116,7 @@ const displayName = ref('')
 const clientCount = ref(0)
 const scopeCount = ref(0)
 const resourceCount = ref(0)
+const loading = ref(true)
 
 onMounted(async () => {
   // Get data from the page's data attributes
@@ -125,5 +127,6 @@ onMounted(async () => {
     scopeCount.value = parseInt(appEl.dataset.scopeCount || '0', 10)
     resourceCount.value = parseInt(appEl.dataset.resourceCount || '0', 10)
   }
+  loading.value = false
 })
 </script>
