@@ -69,8 +69,8 @@ namespace Tests.Application.UnitTests
             session.Setup(value => value.Set(It.IsAny<string>(), It.IsAny<byte[]>()))
                 .Callback<string, byte[]>((key, bytes) => values[key] = bytes);
             session.Setup(value => value.Remove(It.IsAny<string>())).Callback<string>(key => values.Remove(key));
-            session.Setup(value => value.TryGetValue(It.IsAny<string>(), out It.Ref<byte[]>.IsAny))
-                .Returns((string key, out byte[] bytes) => values.TryGetValue(key, out bytes!));
+            session.Setup(value => value.TryGetValue(It.IsAny<string>(), out It.Ref<byte[]?>.IsAny))
+                .Returns((string key, out byte[]? bytes) => values.TryGetValue(key, out bytes));
             var principal = new ClaimsPrincipal(new ClaimsIdentity([
                 new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()), new Claim("amr", "pwd"),
                 new Claim(_mockUserManager.Object.Options.ClaimsIdentity.SecurityStampClaimType, user.SecurityStamp)], IdentityConstants.ApplicationScheme));
