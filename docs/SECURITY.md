@@ -404,6 +404,14 @@ The recovery-email selection flow retains its additional cookie/session-bound
 validation. When that feature is disabled, existing high-assurance bearer-only
 recovery clients remain supported; cookie requests use the shared CSRF filter.
 
+The local `/Account/Logout` Razor Page retains automatic antiforgery validation.
+A rejected POST redirects only to a fresh local confirmation page with a
+localized explanation; it cannot run the sign-out handler or carry a supplied
+return URL forward. The fresh page identifies the current account and requires
+a new valid submission. An anonymous session receives guidance without a logout
+form. This page-specific recovery does not alter CSRF failures on other pages,
+APIs or the OIDC end-session endpoint.
+
 ### Lifecycle Cookie Validation
 
 Every ASP.NET Core Identity application-cookie validation checks the current

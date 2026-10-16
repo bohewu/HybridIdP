@@ -13,8 +13,19 @@
     </div>
     
     <div class="google-login-body">
+        @if (Model.ConfirmationExpired)
+        {
+            <div role="alert" class="mb-6 text-sm text-gray-700">
+                <p class="font-medium mb-2">@Localizer["LogoutConfirmationExpiredTitle"]</p>
+                <p>@Localizer["LogoutConfirmationExpiredMessage"]</p>
+            </div>
+        }
         @if (Model.ShowLogoutPrompt)
         {
+            @if (Model.ConfirmationExpired)
+            {
+                <p class="text-center text-gray-900 mb-4 break-words">@Localizer["LogoutCurrentAccount", Model.CurrentAccountName]</p>
+            }
             <p class="text-center text-gray-600 mb-8">@Localizer["LogoutConfirmMessage"]</p>
             <form method="post" class="space-y-4">
                 <div class="flex flex-col gap-3">
@@ -26,6 +37,21 @@
                     </a>
                 </div>
             </form>
+        }
+        else if (Model.ConfirmationExpired)
+        {
+            <p class="text-gray-600 mb-8">@Localizer["LogoutNoCurrentSession"]</p>
+            <div class="flex flex-col gap-3">
+                <a asp-page="/Account/Logout" asp-route-confirmationExpired="true" class="btn-google-blue w-full justify-center text-center no-underline">
+                    @Localizer["LogoutConfirmAgain"]
+                </a>
+                <a asp-page="/Account/Login" asp-route-returnUrl="/Account/Logout?confirmationExpired=true" class="btn-google-white w-full justify-center">
+                    @Localizer["Login"]
+                </a>
+                <a asp-page="/Index" class="btn-google-white w-full justify-center">
+                    @Localizer["ReturnHome"]
+                </a>
+            </div>
         }
         else
         {

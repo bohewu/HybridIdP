@@ -197,6 +197,9 @@ public class PendingExternalLoginLinkTests
         using var fixture = new Fixture(method == "email" ? "email" : "totp");
         await fixture.BeginAsync();
         var recovery = Mock.Get(fixture.Http.RequestServices.GetRequiredService<IAccountRecoveryCodeService>());
+        if (method == "custom-recovery")
+            recovery.Setup(value => value.GetStatusAsync(fixture.User.Id, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(new AccountRecoveryCodeStatusDto(false, 0, 1, true));
         recovery.Setup(value => value.RedeemAsync(fixture.User, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(valid);
         var mfa = new Mock<IMfaService>();
@@ -219,7 +222,8 @@ public class PendingExternalLoginLinkTests
         {
             var page = new LoginMfaModel(fixture.SignIn.Object, fixture.Users.Object, mfa.Object, users, fixture.Passkeys.Object,
                 events, Mock.Of<ILogger<LoginMfaModel>>(), localizer.Object, fixture.Migration.Object, fixture.Lifecycle.Object)
-            { PageContext = new PageContext { HttpContext = fixture.Http }, ReturnUrl = "/", Input = new()
+            { PageContext = new PageContext { HttpContext = fixture.Http }, ReturnUrl = "/",
+                Method = method == "custom-recovery" ? "recovery" : "totp", Input = new()
                 { RecoveryCode = method == "custom-recovery" ? "recovery" : null, TotpCode = method == "selector-totp" ? "123456" : null } };
             await page.OnPostAsync();
         }
@@ -407,6 +411,7 @@ public class PendingExternalLoginLinkTests
                 .ReturnsAsync(() => Partial == null ? AuthenticateResult.NoResult() :
                     AuthenticateResult.Success(new AuthenticationTicket(Partial, IdentityConstants.TwoFactorUserIdScheme)));
             _services = new ServiceCollection().AddSingleton(auth.Object).AddSingleton(Users.Object)
+                .AddSingleton(policy.Object)
                 .AddSingleton<IApplicationDbContext>(Database)
                 .AddSingleton(SignIn.Object).AddSingleton(Login.Object).AddSingleton(Lifecycle.Object).AddSingleton(Migration.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
             Http = new DefaultHttpContext { RequestServices = _services, Session = new MemorySession() };

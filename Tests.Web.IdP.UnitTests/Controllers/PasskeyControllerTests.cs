@@ -443,6 +443,7 @@ public class PasskeyControllerTests
         var http = _controller.HttpContext;
         var authentication = Mock.Get(http.RequestServices.GetRequiredService<IAuthenticationService>());
         using var services = new ServiceCollection().AddSingleton(authentication.Object).AddSingleton(_userManagerMock.Object)
+            .AddSingleton(_securityPolicyServiceMock.Object)
             .AddSingleton<IApplicationDbContext>(_dbContext).AddSingleton<IAccountRecoveryCodeService>(codes)
             .AddSingleton(_lifecycleEligibilityMock.Object).AddSingleton(_migrationIssuanceGuardMock.Object).BuildServiceProvider();
         http.RequestServices = services;
@@ -679,6 +680,7 @@ public class PasskeyControllerTests
             .ReturnsAsync(AuthenticateResult.NoResult());
         httpContext.RequestServices = new ServiceCollection()
             .AddSingleton(authenticationService.Object)
+            .AddSingleton(_securityPolicyServiceMock.Object)
             .AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
 
         _controller = new PasskeyController(

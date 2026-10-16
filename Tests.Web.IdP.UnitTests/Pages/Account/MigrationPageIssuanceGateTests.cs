@@ -847,7 +847,9 @@ public sealed class MigrationPageIssuanceGateTests
             .ReturnsAsync(AuthenticateResult.NoResult());
         authentication.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
             .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, IdentityConstants.TwoFactorUserIdScheme)));
-        model.HttpContext.RequestServices = new ServiceCollection().AddSingleton(authentication.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
+        model.HttpContext.RequestServices = new ServiceCollection().AddSingleton(authentication.Object)
+            .AddSingleton(Mock.Of<ISecurityPolicyService>(service => service.GetCurrentPolicyAsync() == Task.FromResult(new SecurityPolicy())))
+            .AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
     }
 
     private static void SetHttpContext(PageModel model)

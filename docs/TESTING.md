@@ -77,6 +77,26 @@ When running in `Development` environment, the following additional data is seed
 
 ## 3. Automated Tests
 
+### Stale local logout confirmation
+
+`LogoutModelTests` uses a bounded loopback Razor host with real automatic
+antiforgery and result filters, synthetic principals and a mocked sign-out
+boundary. It covers identity changes, anonymous stale submissions, missing,
+tampered and foreign-browser tokens, fresh confirmation, localized copy,
+encoded current-account names, safe recovery redirects and unchanged unrelated
+CSRF/400 results. Each test stops and disposes its own host. Run only this class:
+
+```powershell
+dotnet test Tests.Web.IdP.UnitTests/Tests.Web.IdP.UnitTests.csproj --filter FullyQualifiedName~LogoutModelTests
+```
+
+For browser verification, leave Logout open in one tab and begin an MFA
+reauthentication in another. Submit the old Logout form while the application
+session is absent, then repeat after signing in as another account. Verify the
+explanation, current account when present, and that only a fresh explicit POST
+signs out. Check `en-US` and `zh-TW`. The focused fixture does not establish a
+real cookie, MFA, browser or deployed session roundtrip.
+
 ### Recovery identity verification and email selection (offline)
 
 Read the [integration bundle](RECOVERY_IDENTITY_VERIFICATION_INTEGRATION.md)

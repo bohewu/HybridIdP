@@ -7,6 +7,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
 using Core.Domain;
+using Core.Domain.Entities;
 using Core.Domain.Events;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Identity;
@@ -83,7 +84,9 @@ public sealed class LoginMfaModelPasskeyTests
         auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.TwoFactorUserIdScheme))
             .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(
                 new ClaimsPrincipal(TwoFactorAuthenticationSession.CreateIdentity(user, users.Object)), IdentityConstants.TwoFactorUserIdScheme)));
-        pageContext.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0, 1, true)))).BuildServiceProvider();
+        pageContext.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object)
+            .AddSingleton(Mock.Of<ISecurityPolicyService>(service => service.GetCurrentPolicyAsync() == Task.FromResult(new SecurityPolicy())))
+            .AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0, 1, true)))).BuildServiceProvider();
         IActionResult result;
         if (nativePage)
         {
@@ -163,7 +166,9 @@ public sealed class LoginMfaModelPasskeyTests
             .ReturnsAsync(AuthenticateResult.NoResult());
         auth.Setup(service => service.AuthenticateAsync(It.IsAny<HttpContext>(), IdentityConstants.ApplicationScheme))
             .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, IdentityConstants.ApplicationScheme)));
-        model.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object).AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
+        model.HttpContext.RequestServices = new ServiceCollection().AddSingleton(auth.Object)
+            .AddSingleton(Mock.Of<ISecurityPolicyService>(service => service.GetCurrentPolicyAsync() == Task.FromResult(new SecurityPolicy())))
+            .AddSingleton<Core.Application.IAccountRecoveryCodeService>(Moq.Mock.Of<Core.Application.IAccountRecoveryCodeService>(codes => codes.GetStatusAsync(Moq.It.IsAny<Guid>(), Moq.It.IsAny<CancellationToken>()) == Task.FromResult(new Core.Application.DTOs.AccountRecoveryCodeStatusDto(false, 0)))).BuildServiceProvider();
 
         var returnUrl = "/connect/authorize?client_id=testclient-public";
 
@@ -208,7 +213,10 @@ public sealed class LoginMfaModelPasskeyTests
         auth.Setup(value => value.AuthenticateAsync(It.IsAny<HttpContext>(), It.IsAny<string>())).ReturnsAsync(AuthenticateResult.NoResult());
         auth.Setup(value => value.AuthenticateAsync(It.IsAny<HttpContext>(), scheme))
             .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, scheme)));
-        using var services = new ServiceCollection().AddSingleton(auth.Object).AddSingleton<IAccountRecoveryCodeService>(codes).BuildServiceProvider();
+        using var services = new ServiceCollection().AddSingleton(auth.Object)
+            .AddSingleton(Mock.Of<ISecurityPolicyService>(service => service.GetCurrentPolicyAsync() == Task.FromResult(
+                new SecurityPolicy { EnableTotpMfa = false, EnableEmailMfa = false, EnablePasskey = false })))
+            .AddSingleton<IAccountRecoveryCodeService>(codes).BuildServiceProvider();
         var http = new DefaultHttpContext { User = temporary ? new ClaimsPrincipal() : principal,
             RequestServices = services, Session = new Tests.Web.IdP.UnitTests.TestSupport.MemorySession() };
         var passkeys = Mock.Of<IPasskeyService>(value => value.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>()) == Task.FromResult(new List<UserCredentialDto>()));
@@ -351,8 +359,108 @@ public sealed class LoginMfaModelPasskeyTests
         mfa.Verify(value => value.ValidateTotpCodeAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
+    [Theory]
+    [InlineData(true, true, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(true, false, true, true)]
+    [InlineData(true, true, false, true)]
+    [InlineData(false, false, false, true)]
+    [InlineData(true, true, true, false)]
+    public async Task OnGetAsync_ShouldOfferOnlyEnabledEnrolledMethods(
+        bool enableTotp, bool enableEmail, bool enablePasskey, bool enrolled)
+    {
+        var policy = new SecurityPolicy
+        {
+            EnableTotpMfa = enableTotp, EnableEmailMfa = enableEmail, EnablePasskey = enablePasskey
+        };
+        var (page, _, _, _) = CreateSelector(true, enrolled, enrolled, enrolled,
+            new AccountRecoveryCodeStatusDto(true, 1), policy);
+
+        Assert.IsType<PageResult>(await page.OnGetAsync("/continue"));
+
+        Assert.Equal(enableTotp && enrolled, page.TotpMfaEnabled);
+        Assert.Equal(enableEmail && enrolled, page.EmailMfaEnabled);
+        Assert.Equal(enablePasskey && enrolled, page.PasskeyEnabled);
+        Assert.True(page.AccountRecoveryCodesAvailable);
+        Assert.True(page.RecoveryCodesAvailable);
+    }
+
+    [Theory]
+    [InlineData("totp", true)]
+    [InlineData("email", true)]
+    [InlineData("passkey", true)]
+    [InlineData("totp", false)]
+    [InlineData("email", false)]
+    [InlineData("passkey", false)]
+    public async Task OnGetAsync_ShouldRejectSelectedMethod_WhenDeploymentDisablesIt(string method, bool temporary)
+    {
+        var policy = new SecurityPolicy { EnableTotpMfa = false, EnableEmailMfa = false, EnablePasskey = false };
+        var (page, _, _, _) = CreateSelector(temporary, true, true, true,
+            new AccountRecoveryCodeStatusDto(true, 1), policy);
+        page.Method = method;
+
+        Assert.IsType<PageResult>(await page.OnGetAsync("/continue", true));
+
+        Assert.Null(page.Method);
+        Assert.Equal("/continue", page.ReturnUrl);
+        Assert.True(page.RememberMe);
+        Assert.True(page.RecoveryCodesAvailable);
+    }
+
+    [Theory]
+    [InlineData("totp", true)]
+    [InlineData("email", true)]
+    [InlineData("passkey", true)]
+    [InlineData("totp", false)]
+    [InlineData("email", false)]
+    [InlineData("passkey", false)]
+    public async Task OnPostAsync_ShouldRejectDisabledOrUnenrolledMethodWithoutSpendingAttempt(string method, bool enrolled)
+    {
+        var policy = new SecurityPolicy
+        {
+            EnableTotpMfa = !enrolled, EnableEmailMfa = !enrolled, EnablePasskey = !enrolled
+        };
+        var (page, _, users, mfa) = CreateSelector(true, enrolled, enrolled, enrolled,
+            new AccountRecoveryCodeStatusDto(true, 1), policy);
+        page.ReturnUrl = "/continue";
+        page.Method = method;
+        page.Input.TotpCode = method == "totp" ? "123456" : null;
+
+        Assert.IsType<PageResult>(await page.OnPostAsync());
+
+        Assert.Null(page.Method);
+        Assert.False(page.ModelState.IsValid);
+        users.Verify(value => value.AccessFailedAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        mfa.Verify(value => value.ValidateTotpCodeAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Mock.Get(page.HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>())
+            .Verify(value => value.RedeemAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task OnPostAsync_ShouldRecheckPolicy_WhenTotpWasDisabledAfterSelection(bool temporary)
+    {
+        var policy = new SecurityPolicy();
+        var (page, _, users, mfa) = CreateSelector(temporary, true, true, true,
+            new AccountRecoveryCodeStatusDto(true, 1), policy);
+        page.Method = "totp";
+        Assert.IsType<PageResult>(await page.OnGetAsync("/continue"));
+        Assert.Equal("totp", page.Method);
+        policy.EnableTotpMfa = false;
+        page.Input.TotpCode = "123456";
+
+        Assert.IsType<PageResult>(await page.OnPostAsync());
+
+        Assert.Null(page.Method);
+        Assert.False(page.TotpMfaEnabled);
+        users.Verify(value => value.AccessFailedAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        mfa.Verify(value => value.ValidateTotpCodeAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static (LoginMfaModel Page, ApplicationUser User, Mock<UserManager<ApplicationUser>> Users, Mock<IMfaService> Mfa)
-        CreateSelector(bool temporary, bool totp, bool email, bool passkey, AccountRecoveryCodeStatusDto status)
+        CreateSelector(bool temporary, bool totp, bool email, bool passkey, AccountRecoveryCodeStatusDto status,
+            SecurityPolicy? policy = null)
     {
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "selector-user", SecurityStamp = "current",
             TwoFactorEnabled = totp, EmailMfaEnabled = email, IsActive = true };
@@ -370,6 +478,8 @@ public sealed class LoginMfaModelPasskeyTests
         auth.Setup(value => value.AuthenticateAsync(It.IsAny<HttpContext>(), scheme))
             .ReturnsAsync(AuthenticateResult.Success(new AuthenticationTicket(principal, scheme)));
         var codes = Mock.Of<IAccountRecoveryCodeService>(value => value.GetStatusAsync(user.Id, It.IsAny<CancellationToken>()) == Task.FromResult(status));
+        var currentPolicy = policy ?? new SecurityPolicy();
+        var securityPolicy = Mock.Of<ISecurityPolicyService>(value => value.GetCurrentPolicyAsync() == Task.FromResult(currentPolicy));
         var passkeys = new Mock<IPasskeyService>();
         passkeys.Setup(value => value.GetUserPasskeysAsync(user.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(passkey ? [new UserCredentialDto { Id = 1 }] : []);
@@ -378,7 +488,8 @@ public sealed class LoginMfaModelPasskeyTests
         localizer.Setup(value => value[It.IsAny<string>()]).Returns((string key) => new LocalizedString(key, key));
         var http = new DefaultHttpContext { User = temporary ? new ClaimsPrincipal() : principal,
             Session = new Tests.Web.IdP.UnitTests.TestSupport.MemorySession(),
-            RequestServices = new ServiceCollection().AddSingleton(auth.Object).AddSingleton(codes).BuildServiceProvider() };
+            RequestServices = new ServiceCollection().AddSingleton(auth.Object).AddSingleton(codes)
+                .AddSingleton(securityPolicy).BuildServiceProvider() };
         var page = new LoginMfaModel(signIn.Object, users.Object, mfa.Object, Mock.Of<IUserManagementService>(), passkeys.Object,
             Mock.Of<IDomainEventPublisher>(), Mock.Of<ILogger<LoginMfaModel>>(), localizer.Object,
             Mock.Of<IMigrationIssuanceGuard>(value => value.CanIssueAsync(user.Id, It.IsAny<CancellationToken>()) == Task.FromResult(true)),

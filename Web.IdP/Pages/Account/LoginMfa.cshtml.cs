@@ -274,16 +274,18 @@ public partial class LoginMfaModel : PageModel
         ApplicationUser user,
         CancellationToken cancellationToken)
     {
+        var policy = await HttpContext.RequestServices.GetRequiredService<ISecurityPolicyService>()
+            .GetCurrentPolicyAsync();
         var codes = await HttpContext.RequestServices.GetRequiredService<IAccountRecoveryCodeService>()
             .GetStatusAsync(user.Id, cancellationToken);
         AccountRecoveryCodesAvailable = codes.RemainingCodes > 0;
         RecoveryCodesAvailable = codes.TotalRemainingCodes > 0;
         CanSelectRecoveryEnrollment = AccountRecoveryCodesAvailable &&
             AccountSecurityOperationSession.GetRecoveryOperationBinding(HttpContext, user) == "login-mfa";
-        TotpMfaEnabled = user.TwoFactorEnabled;
-        EmailMfaEnabled = user.EmailMfaEnabled;
+        TotpMfaEnabled = policy.EnableTotpMfa && user.TwoFactorEnabled;
+        EmailMfaEnabled = policy.EnableEmailMfa && user.EmailMfaEnabled;
         PasskeyUserName = user.UserName;
-        PasskeyEnabled = !string.IsNullOrWhiteSpace(PasskeyUserName) &&
+        PasskeyEnabled = policy.EnablePasskey && !string.IsNullOrWhiteSpace(PasskeyUserName) &&
             (await _passkeyService.GetUserPasskeysAsync(user.Id, cancellationToken)).Count > 0;
     }
 
