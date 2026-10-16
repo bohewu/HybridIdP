@@ -429,6 +429,26 @@ Application-image rollback and database rollback are separate operations. Do
 not run EF Core `Down` migrations automatically. Restore the operator backup
 only if a schema rollback is truly required.
 
+### Existing Legacy API Account Links (SQL Server)
+
+Schema migration does not convert `AspNetUserLogins` identity authority. The
+operator-controlled `deployment/backfill-legacy-proof-links.sql` is a separate,
+preview-first data operation for a verified same-subject Legacy-to-Proof
+transition. It inserts the approved namespace with the exact existing
+`ProviderKey` and `UserId`, retaining Legacy and other provider links, users,
+Person records and MFA/Passkey/recovery data. Existing contradictory target
+bindings reject the entire operation; an unchanged repeat inserts nothing.
+
+The 1.4.3 reader used `ssoUuid ?? userId`. A row count, GUID format, email or
+account name does not prove identity equivalence. The source owner must confirm
+the complete selected Legacy cohort before apply; unresolved historical
+fallback identifiers cannot be bulk reinterpreted as SSO or profile subjects.
+Use the protected working copy, explicit target/database/count checks and
+backup/source confirmations described in
+[Upgrading Existing Legacy API Accounts](DEPLOYMENT_GUIDE.md#upgrading-existing-legacy-api-accounts).
+The script is SQL Server-specific and is not an EF migration or an automatic
+startup action. Keep additive links during application rollback.
+
 ---
 
 ## 🔄 Migration 管理

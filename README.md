@@ -77,12 +77,18 @@ Powered by **OpenIddict**:
    ```
 
 ### Production Deployment
-**Use the Setup Wizard (Recommended)**:
+**Fresh installations: use the Setup Wizard**:
 ```bash
 cd deployment
 ./setup-env.ps1  # or ./setup-env.sh
 ```
-This handles certificates, passwords, and architecture selection involved in a production setup. See [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) for details.
+This generates certificates, passwords, and configuration for a new deployment. Existing deployments must preserve their original `.env`; do not rerun the wizard to regenerate it. See [Deployment Guide](docs/DEPLOYMENT_GUIDE.md) for startup instructions.
+
+### Upgrading 1.4.x Legacy API Deployments to 1.6.x
+
+The new application no longer reads `LegacyAuth__*`; configure Provider Proof 1.0 independently. Before switching images, verify the producer's exact namespace and that **every selected Legacy key** is the same opaque stable subject returned by that authority. With a verified restorable backup, use the one-time SQL Server backfill to add the new provider binding to the **original UserId**. Schema migration does not backfill these links.
+
+Keep the original `.env`, Legacy links, existing accounts and their MFA/Passkey/recovery data. A matching username, email or GUID-shaped key is not identity proof. Follow the [existing-account upgrade procedure](docs/DEPLOYMENT_GUIDE.md#upgrading-existing-legacy-api-accounts) for preview, apply, minimal configuration changes and rollback.
 
 ---
 

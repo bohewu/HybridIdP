@@ -8,6 +8,7 @@
     
 .NOTES
     Run from the deployment/ directory: .\setup-env.ps1
+    New deployments only; preserve an existing .env and follow the Legacy upgrade guide.
 #>
 
 param(
@@ -191,6 +192,8 @@ if (Test-Path $envPath) {
         Write-Info "Backup created: $backupPath"
     }
 }
+
+Write-Info "This wizard generates a new configuration. For upgrades, preserve .env and follow docs/DEPLOYMENT_GUIDE.md."
 
 Write-Title "Deployment Mode"
 $deploymentMode = Read-Choice -Prompt "Select deployment mode:" -Choices @(
@@ -391,6 +394,9 @@ ASPNETCORE_ENVIRONMENT=Production
 # Database Provider: SqlServer or PostgreSQL
 DATABASE_PROVIDER=$(if ($useSqlServer) { "SqlServer" } else { "PostgreSQL" })
 
+# Apply schema changes explicitly with migrate-db.sh before starting this image.
+DatabaseMigration__ApplyOnStartup=false
+
 # Database Connection Strings
 $(if ($useExternalDb) {
 if ($useSqlServer) {
@@ -432,8 +438,18 @@ Redis__Enabled=$($redisEnabled.ToString().ToLower())
 Proxy__Enabled=$proxyEnabled
 Proxy__KnownProxies=$knownProxies
 
+# Independent Provider Proof 1.0 login; configure the approved producer before enabling.
+# Existing Legacy accounts require the verified additive backfill in docs/DEPLOYMENT_GUIDE.md.
+ProviderProof__Enabled=false
+ProviderProof__TrustedProviderNamespace=
+ProviderProof__Endpoint=
+ProviderProof__SharedSecret=
+ProviderProof__AllowPrivateNetworkHttp=false
+ProviderProof__Timeout=00:00:05
+# Profile is optional and has independent endpoint, secret and AllowedProperties.
+ProviderProfile__Enabled=false
+
 # Optional deployment policies; review these choices before enabling integrations.
-LegacyAuth__RequireHttps=false
 EmailSettings__SmtpRequireTls=$smtpRequireTls
 EmailSettings__SmtpValidateServerCertificate=$smtpValidateServerCertificate
 # Hints do not enable recovery; false hides eligibility and masked destinations.
@@ -588,12 +604,19 @@ $composeFile = if ($useSplitHost) {
     "docker-compose.internal.yml"
 }
 
-$accessUrl = if ($useSplitHost) {
-    "- HTTP: http://localhost:8080 (via Nginx gateway, behind external RP)"
+$readinessService = if ($useSplitHost) {
+    "nginx-gateway"
 } elseif ($useNginx) {
-    "- HTTPS: https://localhost (via Nginx)"
+    "nginx-service"
 } else {
-    "- HTTP: http://localhost:8080 (behind your LB)"
+    ""
+}
+$infrastructureServices = if ($useExternalDb) {
+    "redis-service"
+} elseif ($useSqlServer) {
+    "mssql-service redis-service"
+} else {
+    "postgres-service redis-service"
 }
 
 Write-Host @"
@@ -602,16 +625,31 @@ Next steps:
 1. Review the generated .env file: $envPath
 2. Ensure certificates exist in: $certsDir
 $(if ($useSplitHost) {
-"3. Edit nginx/splithost-gateway.conf to set allowed proxy IPs"
-"4. Start the application:" 
-} else {
-"3. Start the application:"
+"   Review nginx/ip-allowlist.conf for the allowed proxy IPs."
 })
+3. From Bash, select an approved pinned image and start the selected infrastructure:
 
-   docker compose -f $composeFile --env-file .env up -d
+   export IDP_IMAGE='<approved-pinned-image>'
+   docker compose -f $composeFile -f docker-compose.ghcr-image.yml --env-file .env up -d $infrastructureServices
 
-$(if ($useSplitHost) { "5." } else { "4." }) Access the application:
-   $accessUrl
+   Wait for the selected database to accept connections and confirm a restorable backup.
+   Apply schema changes with this SAME Compose mode; keep ApplyOnStartup=false:
+
+   bash ./migrate-db.sh --confirm-backup --source ghcr --image "`$IDP_IMAGE" --compose $composeFile --env-file .env
+
+4. After successful schema migration, start the complete selected stack, including its frontend:
+
+   docker compose -f $composeFile -f docker-compose.ghcr-image.yml --env-file .env up -d --no-build
+
+5. Wait for readiness, then check discovery through the configured public HTTPS origin:
+
+$(if ($readinessService) {
+"   docker compose -f $composeFile -f docker-compose.ghcr-image.yml --env-file .env exec -T $readinessService wget -q -O - http://idp-service/health/ready"
+} else {
+"   curl --fail http://localhost:8080/health/ready"
+})
+   curl --fail ${oidcIssuer}.well-known/openid-configuration
+   Open $oidcIssuer after both checks succeed. Do not use a public /health/ready URL behind Nginx.
 
 For more details, see docs/DEPLOYMENT_GUIDE.md
 

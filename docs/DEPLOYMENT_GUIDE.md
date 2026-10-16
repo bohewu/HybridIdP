@@ -1,6 +1,6 @@
 # HybridIdP Deployment Guide
 
-This guide covers the deployment of HybridIdP using Docker Compose. The easiest way to deploy is using the **interactive setup wizard**, which handles configuration, security secrets, and certificates automatically.
+This guide covers the deployment of HybridIdP using Docker Compose. For a new deployment, the **interactive setup wizard** generates configuration, security secrets, and certificates. For an existing deployment, preserve the operator-managed `.env`; do not rerun the wizard to upgrade it. See [Upgrading Existing Legacy API Accounts](#upgrading-existing-legacy-api-accounts).
 
 Release workflow actions and official build/production Compose images are pinned
 to reviewed commits and digests. `.github/dependabot.yml` proposes weekly GitHub
@@ -20,6 +20,7 @@ required by this startup check.
 3. [Deployment Modes](#deployment-modes)
 4. [Production Configuration Contract](#production-configuration-contract)
    - [Optional Provider Lifecycle Status](#optional-provider-lifecycle-status)
+   - [Upgrading Existing Legacy API Accounts](#upgrading-existing-legacy-api-accounts)
 5. [One-Time Operational First Administrator](#one-time-operational-first-administrator)
 6. [Verification](#verification)
 7. [Advanced / Manual Configuration](#advanced--manual-configuration)
@@ -37,7 +38,7 @@ required by this startup check.
 
 ## Quick Start (Interactive Wizard)
 
-We provide an interactive script to generate your `.env` configuration, secure passwords, and OpenIddict certificates.
+We provide an interactive script for new deployments to generate `.env`, secure passwords, and OpenIddict certificates. Both wizards leave Provider Proof and Profile disabled and set `DatabaseMigration__ApplyOnStartup=false`. Configure approved integrations separately; the wizard does not convert historical account links.
 
 ### 1. Run the Setup Script
 
@@ -69,11 +70,44 @@ For a new external SQL Server configuration, the wizard emits `Encrypt=True` and
 Invalid external TLS input stops the wizard before it writes a new `.env`. These requirements apply only to newly generated external connection strings. Internal Docker database connection strings retain their existing networking and certificate compatibility. If an existing `.env` is detected, answer anything other than `y` to leave it byte-for-byte unchanged; answering `y` creates a timestamped backup before replacement. Existing operator-managed connection strings are not parsed, normalized, or retroactively rejected by the wizard.
 
 ### 3. Start the Application
-The script will output the exact command to run based on your choices. Typically:
+Use the wizard's selected Compose mode for infrastructure, migration and startup.
+For a new default Nginx/SQL Server installation, the sequence is below; replace
+the mode and database service if you selected another topology/provider. All
+commands run from `deployment/`. `IDP_IMAGE` is an approved pinned image exported
+only for these commands; this does not regenerate `.env`.
 
 ```bash
-docker compose -f docker-compose.nginx.yml --env-file .env up -d
+export IDP_IMAGE='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+compose_file='docker-compose.nginx.yml'
+docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
+  up -d mssql-service redis-service
+
+# After the database accepts connections and a restorable backup is confirmed:
+bash ./migrate-db.sh --confirm-backup --source ghcr --image "$IDP_IMAGE" \
+  --compose "$compose_file" --env-file .env
+
+# Start the full stack, including nginx-service; do not select only idp-service.
+docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
+  up -d --no-build
+docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
+  exec -T nginx-service wget -q -O - http://idp-service/health/ready
 ```
+
+For a selected internal PostgreSQL database, use `postgres-service redis-service`
+in the infrastructure command. For the external-database mode, start only
+`redis-service` and verify the external database is reachable. Repeat the
+readiness check until successful, then verify JSON discovery at the configured
+public issuer's `/.well-known/openid-configuration` using its trusted HTTPS
+certificate before signing in.
+
+Readiness must match the topology: Nginx mode uses `nginx-service` as above;
+split-host local-Nginx modes use `nginx-gateway` in the same command. Internal
+direct mode uses `curl --fail http://localhost:8080/health/ready`; split-host
+direct mode uses its configured `INTERNAL_IP:8080`. Nginx modes do not expose
+the IdP's port 8080 and block public `/health/ready`; query it through the
+frontend container on the shared Docker network. The update helper below is
+retained for existing split-host local-Nginx deployments, not this full-stack
+first-start procedure.
 
 ---
 
@@ -204,15 +238,23 @@ The development example applies EF Core migrations during startup before normal 
 
 ### Operator-Controlled Schema Migration
 
-The same procedure applies to SQL Server and PostgreSQL. In `deployment/.env`, set `IDP_IMAGE` to the selected exact pinned release image and keep `DatabaseMigration__ApplyOnStartup=false`. A floating reference such as `main` or `latest` is not accepted by `migrate-db.sh`.
+The same procedure applies to SQL Server and PostgreSQL. Keep
+`DatabaseMigration__ApplyOnStartup=false` in the existing `.env`. Select the exact
+same Compose mode used by the deployment; do not rely on the helper's default
+`docker-compose.splithost-nginx-nodb.yml` for a different topology/network. A
+floating reference such as `main` or `latest` is not accepted by `migrate-db.sh`.
 
 1. Take and verify a restorable operator-managed database backup for the selected provider.
-2. Set `release_image` to the same exact value recorded as `IDP_IMAGE` in `deployment/.env`, then run the schema-only container:
+2. Set the approved pinned image and selected Compose mode explicitly. Exporting
+   `IDP_IMAGE` selects it for Compose without replacing the existing `.env`:
 
    ```bash
    cd deployment
    release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
-   ./migrate-db.sh --confirm-backup --source ghcr --image "$release_image" --env-file .env
+   export IDP_IMAGE="$release_image"
+   compose_file='docker-compose.splithost-nginx-nodb.yml' # Replace with your actual selected mode.
+   bash ./migrate-db.sh --confirm-backup --source ghcr --image "$release_image" \
+     --compose "$compose_file" --env-file .env
    ```
 
 3. Verify that the command exits successfully. `--migrate-only` performs schema migration only: it does not seed data, start an HTTP listener, or run AD, provider, or credential-migration workflows.
@@ -226,13 +268,20 @@ The same procedure applies to SQL Server and PostgreSQL. In `deployment/.env`, s
    variables stay in the script process, and `--rm` removes the one-off container
    when it exits. The script does not restart the existing IdP service.
 
-4. Deploy that same unchanged image and wait for deployment readiness:
+4. For a first installation, start the complete selected stack with that same
+   unchanged image, including the selected frontend:
 
    ```bash
-   ./deploy-idp.sh --source ghcr --image "$release_image" --env-file .env
+   docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
+     up -d --no-build
    ```
 
-   The deployment command waits for IdP readiness. Confirm the expected health endpoint and discovery response before sending traffic.
+   Use the topology-specific readiness checks in [Start the Application](#3-start-the-application)
+   and confirm public discovery before sending traffic. This Compose command does
+   not wait for application readiness. Existing split-host local-Nginx updates can
+   retain `deploy-idp.sh --source ghcr --image "$release_image" --compose "$compose_file" --env-file .env`,
+   which waits for readiness and preserves its existing override handling. Retain
+   custom local overrides/shared networks in all existing deployment commands.
 5. Only after migration, deployment, and readiness succeed, enable a separately approved staged credential rollout. Stage 1 enables only `DirectoryIntegration__Enabled`; Stage 2 additionally enables `DirectoryIntegration__AuthenticationEnabled` and `CredentialMigration__Enabled` with bounded migration-window values. Leave all three flags disabled for the schema-release deployment.
 
 When `DatabaseMigration__ApplyOnStartup=false`, a normal application startup inspects pending migrations and fails before readiness if any remain. Do not work around that failure by enabling automatic startup migration on a production host; use the schema-only procedure instead.
@@ -707,18 +756,133 @@ If your IdP needs to connect to another service running in a different Docker Co
 
 ## Unified API login and Profile upgrade
 
-The flat LegacyAuth wire reader and its settings are retired. Set
-`ProviderProof__Enabled=true`, `ProviderProof__TrustedProviderNamespace`, Endpoint
-and SharedSecret explicitly. Historical Legacy links are preserved; establish
-verified new provider/key links before switching existing accounts. Do not infer
-identity equivalence from username/email or delete legacy rows. Local accounts
-and completed directory migration records retain their credential authority.
+### Upgrading Existing Legacy API Accounts
+
+The flat `authenticated` response reader and `LegacyAuth__*` settings are
+retired. A 1.4.x `.env` can be retained, but unchanged LegacyAuth configuration
+does not enable Proof login. Local-password accounts and completed directory
+migration records retain their credential authority. Google/Microsoft browser
+federation is separate from this API-login upgrade.
+
+Before switching an existing deployment, confirm with the producer/source owner
+that the configured Proof 1.0 endpoint returns the exact approved namespace and
+the same immutable subject as **every** historical key selected for backfill.
+The 1.4.3 reader stored `ssoUuid ?? userId`; a Legacy row count, GUID-shaped key,
+account name, email or successful login is not proof that all keys share one
+authority. An old fallback `userId` must not be reinterpreted as an SSO UUID.
+Academic/HR profile subjects are also not substitutes for an SSO subject. If any
+historical row is ambiguous, stop the bulk procedure and resolve its authority
+through a separately verified account-linking process.
+
+For an approved same-subject transition, the SQL Server-only
+[`backfill-legacy-proof-links.sql`](../deployment/backfill-legacy-proof-links.sql)
+adds `(approved namespace, existing ProviderKey, existing UserId)` to
+`AspNetUserLogins`. It retains the original `Legacy` row and other provider
+links. It does not recreate users, change Person/MFA/Passkey/recovery-code data,
+enable an integration or modify `.env`. Schema migration does not run this data
+backfill. PostgreSQL deployments need a separately reviewed procedure; do not
+run this SQL Server script against them.
+
+Use this order in an approved maintenance window:
+
+1. Record the running image and Compose project/directory. Keep a protected
+   backup of `.env`, certificates, local overrides/network configuration and a
+   verified restorable database backup. Preserve the DataProtection volume and
+   Compose project identity. Update the deployment files to the reviewed
+   revision containing this script without overwriting operator files; an
+   already released image does not itself install newer host-side scripts.
+2. If the selected database has pending schema changes, run the
+   [schema-only migration](#operator-controlled-schema-migration) using the
+   approved pinned image. SQL Server deployments already at
+   `20261008032457_AddProviderProfilesAndClaimConditions` need no additional
+   schema migration solely for the 1.6.1 patch. This does not establish provider
+   identity equivalence or backfill links.
+3. Pause account creation/link-management writers for the cutover and keep them
+   paused until the new image is ready. Make a protected working copy of
+   `backfill-legacy-proof-links.sql` outside source control. Edit
+   `@ExpectedDatabaseName` and `@TargetProviderNamespace` with the exact database and
+   verified namespace, leaving `@Apply = 0`. Run it against that database using
+   SSMS or `sqlcmd`. Review the reported counts. A conflict rejects the entire
+   operation; do not delete or rewrite existing rows to force it through.
+4. Only after the source-identity confirmation covers the complete Legacy set,
+   set `@SameSubjectAuthorityConfirmed = 1`, `@BackupConfirmed = 1`,
+   `@ExpectedLegacyCount` to the reviewed current count, and `@Apply = 1` in the
+   protected copy. Execute it again and verify the committed counts. A changed
+   source count requires a new review. Repeating an unchanged successful run
+   inserts zero additional links. Keep execution reports private; do not publish
+   real subjects, account identifiers or credentials.
+5. Edit only the necessary keys in the original `.env`:
+
+   ```dotenv
+   ProviderProof__Enabled=true
+   ProviderProof__TrustedProviderNamespace=<exact verified producer namespace>
+   ProviderProof__Endpoint=<complete Proof 1.0 endpoint URI>
+   ProviderProof__SharedSecret='<copy the exact approved service secret>'
+   ProviderProof__AllowPrivateNetworkHttp=false
+   DatabaseMigration__ApplyOnStartup=false
+   ```
+
+   The endpoint/secret can reuse the original `LegacyAuth__LoginUrl` and
+   `LegacyAuth__Secret` **values** only if that same endpoint supports Proof 1.0
+   with the approved identity tuple. Copy values explicitly; do not introduce
+   `.env` variable references. Use Compose dotenv quoting/escaping for the exact
+   secret, and do not source `.env` in a shell. Set
+   `ProviderProof__AllowPrivateNetworkHttp=true` only for an explicitly approved
+   HTTP endpoint on a controlled private network; HTTPS keeps it `false`.
+   `TrustedProviderNamespace` must not be `Legacy`. Old `LegacyAuth__*` entries
+   may remain for application rollback, but the new image ignores them.
+
+   Retain database strings, issuer/public authority, certificate passwords,
+   SMTP and Fido2 domain/origins. Current Nginx modes additionally require a
+   nonempty `Proxy__KnownProxies` containing the actual trusted proxy/gateway
+   addresses; use existing correct values and do not add broad private-network
+   trust. Both database connection-string variables were already required by
+   the 1.4.3 Compose contract. Profile, directory integration, lifecycle and
+   credential migration can stay disabled; Proof login does not require them.
+6. Deploy the approved image using the existing project directory, `.env` and
+   Compose mode. For the external-SQL-Server/local-Nginx mode:
+
+   ```bash
+   cd /path/to/HybridIdP/deployment
+   release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+   bash ./deploy-idp.sh --source ghcr --image "$release_image" \
+     --compose docker-compose.splithost-nginx-nodb.yml --env-file .env
+   ```
+
+   `--image` selects the release without rewriting `IDP_IMAGE` in `.env`.
+   Preserve the existing custom override/shared Docker network used to reach
+   the producer. The helper reconciles IdP and the local Nginx gateway when
+   present; do not use `down -v`, reset the database or replace volumes.
+7. Wait for readiness, verify public OIDC discovery, then test an existing
+   API-linked account through password login, existing MFA, Profile and a
+   TestClient authorization/token round trip. Confirm it resolves to the same
+   existing UserId with its retained factors/roles. Also verify an independent
+   Google/local account if deployed. Readiness alone does not prove an upstream
+   identity transition or successful end-user login.
+
+For example, after editing the protected SQL copy, `sqlcmd -S '<sql-server>'
+-d '<database>' -U '<migration-user>' -b -i '/protected/backfill.sql'` executes
+it and returns a nonzero status on a SQL error. Supply credentials through the
+client's protected prompt/authentication mechanism; do not put a password on
+the command line or disable server-certificate validation for this operation.
+
+Application rollback uses the recorded old image with the saved original
+configuration and the same volumes/project. Retained Legacy rows allow the old
+reader to retain its original links; the producer must also still support the
+old request/response contract for that rollback. Additive links do not provide
+wire-format compatibility. Leave additive Proof links and nullable
+schema columns in place; do not automatically delete links or run EF `Down`.
+A database restore is a separate, explicitly approved recovery operation and
+can discard writes made after the backup.
+
+### Optional Profile Activation
 
 Apply the selected provider's `AddProviderProfilesAndClaimConditions` migration
 through the existing deployment process. It adds nullable Person profile JSON
 and nullable claim source/condition columns; no property values are backfilled.
 Profile is default-off. Configure its independent endpoint, secret and approved
-String/Boolean properties before activation. The source dictionary can be supplied
+String/Boolean/StringArray properties before activation. A scalar remains a
+scalar; declare `StringArray` only for an actual array property. The source dictionary can be supplied
 with normal ASP.NET configuration (including environment keys in an env_file),
 without defining source-specific properties in OSS. See the configuration example
 in [Provider Profile 1.0](PROVIDER_PROFILE_CONTRACT.md) and deployment/.env.example.
