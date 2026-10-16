@@ -1,8 +1,34 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-16 for the 1.6.0 release. The upgrade requirements below apply
-to the complete change since 1.5.0; publishing a release does not establish
-production acceptance or deploy the image.
+Updated on 2026-10-16 for the 1.6.1 patch release. Publishing a release does not
+establish production acceptance or deploy the image. The historical 1.6.0 upgrade
+requirements and evidence below remain applicable when upgrading from 1.5.x or
+1.4.x.
+
+## 1.6.1 security servicing patch
+
+This patch preserves the authentication policies, provider contracts and database
+schema of 1.6.0. It updates the pinned .NET SDK/runtime images to use the .NET
+10.0.13 runtime on Linux amd64, System.Security.Cryptography.Pkcs and
+System.Security.Cryptography.Xml to 10.0.13, and the image-workflow checkout
+action to 7.0.1. The Node 24 frontend build image is unchanged. The remaining
+test-only change corrects nullable annotations in the authorization session mock;
+repository VERSION metadata is aligned to 1.6.1.
+
+No migrations were added after 1.6.0. A database already at the 1.6.0 target
+requires no new SQL solely for 1.6.1. Upgrades from 1.5.x or 1.4.x must still
+complete the 1.6.0 preparation and schema procedure below. Preserve the existing
+configuration, certificates and Data Protection keys.
+
+The final dependency source at `e037d5450fbc20979871724fe892595b18201670`
+passed an isolated solution build with 0 warnings and 0 errors, all 59 focused
+authorization-service tests, and a NuGet vulnerability audit of 16 projects with
+no reported vulnerabilities. Independent review passed for that source. These
+are scoped source checks, not a full-suite or production acceptance claim.
+Earlier local image and 12 browser-case checks used the .NET 10.0.13 runtime
+before the final cryptography package pins. They do not establish browser
+acceptance of the published 1.6.1 image. The GitHub release records publication
+checks and the immutable image digest when available.
 
 ## 1.6.0 release scope
 

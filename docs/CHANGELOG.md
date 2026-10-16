@@ -6,6 +6,32 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 No unreleased changes.
 
+## [1.6.1] - 2026-10-16
+
+Security servicing patch for 1.6.0. Authentication policies, provider contracts
+and database schema are unchanged from 1.6.0.
+
+### Security and maintenance
+
+- Updated the pinned .NET SDK and ASP.NET runtime images; the Linux amd64
+  runtime is .NET 10.0.13. The Node 24 frontend build image is unchanged.
+- Pinned System.Security.Cryptography.Pkcs to 10.0.13 in Infrastructure and
+  updated System.Security.Cryptography.Xml to 10.0.13 in both migration projects.
+- Updated the pinned image-workflow checkout action to 7.0.1.
+- Corrected nullable annotations in the authorization-service session mock.
+- Aligned the repository VERSION metadata with this release at 1.6.1.
+
+### Deployment and verification
+
+- No migrations were added after 1.6.0. A database already at the 1.6.0 target
+  requires no new SQL for this patch. Upgrades from 1.5.x or 1.4.x must still
+  follow the [1.6.0 upgrade requirements](./RELEASE_READINESS.md).
+- The final dependency source passed an isolated solution build with no warnings
+  or errors, 59 authorization-service tests and a NuGet vulnerability audit of
+  16 projects with no reported vulnerabilities. Earlier local image/browser
+  checks preceded the final cryptography pins; they do not verify the published
+  1.6.1 image. Image publication and production deployment remain separate.
+
 ## [1.6.0] - 2026-10-16
 
 This release includes the changes since 1.5.0. See the
