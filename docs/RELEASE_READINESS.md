@@ -1,9 +1,38 @@
 # Release readiness and upgrade notes
 
-Prepared on 2026-10-08 for the changes after 1.5.0. This is a release-preparation
-record, not a version announcement or a production acceptance report.
+Updated on 2026-10-16 for the 1.6.0 release. The upgrade requirements below apply
+to the complete change since 1.5.0; publishing a release does not establish
+production acceptance or deploy the image.
 
-## Source baseline
+## 1.6.0 release scope
+
+The release includes Provider Proof/Profile integration and typed conditional
+claims, the unified account recovery-code entry, MFA/passkey account-management
+and logout UX fixes, audit improvements, and schema-only migration isolation.
+Existing TOTP, passkeys and usable legacy recovery codes are preserved. Required
+MFA policies still prevent removal of the last usable factor; recovery codes do
+not count as an enrolled factor. See the [OTP operation matrix](OTP_OPERATION_MATRIX.md).
+
+Upstream API adapters must implement Provider Proof 1.0. The old flat
+`authenticated` reader and LegacyAuth settings are retired; an existing adapter
+must not be assumed compatible from its HTTP status or from downstream OIDC
+compatibility. Configure the source namespace, full endpoint, secret and any
+operator-verified historical identity binding before activation. Provider Profile
+is optional and has its own endpoint and approved property allowlist.
+
+Apply the selected provider's schema migrations before starting the new image.
+The SQL Server target is `20261008032457_AddProviderProfilesAndClaimConditions`;
+the PostgreSQL target is `20261008032522_AddProviderProfilesAndClaimConditions`.
+Keep deployment configuration, signing/encryption certificates and Data Protection
+keys. No bulk factor retirement, database reset or automatic downgrade is part
+of this release. A database already at its target migration needs no additional
+schema change solely for the 1.6.0 tag.
+
+The source and verification snapshots below retain their original dates and
+limits. They are historical evidence, not the final 1.6.0 test totals. The GitHub
+release records the final release checks and immutable image digest.
+
+## Preparation source baseline (2026-10-08)
 
 | Item | Verified value |
 | --- | --- |
@@ -14,7 +43,7 @@ record, not a version announcement or a production acceptance report.
 | Source-tree comparison | Main and dev trees were identical at the preparation baseline; the local dev worktree now contains unpublished provider/profile changes |
 
 The release scope is the entire change since 1.5.0, including earlier merged
-work, rather than only PR #9. The [Unreleased changelog](./CHANGELOG.md) summarizes
+work, rather than only PR #9. The [changelog](./CHANGELOG.md) summarizes
 that scope. No new version, tag, release image, production migration or deployment
 was performed during this preparation. Dependency-bot PRs remain separate work.
 

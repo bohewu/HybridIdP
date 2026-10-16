@@ -4,9 +4,13 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
-Draft release notes for changes after 1.5.0. No release version or container image
-is selected by this entry. See [release readiness and upgrade notes](./RELEASE_READINESS.md)
-for the source baseline, verification limits and remaining deployment decisions.
+No unreleased changes.
+
+## [1.6.0] - 2026-10-16
+
+This release includes the changes since 1.5.0. See the
+[upgrade notes](./RELEASE_READINESS.md) before replacing an existing deployment.
+Image publication and production deployment are separate operations.
 
 ### Added
 
@@ -21,6 +25,25 @@ for the source baseline, verification limits and remaining deployment decisions.
 - Added default-disabled Provider Profile 1.0, approved source snapshots on Person,
   local content hashes and configurable freshness, plus direct property mapping
   and bounded Boolean claim rules in the existing claim administration form.
+- Added typed StringArray mapping and visual claim conditions using Equals,
+  NotEquals, StartsWith, Contains, All (AND) and Any (OR). Available properties
+  come from the deployment's AllowedProperties configuration.
+- Added a unified account recovery-code entry while preserving existing TOTP,
+  passkeys and usable legacy codes, with one-click copying of newly issued codes.
+
+### Fixed
+
+- Clarified authentication methods, MFA status and purpose-specific confirmation
+  before security changes. Fixed Email OTP enrollment followed by TOTP setup,
+  method switching, last-factor removal controls and passkey inventory refresh.
+- Preserved CSRF validation while recovering stale logout confirmation after a
+  sign-in state change, so users can explicitly confirm logout again.
+- Fixed audit filtering, pagination, event localization and interactive cursor
+  states. Removed misleading optional-cookie consent controls.
+- Removed stale layout CSS references and guarded nullable authentication state.
+- Isolated schema-only migration from website issuer and signing-certificate
+  setup. The Windows helper restores caller environment/location and propagates
+  failures; the deployment guides now explain PowerShell and Bash cleanup.
 
 ### Security
 
