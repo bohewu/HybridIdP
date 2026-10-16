@@ -23,7 +23,13 @@ The old flat `authenticated` HTTP response, `LegacyAuthService`, and `LegacyAuth
 settings are retired. Historical `Legacy` provider/key rows are retained. Before
 switching a deployment, explicitly establish the new tuple through the protected
 account-linking/operator process; do not infer equivalence from login name or
-email, delete old rows, or enable format detection. Old settings no longer enable
+email, delete old rows, or enable format detection. The SQL Server
+[one-time backfill procedure](DEPLOYMENT_GUIDE.md#upgrading-existing-legacy-api-accounts)
+is limited to an operator-verified same-subject transition: it adds the approved
+namespace with the exact existing key and UserId while retaining Legacy/Google
+links and factors. The 1.4.3 reader selected `ssoUuid ?? userId`, so key shape or
+row counts cannot establish subject equivalence. Schema migration does not
+perform this binding transition. Old settings no longer enable
 upstream login. Required Proof actions are not ignored: ordinary API/Stage 1 login
 currently denies responses with outstanding actions; the separate Stage 2
 ceremony retains its existing action handling.

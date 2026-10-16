@@ -6,6 +6,7 @@
 # a .env file with secure, randomly-generated passwords.
 #
 # Run from the deployment/ directory: ./setup-env.sh
+# New deployments only; preserve an existing .env and follow the Legacy upgrade guide.
 #
 
 set -e
@@ -167,6 +168,8 @@ if [ -f "$ENV_PATH" ]; then
     chmod 600 "$backup_path"
     print_info "Backup created: $backup_path"
 fi
+
+print_info "This wizard generates a new configuration. For upgrades, preserve .env and follow docs/DEPLOYMENT_GUIDE.md."
 
 print_title "Deployment Mode"
 deployment_mode=""
@@ -394,6 +397,9 @@ ASPNETCORE_ENVIRONMENT=Production
 # Database Provider: SqlServer or PostgreSQL
 DATABASE_PROVIDER=$db_provider_value
 
+# Apply schema changes explicitly with migrate-db.sh before starting this image.
+DatabaseMigration__ApplyOnStartup=false
+
 # Database Connection Strings
 $db_connection_content
 ConnectionStrings__RedisConnection='redis-service:6379'
@@ -406,8 +412,18 @@ Redis__Enabled=$redis_enabled
 Proxy__Enabled=$proxy_enabled
 Proxy__KnownProxies=$known_proxies
 
+# Independent Provider Proof 1.0 login; configure the approved producer before enabling.
+# Existing Legacy accounts require the verified additive backfill in docs/DEPLOYMENT_GUIDE.md.
+ProviderProof__Enabled=false
+ProviderProof__TrustedProviderNamespace=
+ProviderProof__Endpoint=
+ProviderProof__SharedSecret=
+ProviderProof__AllowPrivateNetworkHttp=false
+ProviderProof__Timeout=00:00:05
+# Profile is optional and has independent endpoint, secret and AllowedProperties.
+ProviderProfile__Enabled=false
+
 # Optional deployment policies; review these choices before enabling integrations.
-LegacyAuth__RequireHttps=false
 EmailSettings__SmtpRequireTls=$smtp_require_tls
 EmailSettings__SmtpValidateServerCertificate=$smtp_validate_server_certificate
 # Hints do not enable recovery; false hides eligibility and masked destinations.
@@ -558,13 +574,21 @@ else
     compose_file="docker-compose.internal.yml"
 fi
 
-# Determine access URL
+# Determine readiness command for the selected frontend/network.
 if [ "$use_split_host" = true ]; then
-    access_url="- HTTP: http://localhost:8080 (via Nginx gateway, behind external RP)"
+    readiness_service="nginx-gateway"
 elif [ "$use_nginx" = true ]; then
-    access_url="- HTTPS: https://localhost (via Nginx)"
+    readiness_service="nginx-service"
 else
-    access_url="- HTTP: http://localhost:8080 (behind your LB)"
+    readiness_service=""
+fi
+infrastructure_services="redis-service"
+if [ "$use_external_db" = false ]; then
+    if [ "$use_sqlserver" = true ]; then
+        infrastructure_services="mssql-service redis-service"
+    else
+        infrastructure_services="postgres-service redis-service"
+    fi
 fi
 
 echo -e "\nNext steps:"
@@ -572,19 +596,30 @@ echo "1. Review the generated .env file: $ENV_PATH"
 echo "2. Ensure certificates exist in: $certs_dir"
 
 if [ "$use_split_host" = true ]; then
-    echo "3. Edit nginx/splithost-gateway.conf to set allowed proxy IPs"
-    echo "4. Start the application:"
-    echo ""
-    echo "   docker compose -f $compose_file --env-file .env up -d"
-    echo ""
-    echo "5. Access the application:"
-else
-    echo "3. Start the application:"
-    echo ""
-    echo "   docker compose -f $compose_file --env-file .env up -d"
-    echo ""
-    echo "4. Access the application:"
+    echo "   Review nginx/ip-allowlist.conf for the allowed proxy IPs."
 fi
-echo "   $access_url"
+echo "3. Select an approved pinned image and start the selected infrastructure:"
+echo ""
+echo "   export IDP_IMAGE='<approved-pinned-image>'"
+echo "   docker compose -f $compose_file -f docker-compose.ghcr-image.yml --env-file .env up -d $infrastructure_services"
+echo ""
+echo "   Wait for the selected database to accept connections and confirm a restorable backup."
+echo "   Apply schema changes with this SAME Compose mode; keep ApplyOnStartup=false:"
+echo ""
+echo "   bash ./migrate-db.sh --confirm-backup --source ghcr --image \"\$IDP_IMAGE\" --compose $compose_file --env-file .env"
+echo ""
+echo "4. After successful schema migration, start the complete selected stack, including its frontend:"
+echo ""
+echo "   docker compose -f $compose_file -f docker-compose.ghcr-image.yml --env-file .env up -d --no-build"
+echo ""
+echo "5. Wait for readiness, then check discovery through the configured public HTTPS origin:"
+echo ""
+if [ -n "$readiness_service" ]; then
+    echo "   docker compose -f $compose_file -f docker-compose.ghcr-image.yml --env-file .env exec -T $readiness_service wget -q -O - http://idp-service/health/ready"
+else
+    echo "   curl --fail http://localhost:8080/health/ready"
+fi
+echo "   curl --fail ${oidc_issuer}.well-known/openid-configuration"
+echo "   Open $oidc_issuer after both checks succeed. Do not use a public /health/ready URL behind Nginx."
 
 echo -e "\nFor more details, see docs/DEPLOYMENT_GUIDE.md\n"

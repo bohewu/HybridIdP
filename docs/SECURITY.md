@@ -437,13 +437,14 @@ production certificate behavior change.
 
 ### Upstream Credential and Assertion Boundary
 
-The current LegacyAuth, Provider Proof and Provider Metadata clients deny
+The current Provider Proof and Provider Metadata clients deny
 automatic redirects and bound response consumption before JSON parsing at
-64 KiB, 64 KiB and 16 KiB respectively. Oversize cannot authenticate or refresh
+64 KiB and 16 KiB respectively. Oversize cannot authenticate or refresh
 usable metadata; metadata body-read failures invalidate prior evidence. These
 controls preserve in-limit `2xx` JSON, cancellation/deadline and authority rules,
-and add no retry or alternate provider. `LegacyAuth__RequireHttps=false` retains
-HTTP compatibility; `true` rejects HTTP before credential/shared-secret dispatch.
+and add no retry or alternate provider. Proof requires HTTPS unless the operator
+explicitly sets `ProviderProof__AllowPrivateNetworkHttp=true` for a controlled
+private-network endpoint. Retired `LegacyAuth__*` keys do not configure Proof.
 
 SMTP ordinary and test-send share `EmailSettings__SmtpRequireTls=false` and
 `EmailSettings__SmtpValidateServerCertificate=true` defaults. SSL-on requires
@@ -451,7 +452,7 @@ implicit TLS. SSL-off uses mandatory STARTTLS when RequireTls is true and
 opportunistic STARTTLS otherwise. Localhost/SSL-off does not disable certificate
 validation; false explicitly accepts any certificate if TLS is used. Stored
 mail/DTO transport settings cannot override these global policy flags. See the
-[deployment policy combinations](DEPLOYMENT_GUIDE.md#optional-legacyauth-smtp-and-recovery-hint-policies)
+[deployment policy combinations](DEPLOYMENT_GUIDE.md#optional-proof-smtp-and-recovery-hint-policies)
 for the supported operator choices; no internal CA is mandatory.
 
 Recovery precheck hints default ON and intentionally retain eligible guidance
@@ -464,12 +465,23 @@ until valid browser/user-bound local confirmation; OIDC ingress and validated
 protocol completion remain supported. These local controls do not establish
 external SMTP/provider, browser or production acceptance.
 
-Current password authentication is Local plus the configurable LegacyAuth HTTP
-integration; it does not implement AD/LDAP. Direct, deployment-configured
-AD/LDAP is the preferred future credential source. A standardized,
-provider-neutral authentication/profile API adapter is an optional future
-integration only when a required directory capability cannot be supplied
-directly.
+Current password authentication supports independent local-password accounts
+and the default-off Provider Proof 1.0 API adapter. Proof login requires an
+explicit trusted namespace, endpoint and secret and does not require directory
+integration. The separately gated staged directory capability retains its
+durable authority rules; generic direct AD/LDAP remains future work. Provider
+Profile 1.0 is an independent optional typed-claims boundary, not credential
+authority. No deployment is required to use AuthProxy or an organization-specific
+implementation.
+
+Historical Legacy links are retained but are not accepted implicitly as a new
+Proof namespace. A protected same-subject backfill adds only the exact existing
+key under the verified namespace to the same UserId; it retains old/other links
+and factors. The historical `ssoUuid ?? userId` fallback means neither key format
+nor email/name matching authorizes this transition. Schema migration does not
+perform it. Follow the
+[operator-controlled upgrade](DEPLOYMENT_GUIDE.md#upgrading-existing-legacy-api-accounts)
+before switching existing API accounts.
 
 Selection of an upstream provider must be explicit for every authentication
 attempt. A selected provider that is unavailable, rejects the request, returns
