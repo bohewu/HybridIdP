@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.Extensions.Logging;
 using Moq;
 using OpenIddict.Abstractions;
+using OpenIddict.Server;
 using Web.IdP.Pages.Account;
 
 namespace Tests.Web.IdP.UnitTests.Pages.Account;
@@ -53,6 +54,60 @@ public sealed class AuthorizationsModelTests
         Assert.Equal(ApplicationId, properties.Single(p => p.Key == "ApplicationId").Value?.ToString());
         Assert.DoesNotContain('\r', log.Arguments[2].ToString()!);
         Assert.DoesNotContain('\n', log.Arguments[2].ToString()!);
+    }
+
+    [Fact]
+    public async Task Revoke_ShouldDeleteCurrentApplicationGrants_AndRejectTheirOldRefreshToken()
+    {
+        var model = CreateModel();
+        var authorization = new object();
+        var deleted = false;
+        _authorizations.Setup(manager => manager.FindAsync("current-user", ApplicationId,
+                OpenIddictConstants.Statuses.Valid, OpenIddictConstants.AuthorizationTypes.Permanent,
+                It.IsAny<ImmutableArray<string>?>(), It.IsAny<CancellationToken>()))
+            .Returns(CurrentGrant());
+        _authorizations.Setup(manager => manager.FindByIdAsync("fixture-grant", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => deleted ? null : authorization);
+        _authorizations.Setup(manager => manager.HasStatusAsync(authorization, OpenIddictConstants.Statuses.Valid,
+                It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        _authorizations.Setup(manager => manager.DeleteAsync(authorization, It.IsAny<CancellationToken>()))
+            .Callback(() => deleted = true).Returns(ValueTask.CompletedTask);
+        var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", "current-user")], "Bearer"));
+        principal.SetAuthorizationId("fixture-grant");
+        principal.SetTokenType(OpenIddictConstants.TokenTypeHints.RefreshToken);
+        var handler = new OpenIddictServerHandlers.Protection.ValidateAuthorizationEntry(_authorizations.Object);
+        var before = new OpenIddictServerEvents.ValidateTokenContext(new OpenIddictServerTransaction
+        {
+            Logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance
+        })
+        {
+            Principal = principal,
+            AuthorizationId = principal.GetAuthorizationId()
+        };
+        await handler.HandleAsync(before);
+        Assert.False(before.IsRejected);
+
+        Assert.IsType<JsonResult>(await model.OnPostRevokeAsync(ApplicationId));
+
+        var after = new OpenIddictServerEvents.ValidateTokenContext(new OpenIddictServerTransaction
+        {
+            Logger = Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance
+        })
+        {
+            Principal = principal,
+            AuthorizationId = principal.GetAuthorizationId()
+        };
+        await handler.HandleAsync(after);
+        Assert.True(after.IsRejected);
+        // This protection-stage error is translated by the token endpoint pipeline.
+        Assert.Equal(OpenIddictConstants.Errors.InvalidToken, after.Error);
+        _authorizations.Verify(manager => manager.DeleteAsync(authorization, It.IsAny<CancellationToken>()), Times.Once);
+
+        async IAsyncEnumerable<object> CurrentGrant()
+        {
+            await Task.CompletedTask;
+            if (!deleted) yield return authorization;
+        }
     }
 
     private AuthorizationsModel CreateModel()

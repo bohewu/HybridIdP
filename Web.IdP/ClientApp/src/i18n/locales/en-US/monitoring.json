@@ -8,7 +8,8 @@
     "activeSessions": "Active Sessions",
     "totalLogins": "Total Logins",
     "failedLogins": "Failed Logins",
-    "riskScore": "Risk Score"
+    "riskScore": "Risk Score",
+    "noActivity": "No activity recorded."
   },
   "securityMetrics": {
     "title": "Security Metrics",
@@ -24,5 +25,9 @@
   "realTimeAlerts": {
     "title": "Real-time Alerts",
     "noAlerts": "No active alerts"
-  }
+  },
+  "refresh": "Refresh",
+  "refreshing": "Refreshing; showing previous results.",
+  "loadFailed": "Unable to load monitoring data. Please try again.",
+  "stale": "Previous results are stale."
 }

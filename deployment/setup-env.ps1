@@ -644,9 +644,9 @@ $(if ($useSplitHost) {
 5. Wait for readiness, then check discovery through the configured public HTTPS origin:
 
 $(if ($readinessService) {
-"   docker compose -f $composeFile -f docker-compose.ghcr-image.yml --env-file .env exec -T $readinessService wget -q -O - http://idp-service/health/ready"
+"   docker compose -f $composeFile -f docker-compose.ghcr-image.yml --env-file .env exec -T $readinessService wget -q -O - --header 'Host: $publicAuthority' http://idp-service/health/ready"
 } else {
-"   curl --fail http://localhost:8080/health/ready"
+"   curl --fail --header 'Host: $publicAuthority' http://localhost:8080/health/ready"
 })
    curl --fail ${oidcIssuer}.well-known/openid-configuration
    Open $oidcIssuer after both checks succeed. Do not use a public /health/ready URL behind Nginx.

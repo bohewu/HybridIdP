@@ -1,16 +1,10 @@
 <template>
-  <div
-    class="max-w-7xl mx-auto dashboard-root"
-    v-loading="{ loading: loading, overlay: true, message: t('dashboard.loading') }">
+  <div class="dashboard-root px-4 py-6">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-3xl font-bold text-gray-900">{{ $t('dashboard.title') }}</h1>
       <p class="mt-2 text-gray-600">{{ $t('dashboard.subtitle') }}</p>
     </div>
-
-    <!-- Page-level loading is now handled by the v-loading overlay so the
-         page content remains visible while data loads. Keep the
-         LoadingIndicator component available for smaller/local usages. -->
 
     <!-- Error State -->
     <div v-if="error" class="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
@@ -23,11 +17,12 @@
     </div>
 
     <!-- Dashboard Content -->
-    <div v-if="!error">
+    <div>
       <!-- Quick Stats -->
       <div class="mb-8 bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ $t('dashboard.quickStats') }}</h3>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <LoadingPlaceholder v-if="loading" :message="t('dashboard.loading')" />
+        <div v-else-if="!error" class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div class="text-center p-4 bg-linear-to-br from-google-50 to-google-100 rounded-lg" data-test-id="dashboard-stats-clients">
             <div class="text-3xl font-bold text-google-500">{{ stats.totalClients }}</div>
             <div class="text-sm text-gray-600 mt-1">{{ $t('dashboard.stats.totalClients') }}</div>
@@ -53,22 +48,19 @@
                 class="text-sm text-blue-600 hover:text-blue-800 flex items-center"
                 data-test-id="dashboard-health-refresh"
             >
-                <svg v-if="healthLoading" class="animate-spin -ml-1 mr-2 h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                <svg v-else class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                 </svg>
                 {{ $t('dashboard.health.refresh') }}
             </button>
         </div>
         
-        <div v-if="healthError" class="text-sm text-red-600 mb-4">
+        <div v-if="healthError" class="text-sm text-red-600 mb-4" role="alert">
             {{ healthError }}
         </div>
 
-        <div v-if="healthData" class="space-y-4">
+        <LoadingPlaceholder v-if="healthLoading" :message="t('dashboard.health.checking')" />
+        <div v-else-if="healthData" class="space-y-4">
             <!-- Overall Status -->
             <div class="flex items-center p-4 rounded-lg" :class="healthData.status === 'Healthy' ? 'bg-green-50' : 'bg-red-50'">
                 <div class="shrink-0">
@@ -81,10 +73,10 @@
                 </div>
                 <div class="ml-3">
                     <h3 class="text-lg font-medium" :class="healthData.status === 'Healthy' ? 'text-green-800' : 'text-red-800'">
-                        {{ healthData.status }}
+                        {{ t(`dashboard.health.statuses.${healthData.status}`) }}
                     </h3>
                     <div class="text-sm" :class="healthData.status === 'Healthy' ? 'text-green-700' : 'text-red-700'">
-                        {{ t('dashboard.health.lastUpdated', { time: new Date().toLocaleTimeString() }) }}
+                        {{ t('dashboard.health.lastUpdated', { time: healthCheckedAt }) }}
                     </div>
                 </div>
             </div>
@@ -92,15 +84,15 @@
             <!-- Individual Checks -->
             <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div v-for="(entry, name) in healthData.entries" :key="name" class="border rounded-md p-3 flex items-center justify-between">
-                    <span class="font-medium text-gray-700">{{ name }}</span>
+                    <span class="font-medium text-gray-700">{{ t(`dashboard.health.checks.${name}`) }}</span>
                     <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
                         :class="entry.status === 'Healthy' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
-                        {{ entry.status }}
+                        {{ t(`dashboard.health.statuses.${entry.status}`) }}
                     </span>
                 </div>
             </div>
         </div>
-        <div v-else-if="!healthLoading" class="text-gray-500 text-sm italic">
+        <div v-else-if="!healthError" class="text-gray-500 text-sm italic">
             {{ t('dashboard.health.noData') }}
         </div>
       </div>
@@ -185,15 +177,16 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import ActivityDashboard from '../monitoring/components/ActivityDashboard.vue'
 import SecurityMetrics from '../monitoring/components/SecurityMetrics.vue'
 import RealTimeAlerts from '../monitoring/components/RealTimeAlerts.vue'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
+import { dashboardApi } from '@/services/dashboardApi'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 const loading = ref(true)
 const error = ref(null)
@@ -204,33 +197,25 @@ const stats = ref({
 })
 
 const healthData = ref(null)
-const healthLoading = ref(false)
+const healthLoading = ref(true)
 const healthError = ref(null)
-
-
+const healthCheckedAt = computed(() => healthData.value
+  ? new Date(healthData.value.checkedAtUtc).toLocaleString(locale.value)
+  : '')
 
 const fetchStats = async () => {
   try {
     loading.value = true
     error.value = null
     
-    const response = await fetch('/api/admin/dashboard/stats')
-    
-    if (!response.ok) {
-      if (response.status === 401) {
-        throw new Error(t('dashboard.errors.unauthorized'))
-      } else if (response.status === 403) {
-        throw new Error(t('dashboard.errors.accessDenied'))
-      } else {
-        throw new Error(`${t('dashboard.errors.loadFailed')} (${response.status})`)
-      }
-    }
-    
-    const data = await response.json()
-    stats.value = data
+    stats.value = await dashboardApi.getStats()
   } catch (err) {
     console.error('Dashboard stats error:', err)
-    error.value = err.message || t('dashboard.errors.loadFailed')
+    error.value = err.status === 401
+      ? t('dashboard.errors.unauthorized')
+      : err.status === 403
+        ? t('dashboard.errors.accessDenied')
+        : t('dashboard.errors.loadFailed')
   } finally {
     loading.value = false
   }
@@ -239,10 +224,9 @@ const fetchStats = async () => {
 const fetchHealth = async () => {
     healthLoading.value = true
     healthError.value = null
+    healthData.value = null
     try {
-        const response = await fetch('/health')
-        if (!response.ok) throw new Error('Failed to fetch health status')
-        healthData.value = await response.json()
+        healthData.value = await dashboardApi.getHealth()
     } catch (err) {
         console.error('Health check failed:', err)
         healthError.value = t('dashboard.errors.healthFailed')
@@ -250,12 +234,9 @@ const fetchHealth = async () => {
         healthLoading.value = false
     }
 }
-
-
-
-onMounted(async () => {
-  await fetchStats()
-  fetchHealth() // Don't await, let it load in background
+onMounted(() => {
+  fetchStats()
+  fetchHealth()
 })
 
 

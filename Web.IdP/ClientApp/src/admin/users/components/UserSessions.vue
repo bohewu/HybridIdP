@@ -137,7 +137,7 @@ onMounted(() => fetchSessions())
             <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-3">
               <p class="text-sm text-red-700">{{ error }}</p>
             </div>
-            <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('sessions.loading')" />
+            <LoadingIndicator v-if="loading && !revoking" :loading="loading" size="sm" :message="t('sessions.loading')" />
             <div v-else-if="sessions.length === 0" class="py-8 text-center">
               <p class="text-sm text-gray-600">{{ t('sessions.empty') }}</p>
             </div>

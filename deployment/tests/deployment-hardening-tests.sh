@@ -173,6 +173,9 @@ assert_external_sql_output() {
        grep -Fq 'TrustServerCertificate=True' "$env_file"; then
         fail "wizard-external-sql-tls" "$shell_name"
     fi
+    if ! grep -Fq "exec -T nginx-gateway wget -q -O - --header 'Host: idp.fixture.invalid' http://idp-service/health/ready" "$fixture/output.log"; then
+        fail "wizard-readiness-host" "$shell_name/gateway"
+    fi
 }
 
 assert_external_postgres_ca_output() {
@@ -234,6 +237,9 @@ assert_internal_docker_output() {
        ! tr -d '\r' <"$env_file" | grep -Eq "^ConnectionStrings__SqlServerConnection='Server=mssql-service;Database=hybridauth_idp;User Id=sa;Password=[^;']+;Encrypt=True;TrustServerCertificate=True'$" ||
        ! tr -d '\r' <"$env_file" | grep -Eq "^ConnectionStrings__PostgreSqlConnection='Host=postgres-service;Port=5432;Database=hybridauth_idp;Username=user;Password=[^;']+'$"; then
         fail "wizard-internal-docker-compatibility" "$shell_name"
+    fi
+    if ! grep -Fq "exec -T nginx-service wget -q -O - --header 'Host: idp.fixture.invalid' http://idp-service/health/ready" "$fixture/output.log"; then
+        fail "wizard-readiness-host" "$shell_name/nginx"
     fi
 }
 
@@ -711,7 +717,12 @@ if [[ " ${READINESS_SCENARIO:-ready} " == *" early-exit "* ]] &&
 elif [[ " ${READINESS_SCENARIO:-ready} " == *" unhealthy "* ]] &&
      [[ " $* " == *" ps --format {{.Health}} idp-service "* ]]; then
     printf '%s\n' 'unhealthy'
-elif [[ " $* " == *" exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health/ready "* ]]; then
+elif [[ " $* " == *" exec -T nginx-gateway wget "*" http://idp-service/health/ready "* ]]; then
+    header_found=false
+    for argument in "$@"; do
+        [[ "$argument" == "Host: ${READINESS_EXPECTED_AUTHORITY:-idp.synthetic.invalid}" ]] && header_found=true
+    done
+    [[ "$header_found" == true ]] || exit 1
     if [[ "${READINESS_SCENARIO:-ready}" != "ready" ]]; then
         exit 1
     fi
@@ -725,6 +736,11 @@ chmod +x "$STUB_BIN/docker"
 cat >"$STUB_BIN/curl" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >>"${CURL_LOG:-/dev/null}"
+header_found=false
+for argument in "$@"; do
+    [[ "$argument" == "Host: ${READINESS_EXPECTED_AUTHORITY:-idp.synthetic.invalid}" ]] && header_found=true
+done
+[[ "$header_found" == true ]] || exit 1
 [[ "${READINESS_SCENARIO:-ready}" == "ready" ]]
 STUB
 chmod +x "$STUB_BIN/curl"
@@ -866,22 +882,25 @@ run_deploy_readiness_case() {
     local scenario="$1"
     local expected_category="$2"
     local expected_status="$3"
+    local env_file="${4:-$ghcr_env}"
+    local expected_authority="${5:-idp.synthetic.invalid}"
     local status=0
 
     : >"$DOCKER_LOG"
     CURL_LOG="$TMP_DIR/readiness-$scenario.curl.log"
     : >"$CURL_LOG"
     PATH="$STUB_BIN:$PATH" CURL_LOG="$CURL_LOG" READINESS_SCENARIO="$scenario" \
+        READINESS_EXPECTED_AUTHORITY="$expected_authority" \
         IDP_READINESS_ATTEMPTS=2 IDP_READINESS_DELAY_SECONDS=0 \
         bash "$DEPLOYMENT_DIR/deploy-idp.sh" \
         --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
         --compose "docker-compose.splithost-nginx-nodb.yml" \
-        --override "$missing_override" --env-file "$ghcr_env" \
+        --override "$missing_override" --env-file "$env_file" \
         >"$TMP_DIR/readiness-$scenario.out" 2>&1 || status=$?
     if (( status != expected_status )); then
         fail "deploy-readiness-$scenario" "exit-$status"
     elif [[ "$expected_status" == "0" ]]; then
-        if [[ $(grep -Fc 'exec -T nginx-gateway wget -q -O /dev/null http://idp-service/health/ready' "$DOCKER_LOG") -ne 1 ]] ||
+        if [[ $(grep -Fc "exec -T nginx-gateway wget -q -O /dev/null --header Host: $expected_authority http://idp-service/health/ready" "$DOCKER_LOG") -ne 1 ]] ||
            [[ -s "$CURL_LOG" ]]; then
             fail "deploy-readiness-success" "gateway-health-surface"
         fi
@@ -897,6 +916,11 @@ run_deploy_readiness_case "ready" "" 0
 run_deploy_readiness_case "timeout" "timeout" 1
 run_deploy_readiness_case "unhealthy" "unhealthy" 1
 run_deploy_readiness_case "early-exit" "service-exited" 1
+
+quoted_authority_env="$TMP_DIR/quoted-authority.env"
+write_env "$quoted_authority_env"
+sed -i "s|^OpenIddict__Issuer=.*|OpenIddict__Issuer='https://idp.synthetic.invalid:8443/'|; s/^PUBLIC_AUTHORITY=.*/PUBLIC_AUTHORITY='idp.synthetic.invalid:8443'/" "$quoted_authority_env"
+run_deploy_readiness_case "ready" "" 0 "$quoted_authority_env" "idp.synthetic.invalid:8443"
 
 run_internal_readiness_case() {
     local env_file="$TMP_DIR/internal-no-internal-ip.env"
@@ -917,6 +941,7 @@ run_internal_readiness_case() {
         fail "deploy-readiness-internal" "exit-$status"
     elif [[ $(wc -l <"$CURL_LOG") -ne 1 ]] ||
          ! grep -Fq 'http://127.0.0.1:8080/health/ready' "$CURL_LOG" ||
+         ! grep -Fq -- '--header Host: idp.synthetic.invalid' "$CURL_LOG" ||
          grep -Fq 'exec -T nginx-gateway' "$DOCKER_LOG"; then
         fail "deploy-readiness-internal" "fallback-health-surface"
     fi
@@ -934,10 +959,12 @@ run_split_host_direct_readiness_case() {
 
     write_env "$env_file"
     sed -i "s/^INTERNAL_IP=.*/INTERNAL_IP=$selected_internal_ip/" "$env_file"
+    sed -i 's|^OpenIddict__Issuer=.*|OpenIddict__Issuer="https://idp.synthetic.invalid:8443/"|; s/^PUBLIC_AUTHORITY=.*/PUBLIC_AUTHORITY="idp.synthetic.invalid:8443"/' "$env_file"
     : >"$DOCKER_LOG"
     CURL_LOG="$TMP_DIR/readiness-splithost.curl.log"
     : >"$CURL_LOG"
     PATH="$STUB_BIN:$PATH" CURL_LOG="$CURL_LOG" READINESS_SCENARIO="ready" \
+        READINESS_EXPECTED_AUTHORITY="idp.synthetic.invalid:8443" \
         INTERNAL_IP="127.0.0.1" IDP_READINESS_ATTEMPTS=2 IDP_READINESS_DELAY_SECONDS=0 \
         bash "$DEPLOYMENT_DIR/deploy-idp.sh" \
         --source ghcr --image "ghcr.invalid/hybrididp:1.2.3" \
@@ -947,6 +974,7 @@ run_split_host_direct_readiness_case() {
         fail "deploy-readiness-splithost" "exit-$status"
     elif [[ $(wc -l <"$CURL_LOG") -ne 1 ]] ||
          ! grep -Fq "http://$selected_internal_ip:8080/health/ready" "$CURL_LOG" ||
+         ! grep -Fq -- '--header Host: idp.synthetic.invalid:8443' "$CURL_LOG" ||
          grep -Fq 'http://127.0.0.1:8080/health/ready' "$CURL_LOG" ||
          grep -Fq 'exec -T nginx-gateway' "$DOCKER_LOG"; then
         fail "deploy-readiness-splithost" "env-health-surface"

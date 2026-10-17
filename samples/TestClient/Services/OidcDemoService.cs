@@ -82,13 +82,16 @@ public sealed class OidcDemoService(HttpClient httpClient, IOptions<OidcDemoOpti
             return new(false, "No refresh token is available. Sign in with offline_access consent.");
         try
         {
+            var parameters = new Dictionary<string, string>
+            {
+                ["grant_type"] = "refresh_token", ["client_id"] = options.Value.ClientId,
+                ["refresh_token"] = previousRefreshToken
+            };
+            if (options.Value.RefreshScopes.Length > 0)
+                parameters["scope"] = string.Join(" ", options.Value.RefreshScopes);
             using var request = new HttpRequestMessage(HttpMethod.Post, options.Value.AuthorityUrl("connect/token"))
             {
-                Content = new FormUrlEncodedContent(new Dictionary<string, string>
-                {
-                    ["grant_type"] = "refresh_token", ["client_id"] = options.Value.ClientId,
-                    ["refresh_token"] = previousRefreshToken
-                })
+                Content = new FormUrlEncodedContent(parameters)
             };
             using var response = await httpClient.SendAsync(request, cancellationToken);
             if (!response.IsSuccessStatusCode)
@@ -113,7 +116,7 @@ public sealed class OidcDemoService(HttpClient httpClient, IOptions<OidcDemoOpti
             properties.Items.TryGetValue("demo_refresh_count", out var countText);
             var count = int.TryParse(countText, out var current) && current >= 0 ? current : 0;
             properties.Items["demo_refresh_count"] = Math.Min((long)count + 1, int.MaxValue).ToString(CultureInfo.InvariantCulture);
-            return new(true, "New tokens were saved to the protected client session.", (int)response.StatusCode,
+            return new(true, "New access/refresh tokens were saved to the protected client session. The previously validated sign-in identity and ID token were retained; UserInfo uses the refreshed access token.", (int)response.StatusCode,
                 !string.Equals(previousRefreshToken, nextRefreshToken, StringComparison.Ordinal));
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)

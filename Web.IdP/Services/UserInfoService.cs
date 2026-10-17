@@ -61,6 +61,8 @@ public class UserInfoService : IUserInfoService
             if (scopeClaim.ClaimDefinition == null) continue;
 
             var claimType = scopeClaim.ClaimDefinition.ClaimType;
+            if (Web.IdP.Helpers.UserTokenClaimScopes.RequiredScope(claimType) is string requiredScope &&
+                !grantedScopes.Contains(requiredScope)) continue;
 
             // Skip if already added (e.g., "sub" is always included)
             if (userinfo.ContainsKey(claimType)) continue;

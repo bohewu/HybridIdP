@@ -6,6 +6,7 @@ public sealed class OidcDemoOptions
     public string Authority { get; set; } = "https://localhost:7035";
     public string ClientId { get; set; } = "testclient-public";
     public string[] Scopes { get; set; } = [];
+    public string[] RefreshScopes { get; set; } = [];
 
     public string AuthorityUrl(string path) => $"{Authority.TrimEnd('/')}/{path.TrimStart('/')}";
 }

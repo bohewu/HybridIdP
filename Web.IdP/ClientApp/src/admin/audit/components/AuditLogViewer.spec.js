@@ -32,3 +32,17 @@ describe('AuditLogViewer recovery events', () => {
     expect(wrapper.text()).not.toContain('secret')
   })
 })
+
+
+it('owns one loading indicator while retaining and locking prior results', () => {
+  const wrapper = mount(AuditLogViewer, {
+    props: { auditEvents: [{ id: 'retained', user: 'retained-user' }], loading: true, page: 1, pageSize: 10, totalCount: 1 },
+    global: { stubs: { Pagination: true } }
+  })
+  expect(wrapper.findAll('.animate-spin')).toHaveLength(1)
+  expect(wrapper.get('[role="status"]').attributes('aria-label')).toBe('audit.loading')
+  expect(wrapper.text()).toContain('retained-user')
+  expect(wrapper.get('[inert]').exists()).toBe(true)
+  expect(wrapper.attributes('aria-busy')).toBe('true')
+  wrapper.unmount()
+})

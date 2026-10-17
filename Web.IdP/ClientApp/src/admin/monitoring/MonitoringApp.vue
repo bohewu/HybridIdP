@@ -6,6 +6,7 @@ import SecurityMetrics from './components/SecurityMetrics.vue'
 import RealTimeAlerts from './components/RealTimeAlerts.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
 const { t } = useI18n()
@@ -21,32 +22,35 @@ const canRead = ref(false)
 
 // Load permissions on mount
 onMounted(async () => {
-  await permissionService.loadPermissions()
-  canRead.value = permissionService.hasPermission(Permissions.Monitoring.Read)
-
-  if (!canRead.value) {
-    showAccessDenied.value = true
-    deniedMessage.value = t('monitoring.noPermission')
-    deniedPermission.value = Permissions.Monitoring.Read
-    return
+  try {
+    await permissionService.loadPermissions()
+    canRead.value = permissionService.hasPermission(Permissions.Monitoring.Read)
+    if (!canRead.value) {
+      showAccessDenied.value = true
+      deniedMessage.value = t('monitoring.noPermission')
+      deniedPermission.value = Permissions.Monitoring.Read
+    }
+  } catch (err) {
+    error.value = t('monitoring.loadFailed')
+  } finally {
+    loading.value = false
   }
-
-  loading.value = false
 })
 </script>
 
 <template>
-  <div class="space-y-6" v-loading="{ loading: loading, overlay: true, message: t('monitoring.loading') }">
+  <div class="space-y-6">
     <PageHeader
       :title="t('monitoring.title')"
       :subtitle="t('monitoring.subtitle')"
     />
 
-    <div v-if="error" class="alert alert-danger">
+    <LoadingPlaceholder v-if="loading" :message="t('monitoring.loading')" />
+    <div v-if="error" role="alert" class="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
       {{ error }}
     </div>
 
-    <div class="space-y-6">
+    <div v-if="!loading && !error && canRead" class="space-y-6">
       <ActivityDashboard />
       <SecurityMetrics />
       <RealTimeAlerts />

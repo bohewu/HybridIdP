@@ -79,6 +79,8 @@ only for these commands; this does not regenerate `.env`.
 ```bash
 export IDP_IMAGE='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
 compose_file='docker-compose.nginx.yml'
+# Use the exact PUBLIC_AUTHORITY configured in .env, including any port.
+public_authority='idp.example.com'
 docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
   up -d mssql-service redis-service
 
@@ -90,7 +92,7 @@ bash ./migrate-db.sh --confirm-backup --source ghcr --image "$IDP_IMAGE" \
 docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
   up -d --no-build
 docker compose -f "$compose_file" -f docker-compose.ghcr-image.yml --env-file .env \
-  exec -T nginx-service wget -q -O - http://idp-service/health/ready
+  exec -T nginx-service wget -q -O - --header "Host: $public_authority" http://idp-service/health/ready
 ```
 
 For a selected internal PostgreSQL database, use `postgres-service redis-service`
@@ -102,12 +104,18 @@ certificate before signing in.
 
 Readiness must match the topology: Nginx mode uses `nginx-service` as above;
 split-host local-Nginx modes use `nginx-gateway` in the same command. Internal
-direct mode uses `curl --fail http://localhost:8080/health/ready`; split-host
+direct mode uses `curl --fail --header "Host: $public_authority" http://localhost:8080/health/ready`; split-host
 direct mode uses its configured `INTERNAL_IP:8080`. Nginx modes do not expose
 the IdP's port 8080 and block public `/health/ready`; query it through the
 frontend container on the shared Docker network. The update helper below is
 retained for existing split-host local-Nginx deployments, not this full-stack
 first-start procedure.
+
+Every internal readiness request must send the configured `PUBLIC_AUTHORITY`
+as its Host header, including an optional port and without a URL scheme.
+The container name or internal IP selects the connection destination; it is
+not an allowed public Host. `deploy-idp.sh` reads this value from the selected
+environment file as data and includes it in both gateway and direct probes.
 
 ---
 
@@ -755,6 +763,15 @@ If your IdP needs to connect to another service running in a different Docker Co
 
 
 ## Unified API login and Profile upgrade
+
+Clients upgrading from 1.4.x to 1.6.x that display user names must request the
+OIDC `profile` scope, have it allowed in the client configuration, and obtain
+it in the granted scopes. Reauthorize after updating the request/permissions
+to obtain new tokens. Unlike 1.4.3's unconditional `name`, 1.6.x omits `name`
+and `preferred_username` without granted `profile`; a custom `employee-id`
+scope does not imply `profile`. `sub` remains the local UserId, so a client
+falling back to `sub` may show a UUID. This is a scope-disclosure change, not
+a change to token claim nesting.
 
 ### Upgrading Existing Legacy API Accounts
 

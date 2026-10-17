@@ -8,6 +8,7 @@
         :aria-describedby="ariaDescribedby"
         role="dialog"
         aria-modal="true"
+        :aria-busy="loading"
       >
         <!-- Backdrop -->
         <div
@@ -60,12 +61,12 @@
               <slot name="footer"></slot>
             </div>
 
-            <!-- Loading overlay -->
+            <!-- The modal owns busy feedback; callers keep disabled actions and busy labels. -->
             <div
               v-if="loading"
               class="absolute inset-0 bg-white bg-opacity-75 rounded-lg flex items-center justify-center"
             >
-              <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-google-500"></div>
+              <LoadingIndicator :message="t('common.loading')" />
             </div>
           </div>
         </div>
@@ -77,6 +78,7 @@
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
+import LoadingIndicator from './LoadingIndicator.vue'
 
 const props = defineProps({
   show: {

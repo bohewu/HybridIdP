@@ -13,6 +13,9 @@ builder.Services.AddOptions<OidcDemoOptions>()
         options.Scopes is { Length: > 0 } && options.Scopes.Contains("openid") &&
         options.Scopes.All(scope => !string.IsNullOrWhiteSpace(scope) && !scope.Any(char.IsWhiteSpace)),
         "Oidc requires a client ID and nonempty scopes including openid.")
+    .Validate(options => options.RefreshScopes.All(scope =>
+        !string.IsNullOrWhiteSpace(scope) && !scope.Any(char.IsWhiteSpace)),
+        "Oidc:RefreshScopes must contain individual nonempty scope names.")
     .ValidateOnStart();
 var configured = builder.Configuration.GetSection(OidcDemoOptions.Section).Get<OidcDemoOptions>() ?? new();
 builder.Services.AddAuthentication(options =>

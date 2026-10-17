@@ -803,6 +803,22 @@ current client event names. Clients cannot submit monitoring DTOs or invoke
 broadcast operations on the Hub. Only trusted server-side services publish
 updates through `IHubContext<MonitoringHub>`.
 
+### Health Endpoint Boundaries
+
+Public `/health` is shallow liveness and performs no dependency queries.
+`/health/ready` runs dependency checks only for trusted loopback or configured
+proxy-network callers and remains blocked at public gateways.
+
+The admin dashboard uses `GET /api/admin/dashboard/health`, protected by
+`ApiAuthorize` and the existing `monitoring.read` permission and administrative
+authority boundary. Anonymous or unauthorized callers cannot trigger dependency
+checks. Only aggregate status, a UTC check timestamp, and status entries for
+registered SQL Server/PostgreSQL and Redis dependencies are returned. The
+response excludes descriptions, exceptions, connection strings, internal
+addresses, arbitrary health-check names and data, and uses `Cache-Control:
+no-store`. The endpoint shares the readiness limit of two concurrent requests
+with no queue, even when general rate limiting is disabled.
+
 ### Production Deployment Inputs and Network Boundary
 
 Production compose requires operator-managed, non-empty database connection strings, database initialization passwords for modes with internal databases, certificate passwords, and a fixed public OIDC origin. The setup scripts generate the required values; production compose has no built-in MSSQL or PostgreSQL password fallback.

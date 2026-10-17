@@ -226,11 +226,13 @@ namespace Tests.Application.UnitTests
             var principal = SetupAuthorizationCodeGrant(user);
             principal.SetScopes(Scopes.OpenId);
             principal.SetClaim(Claims.Name, "historical-name");
+            principal.SetClaim(Claims.PreferredUsername, "historical-username");
             principal.SetClaim(Claims.Email, "historical@example.test");
             _mockApplicationManager.Setup(manager => manager.GetPermissionsAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
                 .ReturnsAsync(ImmutableArray.Create(OidcPermissions.GrantTypes.AuthorizationCode, OidcPermissions.Prefixes.Scope + Scopes.OpenId));
             var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.AuthorizationCode), principal)).Principal!;
             Assert.Null(issued.GetClaim(Claims.Name));
+            Assert.Null(issued.GetClaim(Claims.PreferredUsername));
             Assert.Null(issued.GetClaim(Claims.Email));
             Assert.NotNull(issued.GetClaim(Claims.Subject));
         }
@@ -258,10 +260,76 @@ namespace Tests.Application.UnitTests
                 var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
                 Assert.Equal(requested == null ? new[] { "email", "openid" } : new[] { "openid" }, issued.GetScopes().Order());
                 Assert.Null(issued.GetClaim(Claims.Name));
+                Assert.Null(issued.GetClaim(Claims.PreferredUsername));
+                Assert.Equal(user.Id.ToString(), issued.GetClaim(Claims.Subject));
                 Assert.Equal(requested == null ? user.Email : null, issued.GetClaim(Claims.Email));
                 var authenticationTime = Assert.Single(issued.FindAll(Claims.AuthenticationTime));
                 Assert.Equal("1700000000", authenticationTime.Value);
                 Assert.Equal(ClaimValueTypes.Integer64, authenticationTime.ValueType);
+            }
+        }
+
+        [Theory]
+        [InlineData(null, false, true)]
+        [InlineData("openid employee-id", false, true)]
+        [InlineData("openid secondary", false, true)]
+        [InlineData("openid", false, false)]
+        [InlineData(null, true, true)]
+        public async Task Refresh_ShouldRebuildSharedCustomClaims_FromOnlyRemainingGrantedSources(
+            string? requested, bool employeePermissionRemoved, bool customGranted)
+        {
+            using var db = new Infrastructure.ApplicationDbContext(new DbContextOptionsBuilder<Infrastructure.ApplicationDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            var definition = new ClaimDefinition
+            {
+                Name = "employee_id", DisplayName = "Employee ID", ClaimType = "employee_id",
+                UserPropertyPath = nameof(ApplicationUser.EmployeeId), DataType = "String"
+            };
+            db.ScopeClaims.AddRange(
+                new ScopeClaim { ScopeId = "employee-id", ScopeName = "employee-id", ClaimDefinition = definition },
+                new ScopeClaim { ScopeId = "secondary", ScopeName = "secondary", ClaimDefinition = definition });
+            await db.SaveChangesAsync();
+            var enrichment = new ClaimsEnrichmentService(_mockUserManager.Object, _mockRoleManager.Object, db,
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<ClaimsEnrichmentService>.Instance);
+            _mockClaimsEnricher.Setup(service => service.AddScopeMappedClaimsAsync(
+                    It.IsAny<ClaimsIdentity>(), It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>()))
+                .Returns((ClaimsIdentity identity, ApplicationUser account, IEnumerable<string> scopes, CancellationToken token) =>
+                    enrichment.AddScopeMappedClaimsAsync(identity, account, scopes, token));
+            var user = new ApplicationUser
+            {
+                Id = Guid.NewGuid(), UserName = "fixture-user", IsActive = true, EmployeeId = "fixture-employee"
+            };
+            var original = SetupRefreshGrant(user);
+            original.SetScopes(Scopes.OpenId, "employee-id", "secondary");
+            original.SetClaim(Claims.Name, "historical-name");
+            original.SetClaim(Claims.PreferredUsername, "historical-username");
+            original.SetClaim("employee_id", "stale-employee");
+            original.SetClaims(Claims.AuthenticationMethodReference, ImmutableArray.Create("pwd"));
+            original.SetClaim(Claims.AuthenticationTime, 1700000000L);
+            var allowed = new[] { Scopes.OpenId, Scopes.Profile, Scopes.Email, "secondary" }
+                .Concat(employeePermissionRemoved ? [] : new[] { "employee-id" });
+            _mockApplicationManager.Setup(manager => manager.GetPermissionsAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(allowed.Select(scope => OidcPermissions.Prefixes.Scope + scope)
+                    .Append(OidcPermissions.GrantTypes.RefreshToken).ToImmutableArray());
+
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.RefreshToken, scope: requested), original);
+
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            var expectedScopes = requested?.Split(' ') ?? (employeePermissionRemoved
+                ? new[] { Scopes.OpenId, "secondary" } : new[] { Scopes.OpenId, "employee-id", "secondary" });
+            Assert.Equal(expectedScopes.Order(), issued.GetScopes().Order());
+            Assert.Equal(customGranted ? user.EmployeeId : null, issued.GetClaim("employee_id"));
+            Assert.Null(issued.GetClaim(Claims.Name));
+            Assert.Null(issued.GetClaim(Claims.PreferredUsername));
+            Assert.Null(issued.GetClaim(Claims.Email));
+            Assert.Equal(user.Id.ToString(), issued.GetClaim(Claims.Subject));
+            Assert.Equal("pwd", issued.GetClaim(Claims.AuthenticationMethodReference));
+            Assert.Equal("1700000000", issued.GetClaim(Claims.AuthenticationTime));
+            if (customGranted)
+            {
+                var claim = Assert.Single(issued.FindAll("employee_id"));
+                Assert.Contains(Destinations.AccessToken, claim.GetDestinations());
+                Assert.Contains(Destinations.IdentityToken, claim.GetDestinations());
             }
         }
 

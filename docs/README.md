@@ -36,9 +36,9 @@
 - ⏱️ **閱讀時間：** 3-5 分鐘
 - 📌 **更新頻率：** `TODOS.md` 隨 sprint 更新，`PROJECT_PROGRESS.md` 用於里程碑摘要
 
-注意：專案已將大檔拆分以利維護與查閱。最新進度摘要請參見 `docs/PROJECT_PROGRESS.md`，各 Phase 的詳細說明已拆分至 `docs/phase-*.md`（例如 `docs/phase-5-security-i18n-consent.md`）。如需深入內容，請由 `PROJECT_PROGRESS.md` 點入對應 Phase 的檔案查閱。
+最新進度摘要請參見 [`PROJECT_PROGRESS.md`](./PROJECT_PROGRESS.md)，待辦事項見 [`TODOS.md`](./TODOS.md)。歷史 Phase 文件保留於 [`archive/phases/`](./archive/phases/)，目前設計與整合計畫分別位於 [`design_specs/`](./design_specs/) 與 [`implementation_plans/`](./implementation_plans/)。歷史計畫不代表目前交付或啟用狀態。
 
-**第三步：參考 [`ARCHITECTURE_CONSOLIDATED.md`](./archive/ARCHITECTURE_CONSOLIDATED.md)**
+**第三步：參考 [`ARCHITECTURE.md`](./ARCHITECTURE.md)**
 - 📖 **用途：** 綜合架構指引與設計決策摘要
 - 🎯 **適合：** 實作 API、UI、理解系統設計時快速查閱
 - ⏱️ **閱讀時間：** 按需查閱（不需全部閱讀）
@@ -59,10 +59,11 @@
 
 ### E2E 測試（Playwright）
 
-專案包含 Playwright E2E 測試，並提供 `e2e/README.md`，內含完整使用說明與 Postgres 專用 helper（`scripts/run-e2e-postgres.ps1`）。推薦在本機使用 Postgres E2E runner（會執行容器、遷移、Admin-API seeding 以及 Playwright 測試）：
-```
+專案包含 Playwright E2E 測試，請由 [`TESTING.md`](./TESTING.md) 查閱環境需求、測試資料與執行方式。
 
 ### 查看功能與未來計畫
+
+**查看 [`FEATURES.md`](./FEATURES.md) 與 [`TODOS.md`](./TODOS.md)**
 
 - 📖 **用途：** 已實作功能概覽與未來增強摘要
 - 🎯 **適合：** 了解特定功能（如 Turnstile、MFA）的快速參考
@@ -185,7 +186,7 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 ```
 請讀取以下文件來了解專案：
 1. docs/DEVELOPMENT_GUIDE.md - 工作流程、規範、測試指南
-2. docs/PROJECT_STATUS.md - 確認下一步
+2. docs/PROJECT_PROGRESS.md 與 docs/TODOS.md - 確認進度與下一步
 3. docs/ARCHITECTURE.md - 查閱需要的架構說明
 ```
 
@@ -206,7 +207,7 @@ git commit -m "docs: Update progress - Phase 4.5 completed"
 ### 給開發者
 
 1. **首次接觸專案：** 按順序閱讀 `DEVELOPMENT_GUIDE.md` → `ARCHITECTURE.md` → `PROJECT_PROGRESS.md`
-2. **日常開發：** 只需查看 PROJECT_STATUS.md 和 DEVELOPMENT_GUIDE.md
+2. **日常開發：** 查看 PROJECT_PROGRESS.md、TODOS.md 和 DEVELOPMENT_GUIDE.md
 3. **需要細節：** 再查閱 `docs/archive/historical/idp_req_details.md` 或 `docs/archive/FEATURES_AND_CAPABILITIES.md` 相關 Phase
 
 ---

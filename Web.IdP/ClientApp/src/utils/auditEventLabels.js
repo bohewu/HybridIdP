@@ -1,5 +1,8 @@
 const eventAliases = {
   'Account.RequiredPasswordChange': 'RequiredPasswordChange',
+  'Profile.Update': 'ProfileUpdated',
+  'Profile.ChangePassword': 'ProfilePasswordChanged',
+  'Profile.RemoveLogin': 'ProfileLoginRemoved',
   UserCreated: 'AdminUserCreated',
   UserUpdated: 'AdminUserUpdated',
   UserDeleted: 'AdminUserDeleted',

@@ -194,8 +194,7 @@ const exportToExcel = async () => {
 </script>
 
 <template>
-  <div class="audit-app px-4 py-6"
-       v-loading="{ loading: loading, overlay: true, message: $t('audit.loading') }">
+  <div class="audit-app px-4 py-6">
     <AccessDeniedDialog
       v-if="showAccessDenied"
       :message="deniedMessage"

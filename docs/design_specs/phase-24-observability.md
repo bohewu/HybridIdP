@@ -1,5 +1,18 @@
 # Phase 24: Enterprise Observability & Self-Service
 
+## Delivery status (2026-10-17)
+
+Partly delivered. `Web.IdP/Controllers/Admin/AuditController.cs` and
+`admin/audit/AuditApp.vue` / `components/AuditLogViewer.vue` implement the admin
+Audit viewer. Its search endpoint is `GET /api/admin/audit/events`; event types
+and per-event export are also implemented. The proposed Profile My Sessions
+endpoints and `SessionList.vue` below are still pending: current
+`ProfileManagementController` and the Profile SPA do not expose them. Existing
+admin user-session management is a separate surface.
+
+The My Sessions section is a proposal, including its revocation semantics;
+this plan does not establish runtime acceptance of those proposed behaviors.
+
 ## Goal
 Enhance system transparency and security visibility by exposing existing backend data to the UI.
 1.  **User Self-Service**: Allow users to view and manage their active login sessions ("My Sessions").
@@ -30,15 +43,15 @@ A new tab in the User Profile (`/profile/security`) showing a list of active ses
 A centralized Audit Log viewer in the Admin Portal for investigating security events and administrative actions.
 
 ### Implementation Details
-*   **Backend (`AuditController`)**:
-    *   `GET /api/admin/audit-logs`: Paginated search.
-    *   **Filters**: `UserId`, `EventType`, `DateRange`, `IPAddress`.
-*   **Frontend (`AdminApp`)**:
-    *   New View: `AuditLogList.vue`.
-    *   Data Table with sortable columns.
-    *   Expandable rows to show JSON `Details`.
+*   **Delivered backend (`AuditController`)**:
+    *   `GET /api/admin/audit/events`: Filtered, paginated search.
+    *   `GET /api/admin/audit/event-types`: Available event types.
+    *   `GET /api/admin/audit/events/{id}/export`: Per-event export.
+*   **Delivered frontend**:
+    *   `admin/audit/AuditApp.vue` hosts `components/AuditLogViewer.vue`.
+    *   Search/filter controls, result details and export use the existing admin permissions.
 
-## Technical Considerations: Session Revocation
+## Proposed My Sessions: Session Revocation Considerations
 *   **Scope**: Revocation applies primarily to the **IdP Session** and **Token Refresh capability**.
 *   **Effect**:
     *   **IdP**: The session cookie is invalidated. The next time the browser hits the IdP, the user is redirected to Login.

@@ -75,11 +75,12 @@ wait_for_idp_readiness() {
 
         if [[ "$HAS_NGINX_GATEWAY" == true ]]; then
             if docker compose "${COMPOSE_ARGS[@]}" exec -T nginx-gateway \
-                wget -q -O /dev/null http://idp-service/health/ready; then
+                wget -q -O /dev/null --header "Host: $READINESS_PUBLIC_AUTHORITY" http://idp-service/health/ready; then
                 info "IDP readiness confirmed."
                 return 0
             fi
         elif curl --fail --silent --show-error --max-time 5 \
+            --header "Host: $READINESS_PUBLIC_AUTHORITY" \
             "http://${DIRECT_READINESS_HOST:-127.0.0.1}:8080/health/ready" >/dev/null 2>&1; then
             info "IDP readiness confirmed."
             return 0
@@ -200,6 +201,7 @@ if [[ -f "$ENV_PATH" ]]; then
     COMPOSE_ARGS+=( --env-file "$ENV_PATH" )
     export IDP_ENV_FILE="$ENV_PATH"
     DIRECT_READINESS_HOST="$(extract_env_value_from_env_file "INTERNAL_IP" "$ENV_PATH")"
+    READINESS_PUBLIC_AUTHORITY="$(extract_env_value_from_env_file "PUBLIC_AUTHORITY" "$ENV_PATH")"
 else
     error "Env file not found: $ENV_PATH"
     exit 1

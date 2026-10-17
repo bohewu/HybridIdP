@@ -40,7 +40,8 @@ function mountLoader(el, binding) {
     render() {
       return h(LoadingIndicator, {
         loading: this.loading,
-        overlay: this.overlay,
+        // The host container owns the overlay; avoid stacking two white masks.
+        overlay: false,
         message: this.message,
         size: this.size,
         showMessage: this.showMessage

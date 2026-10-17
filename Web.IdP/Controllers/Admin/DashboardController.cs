@@ -5,6 +5,8 @@ using Infrastructure.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
 using OpenIddict.Abstractions;
 using Web.IdP.Attributes;
 
@@ -32,6 +34,28 @@ public class DashboardController : ControllerBase
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
         _userManager = userManager;
+    }
+
+    /// <summary>
+    /// Get sanitized status for the configured database and Redis dependencies.
+    /// </summary>
+    [HttpGet("health")]
+    [HasPermission(Permissions.Monitoring.Read)]
+    [EnableRateLimiting("dependency-readiness")]
+    [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
+    public async Task<ActionResult<DashboardHealthDto>> GetHealthAsync(
+        [FromServices] HealthCheckService healthCheckService,
+        CancellationToken cancellationToken)
+    {
+        var report = await healthCheckService.CheckHealthAsync(
+            registration => registration.Name is "sqlserver" or "redis" or "Database (PostgreSQL)",
+            cancellationToken);
+
+        var entries = report.Entries.ToDictionary(
+            entry => entry.Key == "Database (PostgreSQL)" ? "postgresql" : entry.Key,
+            entry => new DashboardDependencyHealthDto(entry.Value.Status.ToString()));
+
+        return Ok(new DashboardHealthDto(report.Status.ToString(), DateTimeOffset.UtcNow, entries));
     }
 
     /// <summary>

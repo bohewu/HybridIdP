@@ -13,7 +13,18 @@
       "refresh": "重新整理",
       "lastUpdated": "最後更新：{time}",
       "noData": "無健康數據",
-      "status": "狀態"
+      "status": "狀態",
+      "checking": "檢查系統健康狀態中...",
+      "statuses": {
+        "Healthy": "正常",
+        "Degraded": "效能降低",
+        "Unhealthy": "異常"
+      },
+      "checks": {
+        "sqlserver": "SQL Server",
+        "postgresql": "PostgreSQL",
+        "redis": "Redis"
+      }
   },
   "cards": {
     "clients": {

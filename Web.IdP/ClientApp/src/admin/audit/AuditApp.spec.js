@@ -5,6 +5,7 @@ import AuditApp from './AuditApp.vue'
 import AuditLogFilters from './components/AuditLogFilters.vue'
 import AuditLogViewer from './components/AuditLogViewer.vue'
 import zhAudit from '../../i18n/locales/zh-TW/audit.json'
+import enAudit from '../../i18n/locales/en-US/audit.json'
 
 vi.mock('@/utils/permissionService', () => ({
   default: { loadPermissions: vi.fn(), hasPermission: () => true },
@@ -13,8 +14,8 @@ vi.mock('@/utils/permissionService', () => ({
 vi.mock('@/utils/exportUtils', () => ({ exportToCsv: vi.fn(), exportToExcel: vi.fn() }))
 
 const response = (data) => ({ ok: true, json: async () => data })
-const mountApp = () => mount(AuditApp, { global: {
-  plugins: [createI18n({ legacy: false, locale: 'zh-TW', messages: { 'zh-TW': { audit: zhAudit } } })],
+const mountApp = (locale = 'zh-TW') => mount(AuditApp, { global: {
+  plugins: [createI18n({ legacy: false, locale, messages: { 'zh-TW': { audit: zhAudit }, 'en-US': { audit: enAudit } } })],
   directives: { loading: {} },
   stubs: { PageHeader: true, AuditLogExport: true, Pagination: true, LoadingIndicator: true }
 } })
@@ -64,6 +65,28 @@ describe('Audit filtering and paging', () => {
     expect(viewer.props('loading')).toBe(false)
     expect(wrapper.text()).toContain('電子郵件 MFA 已停用')
     expect(wrapper.text()).toContain('verified-id')
+    wrapper.unmount()
+  })
+
+  it.each([
+    ['zh-TW', ['授權已拒絕', '個人資料已更新']],
+    ['en-US', ['Authorization denied', 'Profile updated']]
+  ])('uses the same translated event names in %s filters and table while retaining exact filter values', async (locale, labels) => {
+    const eventTypes = ['AuthorizationDenied', 'Profile.Update']
+    fetch.mockImplementation(url => Promise.resolve(response(url.endsWith('event-types') ? eventTypes : {
+      items: eventTypes.map((eventType, id) => ({ id, eventType, timestamp: '2026-10-17T00:00:00Z' })), totalCount: 2
+    })))
+    const wrapper = mountApp(locale)
+    await flushPromises()
+    const filters = wrapper.findComponent(AuditLogFilters)
+    const viewer = wrapper.findComponent(AuditLogViewer)
+    eventTypes.forEach((eventType, index) => {
+      expect(filters.get(`option[value="${eventType}"]`).text()).toBe(labels[index])
+      expect(viewer.text()).toContain(labels[index])
+    })
+    await filters.get('select').setValue('Profile.Update')
+    await flushPromises()
+    expect(fetch.mock.calls.at(-1)[0]).toContain('eventType=Profile.Update')
     wrapper.unmount()
   })
 })

@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, computed, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import LoadingIndicator from '@/components/common/LoadingIndicator.vue'
+import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { SettingKeys } from '@/utils/settingKeys'
 
@@ -365,7 +365,7 @@ onMounted(loadSettings)
       </button>
     </div>
 
-    <LoadingIndicator v-if="loading" :loading="loading" size="sm" :message="t('settings.loading')" />
+    <LoadingPlaceholder v-if="loading" :message="t('settings.loading')" />
 
     <div v-else class="p-4">
       <!-- Alerts -->

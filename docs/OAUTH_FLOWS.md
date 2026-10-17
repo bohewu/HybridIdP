@@ -79,7 +79,38 @@ migration eligibility, scope permissions and API usage approval checks.
 - **Policy:** Rolling refresh tokens (new RT issued with every use).
 - **Lifetime:** Configurable (default 14 days).
 
-## Deprecated / Removed Flows
+## Requested scopes, Required and consent
+
+Client **allowed** scopes define permission to request access. The **effective
+request** contains only scopes actually requested and accepted by current client
+permissions and API resource usage policy. **Approved** scopes are those granted
+by the user or a valid approval under the client's consent policy. These sets
+are distinct; an administrator adding a permission does not grant user consent.
+
+```text
+Required = effective request intersect (global Required union client Required)
+```
+
+Required applies only within the effective request. Consent GET displays these
+items checked and unavailable for deselection; POST reloads the same metadata
+and rejects removal before scope classification. Unrequested Required scopes are
+neither displayed nor added, and their absence does not block login. Requested
+optional scopes may be refused. Submitted extra scopes cannot enter the grant
+or tokens beyond the effective request. Existing antiforgery, one-time consent
+intent and client/subject/request bindings still apply.
+
+For example, allowing `profile` and marking it Required does not add `profile`
+to a client's request for `openid email`. Login can succeed without `profile`
+or standard name claims. The client must actually request `profile`; only then
+does Required prevent deselection.
+
+### Existing authorizations and consent policies
+
+Implicit **consent policy** retains its existing reuse behavior only for a valid
+grant covering the effective request. It is distinct from the removed OAuth
+Implicit flow. A new scope outside the old grant requires consent where user
+approval is permitted; refused optional scopes are not issued. A larger old
+grant cannot enlarge a smaller new request or carry its extra claims forward.
 
 External-consent clients require a valid permanent authorization covering all
 requested scopes after client policy filtering. Both authorize GET and POST
@@ -92,6 +123,54 @@ Permanent grant. Such grants cannot bypass the current policy. A silent
 `prompt=none` request that needs approval returns `consent_required`; it never
 renders an interactive consent page. Implicit grant reuse and prior External
 approval remain available under their respective policies.
+`prompt=consent` still requests confirmation under Implicit policy even when a
+covering grant exists; it cannot replace the approval required by External.
+
+OAuth protocol errors follow the endpoint's response mode: frontchannel
+authorization errors may redirect to a validated client redirect URI, while
+backchannel errors use machine-readable JSON. `prompt=none` does not render a
+consent page; a required interaction returns `consent_required`.
+
+### Refresh, claims and revocation
+
+Refresh cannot expand the original grant; expansion returns `invalid_scope`.
+Omitting `scope` does not acquire administrator-added permissions. Narrowing a
+refresh request or removing client permissions filters newly issued scopes and
+their dependent claims. A custom claim shared by several scopes remains when
+another lawful granted scope still supplies it; basic protocol claims remain.
+
+Standard `name` and `preferred_username` require granted `profile` in new ID and
+access tokens and UserInfo. A custom `employee-id` scope does not imply
+`profile`, even if a custom mapping names those claims. `sub` remains the local
+UserId. UserInfo returns flat claims, without a `profile` JSON wrapper.
+
+Revoking an OAuth application authorization prevents its reuse and invalidates
+related refresh through existing revocation checks. Removing an upstream login
+link is a separate operation. These checks apply to new issuance; existing
+self-contained access tokens are not rewritten and may remain usable until
+their normal expiry or a resource's applicable validation/revocation checks.
+
+### Existing-client upgrade notes
+
+This consent correction requires no client recreation, registration/schema
+migration, credential rotation or PKCE configuration change. In the actual
+v1.4.3 format, client Required settings already lived in `ClientRequiredScopes`,
+separate from allowed permissions; absent rows mean no client-specific Required
+scopes. Representative legacy public PKCE, confidential PKCE and confidential
+non-PKCE descriptors pass focused current-service fixtures. This is source and
+fixture evidence, not proof for every configuration registered on older releases.
+
+For a cumulative upgrade from v1.4.3 or earlier, consumers relying on historical
+`name` disclosure without `profile` must allow, request and obtain `profile`,
+then obtain fresh tokens. Existing API-resource policy migrations also introduce
+closed defaults without backfilling usage approvals: mapped custom/API resources
+need an open policy or current approval. Standard unmapped identity scopes are
+exempt from that approval requirement. These are configuration-specific upgrade
+considerations, not a requirement to replace every old client. See the
+[Profile upgrade guidance](DEPLOYMENT_GUIDE.md#unified-api-login-and-profile-upgrade)
+and [API usage approval rules](SECURITY.md).
+
+## Deprecated / Removed Flows
 
 ### Implicit Flow
 **Status:** **REMOVED**

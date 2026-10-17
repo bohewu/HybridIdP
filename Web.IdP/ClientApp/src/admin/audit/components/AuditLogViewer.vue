@@ -89,9 +89,10 @@ const getSortIcon = (field) => {
 </script>
 
 <template>
-  <div class="audit-log-viewer">
+  <div class="audit-log-viewer relative" :aria-busy="loading">
+    <LoadingIndicator v-if="loading" overlay :message="t('audit.loading')" />
     <!-- Unified Card: Table + Pagination -->
-    <div class="bg-white shadow-sm rounded-lg border border-gray-200">
+    <div :inert="loading" class="bg-white shadow-sm rounded-lg border border-gray-200">
       <!-- Error State -->
       <div v-if="error" class="p-4 border-b border-red-200 bg-red-50">
         <div class="flex">
@@ -106,11 +107,8 @@ const getSortIcon = (field) => {
         </div>
       </div>
 
-      <!-- Loading State -->
-      <LoadingIndicator v-if="loading" :loading="loading" size="md" :message="t('audit.loading')" />
-
       <!-- Empty State -->
-      <div v-else-if="auditEvents.length === 0" class="text-center py-12">
+      <div v-if="!loading && auditEvents.length === 0" class="text-center py-12">
         <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
         </svg>
