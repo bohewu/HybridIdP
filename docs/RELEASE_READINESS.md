@@ -1,9 +1,100 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-16 for the 1.6.1 patch release. Publishing a release does not
+Updated on 2026-10-17 for the planned 1.6.2 patch release. Publishing a release does not
 establish production acceptance or deploy the image. The historical 1.6.0 upgrade
 requirements and evidence below remain applicable when upgrading from 1.5.x or
 1.4.x.
+
+## 1.6.2 preparation
+
+Version metadata selects 1.6.2; no tag, release or image publication is implied.
+This patch includes the changes since 1.6.1: transitive dependency updates,
+unused TestClient asset removal, Required-scope/consent/UserInfo corrections,
+sanitized dashboard dependency status, Loading and audit UI fixes, and the
+Legacy upgrade and deployment-readiness tools. See the [changelog](CHANGELOG.md).
+
+### Upgrade requirements
+
+No EF schema migrations were added after 1.6.1. A database already at the
+1.6.0/1.6.1 target needs no additional schema SQL solely for this patch. Preserve
+the existing `.env`, certificates and Data Protection keys. Existing 1.6.1
+deployments need no mandatory new setting. Do not rerun the fresh-install wizard.
+
+The deployment script already sends the configured public Host header for
+readiness probes and supports a pinned image via `IDP_IMAGE` or `--image`.
+No additional deployment-script logic change is required for 1.6.2; select the
+approved tag or digest only after publication. Hosts with an older checkout
+must still synchronize the current deployment tools to receive the existing
+Host-header fix; changing only the image does not update a host-side script.
+The Legacy binding script is a
+separate operator-approved data operation, not an EF migration or an automatic
+deployment step. Already completed and verified bindings need no recreation.
+
+Existing clients do not require blanket re-registration for the consent fix.
+Required applies only to requested, currently permitted scopes. Standard names
+require granted `profile`; a custom employee-ID scope does not imply it. `sub`
+and claim nesting are unchanged. The representative older-registration checks
+do not qualify every historical configuration. Cumulative upgrades retain the
+[older client and provider requirements](DEPLOYMENT_GUIDE.md#unified-api-login-and-profile-upgrade).
+
+### Security state and retained limitations
+
+At preparation on 2026-10-17, GitHub returned zero open Dependabot, main CodeQL
+and Secret scanning alerts. Main commit
+`f12edc470f4beb6f6cd82ce64d56330ca8e55568` passed all four CodeQL jobs in
+[run 39002711914](https://github.com/bohewu/HybridIdP/actions/runs/39002711914).
+Recheck the final release source after integrating this version metadata.
+
+Historical dismissed records remain. The 13 current scanner instances scoped
+by issues [#2](https://github.com/bohewu/HybridIdP/issues/2) and
+[#3](https://github.com/bohewu/HybridIdP/issues/3) retain their documented controls
+and reopening conditions. These closures record completed triage, not universal
+remediation. Zero open alerts is not proof of absence of vulnerabilities.
+
+ExcelJS 4.4.0's prebuilt browser entry still contains older UUID code. The scoped
+override fixes the installed dependency graph but does not rewrite embedded
+bytes. Current plain worksheet export has no established affected buffer/offset
+API path in the scoped analysis. Removing all legacy embedded code remains
+separate packaging work; see [#5](https://github.com/bohewu/HybridIdP/issues/5).
+Deferred Node 26, PostgreSQL 18 and SQL Server 2025 PRs are outside this patch.
+
+### Verification boundaries
+
+Existing evidence includes focused scope/consent/claims tests and real browser
+journeys, a complete Linux image build at dependency commit
+`e082e48078033b7abd5476e720c6de8c403916ff` with 13 successful product cases,
+and subsequent fresh TestClient publish, native login, TOTP MFA and TestClient
+real E2E after asset removal. Independent source reviews passed for those
+scoped changes. Existing xUnit and Vite warnings were disclosed; these records
+are not a full-suite, warning-free or production acceptance claim.
+
+The local 1.6.2 preparation built the unchanged canonical Dockerfile from a
+tracked archive of `a4b643fdcc4d668b00f6446f004929381f6eb6b6` plus the four
+release metadata files (VERSION, environment example, changelog and these notes).
+The Linux amd64 local image index was
+`sha256:911e4445125d666b8231c08e158c7dd85c9551cde6db8894edcf699750dffcbe`.
+It passed 13 scoped product checks against isolated SQL Server 2022 and enabled
+Redis: discovery; native password change/login/Profile and reload; TestClient
+PKCE/consent/callback, UserInfo, refresh rotation and reload; standard logout;
+TOTP wrong-code rejection, correct-code MFA and reload; confirmed MFA logout;
+and the signed-out IdP Profile redirect. The successful MFA identity contained
+`pwd, mfa, otp`. Browser/TestClient HTTPS certificate validation and CSRF checks
+remained enabled. The isolated SQL Server used encrypted transport with
+`TrustServerCertificate=True` for its local self-signed certificate; this is not
+production database TLS qualification.
+
+Browser navigation waits and two tool-runtime resets were retained as failed
+tool observations, not counted as product passes. The remaining MFA checks
+used current DOM snapshots and real browser input events. After a runtime reset,
+only the disposable fixture's password hash was restored from another public
+test fixture; its factor, OTP, assurance, grant and token state was not edited.
+No production system or database was involved. The resulting evidence is local
+smoke acceptance of that frozen preparation context, not all-factor or full-suite
+qualification. Later evidence-text edits do not establish a new image test.
+
+Publication must still bind checks to the final reviewed release commit, verify
+OCI metadata and record the registry's immutable image digest. This local image
+index is not a published-image reference and must not be used as one.
 
 ## 1.6.1 security servicing patch
 
