@@ -121,7 +121,7 @@
       "add": "Add",
       "remove": "Remove",
       "required": "Required",
-      "requiredHelp": "User cannot deselect this scope",
+      "requiredHelp": "Required scopes cannot be deselected during consent when this client requests them. This setting does not automatically add scopes to a request.",
       "noAvailableScopes": "No scopes found",
       "noClientScopes": "No scopes assigned",
       "loading": "Loading...",

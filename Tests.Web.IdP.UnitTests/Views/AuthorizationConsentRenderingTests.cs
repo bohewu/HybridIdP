@@ -1,4 +1,5 @@
 using System.Text.Encodings.Web;
+using System.Text.RegularExpressions;
 using Core.Application;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.DataProtection;
@@ -46,7 +47,7 @@ public class AuthorizationConsentRenderingTests
             .GetView(null, "/Views/Authorization/Authorize.cshtml", true);
         Assert.True(result.Success);
         var data = new ViewDataDictionary<List<ScopeInfo>>(new EmptyModelMetadataProvider(), new ModelStateDictionary())
-            { Model = [new ScopeInfo { Name = "profile", Category = "Identity" }, new ScopeInfo { Name = "email", Category = category }] };
+            { Model = [new ScopeInfo { Name = "profile", Category = "Identity", IsRequired = true }, new ScopeInfo { Name = "email", Category = category }] };
         using var output = new StringWriter();
         await result.View.RenderAsync(new ViewContext(action, result.View, data,
             new TempDataDictionary(http, scope.ServiceProvider.GetRequiredService<ITempDataProvider>()), output, new HtmlHelperOptions()));
@@ -55,5 +56,17 @@ public class AuthorizationConsentRenderingTests
         if (category.Contains('<')) Assert.DoesNotContain(category, html);
         Assert.Contains("Identity permissions", html);
         Assert.Contains("value=\"allow\"", html);
+        var inputs = Regex.Matches(html, "<input\\b[^>]*>").Select(match => match.Value).ToArray();
+        var required = Assert.Single(inputs.Where(input => input.Contains("id=\"scope_profile\"")));
+        Assert.Contains("checked", required);
+        Assert.Contains("disabled", required);
+        Assert.Contains(inputs, input => input.Contains("type=\"hidden\"") &&
+            input.Contains("name=\"granted_scopes\"") && input.Contains("value=\"profile\""));
+        var optional = Assert.Single(inputs.Where(input => input.Contains("id=\"scope_email\"")));
+        Assert.Contains("checked", optional);
+        Assert.Contains("name=\"granted_scopes\"", optional);
+        Assert.DoesNotContain("disabled", optional);
+        Assert.DoesNotContain(inputs, input => input.Contains("type=\"hidden\"") && input.Contains("value=\"email\""));
+        Assert.DoesNotContain("scope_employee-id", html);
     }
 }

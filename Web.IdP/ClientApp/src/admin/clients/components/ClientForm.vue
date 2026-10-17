@@ -677,6 +677,7 @@ const closeSecretModal = () => {
                       
                       <!-- Help text moved to top for visibility -->
                       <p class="mb-3 text-xs text-gray-500">{{ $t('clients.form.allowedScopesHelp') }}</p>
+                      <p class="mb-3 text-xs text-gray-500">{{ $t('clients.form.scopeManager.requiredHelp') }}</p>
                       <p v-if="!localAllowedScopes.includes('openid')" class="mb-3 text-xs text-yellow-600">
                         {{ $t('clients.form.allowedScopesOpenidRequired') }}
                       </p>

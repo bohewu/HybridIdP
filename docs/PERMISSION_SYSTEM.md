@@ -63,6 +63,21 @@ When you write `Permissions.Clients.READ`, it evaluates to `undefined` which nev
 - `Permissions.Clients.Update` → `'clients.update'`
 - `Permissions.Clients.Delete` → `'clients.delete'`
 
+In the client editor, allowed scopes and Required are separate settings.
+Required means that users cannot deselect a scope **when the client actually
+requests it**; it does not add scopes to requests, grants or existing tokens.
+After saving, reopen the client to verify both settings. The required-scopes
+API uses the internal application ID (`/api/admin/clients/{id}/required-scopes`),
+which is distinct from the public OAuth `client_id`; existing update and
+ownership checks still apply.
+
+If a client needs display names, allow `profile` and update the client to request
+it, then obtain consent under its configured policy and fresh tokens. Marking
+`profile` Required alone does not supply names. Scope permission and user consent
+also do not replace API resource usage approval. See
+[OAuth consent and upgrade guidance](OAUTH_FLOWS.md#requested-scopes-required-and-consent)
+for grant reuse, refresh, older registrations and revocation behavior.
+
 ### Scopes
 - `Permissions.Scopes.Read` → `'scopes.read'`
 - `Permissions.Scopes.Create` → `'scopes.create'`

@@ -375,6 +375,260 @@ namespace Tests.Application.UnitTests
                 _mockAuthorizationManager.Verify(value => value.GetIdAsync(grant, It.IsAny<CancellationToken>()), Times.Never);
         }
 
+        [Theory]
+        [InlineData(false, false, false, false)]
+        [InlineData(true, false, false, false)]
+        [InlineData(false, true, false, false)]
+        [InlineData(false, false, true, false)]
+        [InlineData(false, false, true, true)]
+        [InlineData(true, false, true, false)]
+        [InlineData(false, true, true, false)]
+        [InlineData(true, false, true, true)]
+        [InlineData(false, true, true, true)]
+        public async Task Consent_ShouldUseOnlyRequestedRequiredScopesBeforeClassification(
+            bool clientRequired, bool globalRequired, bool requestProfile, bool grantProfile)
+        {
+            var (principal, _) = SetupConsentScopes(clientRequired, globalRequired);
+            var request = new OpenIddictRequest
+            {
+                ClientId = "client", ResponseType = "code",
+                Scope = requestProfile ? "openid profile" : "openid"
+            };
+
+            Assert.IsType<OkResult>(await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null));
+            var profile = _authorizationService.ScopeInfos.SingleOrDefault(scope => scope.Name == "profile");
+            Assert.Equal(requestProfile, profile != null);
+            if (profile != null) Assert.Equal(clientRequired || globalRequired, profile.IsRequired);
+
+            // POST reloads metadata independently, as it does in a new HTTP request.
+            var result = await _authorizationService.HandleAuthorizeSubmitAsync(principal, request, "allow",
+                grantProfile ? ["openid", "profile"] : ["openid"]);
+            if (requestProfile && (clientRequired || globalRequired) && !grantProfile)
+            {
+                Assert.IsType<BadRequestObjectResult>(result);
+                _mockScopeService.Verify(service => service.ClassifyScopes(It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<IEnumerable<ScopeSummary>>(), It.IsAny<IEnumerable<string>>()), Times.Never);
+                _mockAuthorizationManager.Verify(manager => manager.CreateAsync(It.IsAny<ClaimsIdentity>(),
+                    It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(),
+                    It.IsAny<CancellationToken>()), Times.Never);
+                return;
+            }
+
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal;
+            var expected = requestProfile && grantProfile ? new[] { "openid", "profile" } : ["openid"];
+            Assert.Equal(expected, issued.GetScopes());
+            Assert.Equal(requestProfile && grantProfile, issued.HasClaim(claim => claim.Type == "name"));
+            Assert.Equal(principal.GetClaim("sub"), issued.GetClaim("sub"));
+            _mockAuthorizationManager.Verify(manager => manager.CreateAsync(It.IsAny<ClaimsIdentity>(),
+                principal.GetClaim("sub")!, It.IsAny<string>(), OpenIddictConstants.AuthorizationTypes.Permanent,
+                It.Is<ImmutableArray<string>>(scopes => scopes.SequenceEqual(expected)), It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task Consent_ShouldExcludeInjectedScopesOutsideEffectiveRequest(bool requestDisallowedScope)
+        {
+            var (principal, _) = SetupConsentScopes(false, false);
+            var request = new OpenIddictRequest { ClientId = "client", ResponseType = "code",
+                Scope = requestDisallowedScope ? "openid email" : "openid" };
+
+            var result = await _authorizationService.HandleAuthorizeSubmitAsync(principal, request, "allow",
+                ["openid", "profile", "email", "unregistered"]);
+
+            Assert.Equal(new[] { "openid" }, Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal.GetScopes());
+            _mockAuthorizationManager.Verify(manager => manager.CreateAsync(It.IsAny<ClaimsIdentity>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+                It.Is<ImmutableArray<string>>(scopes => scopes.SequenceEqual(new[] { "openid" })),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData("openid", "openid", true, null, "implicit", true)]
+        [InlineData("openid profile", "openid", true, null, "implicit", false)]
+        [InlineData("openid profile", "openid", true, "none", "implicit", false)]
+        [InlineData("openid", "openid profile", true, null, "implicit", true)]
+        [InlineData("openid", "openid profile", false, null, "implicit", false)]
+        [InlineData("openid profile", "openid", true, null, "external", false)]
+        public async Task Consent_ShouldRespectCurrentGrantCoverageAndValidity(string requested, string priorScopes,
+            bool valid, string? prompt, string policy, bool reuse)
+        {
+            var (principal, applicationId) = SetupConsentScopes(true, false);
+            var grant = new object();
+            var prior = priorScopes.Split(' ').ToImmutableArray();
+            _mockApplicationManager.Setup(manager => manager.GetConsentTypeAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(policy);
+            _mockAuthorizationManager.Setup(manager => manager.FindAsync(principal.GetClaim("sub"), applicationId,
+                    OpenIddictConstants.Statuses.Valid, OpenIddictConstants.AuthorizationTypes.Permanent,
+                    It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+                .Returns((string subject, string client, string status, string type, ImmutableArray<string> scopes, CancellationToken ct) =>
+                    ToAsyncEnumerable(valid && scopes.All(scope => prior.Contains(scope)) ? [grant] : []));
+            _mockAuthorizationManager.Setup(manager => manager.GetScopesAsync(grant, It.IsAny<CancellationToken>())).ReturnsAsync(prior);
+            _mockAuthorizationManager.Setup(manager => manager.GetIdAsync(grant, It.IsAny<CancellationToken>())).ReturnsAsync("existing");
+
+            var result = await _authorizationService.HandleAuthorizeRequestAsync(principal,
+                new OpenIddictRequest { ClientId = "client", ResponseType = "code", Scope = requested, Prompt = prompt }, prompt);
+
+            if (reuse)
+            {
+                var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal;
+                Assert.Equal(requested.Split(' '), issued.GetScopes());
+                Assert.False(issued.HasClaim(claim => claim.Type == "name"));
+            }
+            else if (prompt == "none" || policy == "external")
+                Assert.Equal(OpenIddictConstants.Errors.ConsentRequired, Assert.IsType<ForbidResult>(result)
+                    .Properties!.Items[OpenIddictServerAspNetCoreConstants.Properties.Error]);
+            else Assert.IsType<OkResult>(result);
+            _mockAuthorizationManager.Verify(manager => manager.FindAsync(principal.GetClaim("sub"), applicationId,
+                OpenIddictConstants.Statuses.Valid, OpenIddictConstants.AuthorizationTypes.Permanent,
+                It.Is<ImmutableArray<string>>(scopes => scopes.SequenceEqual(requested.Split(' ', StringSplitOptions.None))),
+                It.IsAny<CancellationToken>()), Times.Once);
+        }
+
+        [Theory]
+        [InlineData(OpenIddictConstants.ClientTypes.Public, true)]
+        [InlineData(OpenIddictConstants.ClientTypes.Confidential, true)]
+        [InlineData(OpenIddictConstants.ClientTypes.Confidential, false)]
+        public async Task V143Descriptor_ShouldKeepConsentAndScopesWithoutNewClientSettings(string clientType, bool requirePkce)
+        {
+            var (principal, applicationId) = SetupConsentScopes(false, false);
+            var application = (await _mockApplicationManager.Object.FindByClientIdAsync("client"))!;
+            // v1.4.3 (0062e557) ClientService.CreateClientAsync defaults: explicit/web,
+            // these seven permissions, optional Properties absent, and PKCE in Requirements.
+            // Required was already a separate ClientRequiredScopes table, not a descriptor property.
+            var legacy = new OpenIddictApplicationDescriptor
+            {
+                ClientId = "client", ClientType = clientType,
+                ApplicationType = OpenIddictConstants.ApplicationTypes.Web,
+                ConsentType = OpenIddictConstants.ConsentTypes.Explicit,
+                RedirectUris = { new Uri("https://legacy.example/callback") },
+                Permissions =
+                {
+                    OpenIddictConstants.Permissions.Endpoints.Authorization,
+                    OpenIddictConstants.Permissions.Endpoints.Token,
+                    OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
+                    OpenIddictConstants.Permissions.ResponseTypes.Code,
+                    OpenIddictConstants.Permissions.Scopes.Email,
+                    OpenIddictConstants.Permissions.Scopes.Profile,
+                    OpenIddictConstants.Permissions.Prefixes.Scope + "openid"
+                }
+            };
+            if (requirePkce) legacy.Requirements.Add(OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange);
+            _mockApplicationManager.Setup(manager => manager.FindByIdAsync(applicationId, It.IsAny<CancellationToken>())).ReturnsAsync(application);
+            _mockApplicationManager.Setup(manager => manager.GetClientTypeAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(legacy.ClientType);
+            _mockApplicationManager.Setup(manager => manager.GetApplicationTypeAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(legacy.ApplicationType);
+            _mockApplicationManager.Setup(manager => manager.GetConsentTypeAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(legacy.ConsentType);
+            _mockApplicationManager.Setup(manager => manager.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableDictionary<string, JsonElement>.Empty);
+            _mockApplicationManager.Setup(manager => manager.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(() => legacy.Permissions.ToImmutableArray());
+            _mockApplicationManager.Setup(manager => manager.GetRedirectUrisAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(["https://legacy.example/callback"]);
+            _mockApplicationManager.Setup(manager => manager.GetPostLogoutRedirectUrisAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            _mockApplicationManager.Setup(manager => manager.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), application, It.IsAny<CancellationToken>()))
+                .Callback((OpenIddictApplicationDescriptor target, object _, CancellationToken _) => target.Requirements.UnionWith(legacy.Requirements))
+                .Returns(default(ValueTask));
+
+            using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+            _mockScopeManager.Setup(manager => manager.GetResourcesAsync(It.IsAny<object>(), It.IsAny<CancellationToken>())).ReturnsAsync([]);
+            var usage = new global::Infrastructure.Authorization.ApiScopeUsagePolicy(db, _mockScopeManager.Object,
+                _mockApplicationManager.Object, Mock.Of<global::Infrastructure.Authorization.IAdministrativeAuthorizationBoundary>(),
+                Mock.Of<Microsoft.AspNetCore.Authorization.IAuthorizationService>());
+            var allowed = new global::Infrastructure.Services.ClientAllowedScopesService(
+                _mockApplicationManager.Object, _mockScopeManager.Object, db, usage);
+            var processor = new global::Infrastructure.Services.ClientScopeRequestProcessor(allowed, _mockAuditService.Object);
+            _mockClientAllowedScopesService.Setup(service => service.GetRequiredScopesAsync(It.IsAny<Guid>()))
+                .Returns((Guid id) => allowed.GetRequiredScopesAsync(id));
+            _mockClientScopeProcessor.Setup(service => service.EnforceAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<string>>(), It.IsAny<bool>()))
+                .Returns((Guid id, IEnumerable<string> scopes, bool audit) => processor.EnforceAsync(id, scopes, audit));
+
+            var clients = new global::Infrastructure.Services.ClientService(_mockApplicationManager.Object,
+                Mock.Of<Core.Domain.Events.IDomainEventPublisher>(), db, _mockScopeManager.Object,
+                Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.RedirectUriSecurityPolicyOptions()), usage);
+            var detail = (await clients.GetClientByIdAsync(Guid.Parse(applicationId)))!;
+            Assert.Equal(clientType, detail.Type);
+            Assert.Equal(legacy.ConsentType, detail.ConsentType);
+            Assert.Equal(requirePkce, detail.RequirePkce);
+            Assert.False(detail.RequireMfa);
+            Assert.False(detail.DisableExternalProviders);
+            Assert.False(detail.EnableTurnstile);
+            Assert.Empty(await allowed.GetRequiredScopesAsync(Guid.Parse(applicationId)));
+
+            var request = new OpenIddictRequest { ClientId = "client", ResponseType = "code", Scope = "openid profile" };
+            Assert.IsType<OkResult>(await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null));
+            var initial = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(await _authorizationService.HandleAuthorizeSubmitAsync(
+                principal, request, "allow", ["openid", "profile"])).Principal;
+            Assert.Equal(new[] { "openid", "profile" }, initial.GetScopes());
+            Assert.NotNull(initial.GetClaim("name"));
+
+            // Adding admin metadata does not append either newly allowed phone or unrequested Required profile.
+            legacy.Permissions.Add(OpenIddictConstants.Permissions.Scopes.Phone);
+            db.ClientRequiredScopes.Add(new ClientRequiredScope { ClientId = applicationId, ScopeId = "profile" });
+            await db.SaveChangesAsync();
+            var profileScope = (await _mockScopeManager.Object.FindByNameAsync("profile"))!;
+            _mockScopeManager.Setup(manager => manager.ListAsync(null, null, It.IsAny<CancellationToken>())).Returns(() => ToAsyncEnumerable(profileScope));
+            _mockScopeManager.Setup(manager => manager.GetNameAsync(profileScope, It.IsAny<CancellationToken>())).ReturnsAsync("profile");
+            request.Scope = "openid";
+            Assert.IsType<OkResult>(await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null));
+            Assert.Equal("openid", Assert.Single(_authorizationService.ScopeInfos).Name);
+            var smaller = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(await _authorizationService.HandleAuthorizeSubmitAsync(
+                principal, request, "allow", ["openid"])).Principal;
+            Assert.Equal(new[] { "openid" }, smaller.GetScopes());
+            Assert.Null(smaller.GetClaim("name"));
+            Assert.Empty(legacy.Properties);
+            Assert.Equal(requirePkce, legacy.Requirements.Contains(OpenIddictConstants.Requirements.Features.ProofKeyForCodeExchange));
+            _mockApplicationManager.Verify(manager => manager.UpdateAsync(application, It.IsAny<OpenIddictApplicationDescriptor>(),
+                It.IsAny<CancellationToken>()), Times.Never);
+        }
+
+        private (ClaimsPrincipal principal, string applicationId) SetupConsentScopes(bool clientRequired, bool globalRequired)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true, FirstName = "Test" };
+            SetupMockUsers(user);
+            SetupMockScopeExtensions(new ScopeExtension { ScopeId = "profile", IsRequired = globalRequired });
+            var principal = new ClaimsPrincipal(new ClaimsIdentity([new Claim("sub", user.Id.ToString())], "test"));
+            var application = new object();
+            var grant = new object();
+            var applicationId = Guid.NewGuid().ToString();
+            _mockHttpContextAccessor.Setup(accessor => accessor.HttpContext).Returns(new DefaultHttpContext());
+            _mockApplicationManager.Setup(manager => manager.FindByClientIdAsync("client", It.IsAny<CancellationToken>())).ReturnsAsync(application);
+            _mockApplicationManager.Setup(manager => manager.GetIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(applicationId);
+            _mockApplicationManager.Setup(manager => manager.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync([OpenIddictConstants.Permissions.ResponseTypes.Code]);
+            _mockApplicationManager.Setup(manager => manager.GetConsentTypeAsync(application, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(OpenIddictConstants.ConsentTypes.Implicit);
+            _mockUserManager.Setup(manager => manager.GetUserIdAsync(user)).ReturnsAsync(user.Id.ToString());
+            _mockUserManager.Setup(manager => manager.GetRolesAsync(user)).ReturnsAsync([]);
+            _mockClientAllowedScopesService.Setup(service => service.GetRequiredScopesAsync(It.IsAny<Guid>()))
+                .ReturnsAsync(clientRequired ? ["profile"] : []);
+            _mockClientScopeProcessor.Setup(service => service.EnforceAsync(It.IsAny<Guid>(), It.IsAny<IEnumerable<string>>(), It.IsAny<bool>()))
+                .ReturnsAsync((Guid id, IEnumerable<string> scopes, bool audit) => new ClientScopeEvaluationResult
+                    { AllowedScopes = scopes.Where(scope => scope is "openid" or "profile").ToList() });
+            foreach (var name in new[] { "openid", "profile" })
+            {
+                var scope = new object();
+                _mockScopeManager.Setup(manager => manager.FindByNameAsync(name, It.IsAny<CancellationToken>())).ReturnsAsync(scope);
+                _mockScopeManager.Setup(manager => manager.GetIdAsync(scope, It.IsAny<CancellationToken>())).ReturnsAsync(name);
+            }
+            // Use the production classifier so its Required autofill cannot conceal a POST validation failure.
+            var classifier = new global::Infrastructure.Services.ScopeService(_mockScopeManager.Object,
+                _mockApplicationManager.Object, _mockDb.Object, Mock.Of<Core.Domain.Events.IDomainEventPublisher>(),
+                Mock.Of<global::Infrastructure.Authorization.IApiScopeUsagePolicy>());
+            _mockScopeService.Setup(service => service.ClassifyScopes(It.IsAny<IEnumerable<string>>(),
+                    It.IsAny<IEnumerable<ScopeSummary>>(), It.IsAny<IEnumerable<string>>()))
+                .Returns((IEnumerable<string> requested, IEnumerable<ScopeSummary> available, IEnumerable<string>? granted) =>
+                    classifier.ClassifyScopes(requested, available, granted));
+            _mockApiResourceService.Setup(service => service.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync([]);
+            _mockAuthorizationManager.Setup(manager => manager.FindAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+                .Returns(ToAsyncEnumerable());
+            _mockAuthorizationManager.Setup(manager => manager.CreateAsync(It.IsAny<ClaimsIdentity>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(grant);
+            _mockAuthorizationManager.Setup(manager => manager.GetIdAsync(grant, It.IsAny<CancellationToken>())).ReturnsAsync("created");
+            return (principal, applicationId);
+        }
+
         private static Mock<RoleManager<ApplicationRole>> MockRoleManager()
         {
             var store = new Mock<IRoleStore<ApplicationRole>>();
@@ -1208,13 +1462,13 @@ namespace Tests.Application.UnitTests
             _mockDb.Setup(c => c.Users).Returns(mockSet.Object);
         }
 
-        private void SetupMockScopeExtensions()
+        private void SetupMockScopeExtensions(params ScopeExtension[] extensions)
         {
-            var items = Array.Empty<ScopeExtension>().AsQueryable();
+            var items = extensions.AsQueryable();
             var mockSet = new Mock<DbSet<ScopeExtension>>();
             mockSet.As<IAsyncEnumerable<ScopeExtension>>()
                 .Setup(m => m.GetAsyncEnumerator(It.IsAny<CancellationToken>()))
-                .Returns(new TestAsyncEnumerator<ScopeExtension>(items.GetEnumerator()));
+                .Returns(() => new TestAsyncEnumerator<ScopeExtension>(items.GetEnumerator()));
             mockSet.As<IQueryable<ScopeExtension>>().Setup(m => m.Provider)
                 .Returns(new TestAsyncQueryProvider<ScopeExtension>(items.Provider));
             mockSet.As<IQueryable<ScopeExtension>>().Setup(m => m.Expression).Returns(items.Expression);

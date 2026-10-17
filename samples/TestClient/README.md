@@ -57,6 +57,23 @@ Environment overrides include `Oidc__Authority` and `Oidc__ClientId`.
 The authority must use HTTPS. Register the exact callback/logout URIs and allowed
 scopes at the destination IdP before using a different deployment.
 
+For scope/consent checks, use a separate local configuration with the complete
+`Oidc:Scopes` array, for example `[ "openid", "offline_access" ]` to omit profile,
+or `[ "openid", "profile", "offline_access" ]` to request it. Restart the client
+after changing the configuration. Changing the IdP's allowed/Required settings
+does not change this client's request. When overriding JSON arrays, replace the
+complete array in the isolated configuration; indexed environment overrides can
+leave entries from the default array in place.
+
+The optional `Oidc:RefreshScopes` array controls only the scope parameter sent by
+the refresh POST. Missing or empty (the default) omits that parameter. For a
+lawful narrowing check after a grant containing profile, set it to
+`[ "openid", "offline_access" ]`. The IdP still decides whether the requested
+scopes are allowed by the original grant and current client permissions. Compare
+the refreshed UserInfo response with the earlier response: the session's
+validated sign-in identity and ID token remain the original sign-in snapshot,
+so their claims do not prove the refreshed token's contents.
+
 Refresh and logout use antiforgery-protected POST forms. Account responses use
 `Cache-Control: no-store`. The UI shows token status instead of raw token values
 and does not put credentials in browser storage. Tokens are saved in the

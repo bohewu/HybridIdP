@@ -587,13 +587,14 @@ namespace Web.IdP.Services // Keep consistent namespace case
 
             // Server-side validation: Ensure all required scopes are present in granted_scopes (prevent tampering)
             // This must be done BEFORE ClassifyScopes, because ClassifyScopes auto-adds required scopes
-            var clientRequiredScopes = await _clientAllowedScopesService.GetRequiredScopesAsync(clientGuid);
+            // ScopeInfos contains only the effective request and merges global/client Required flags.
+            var requiredScopes = ScopeInfos.Where(scope => scope.IsRequired).Select(scope => scope.Name).ToList();
             var grantedSet = (granted_scopes ?? Array.Empty<string>()).ToHashSet(StringComparer.OrdinalIgnoreCase);
-            var missingRequired = clientRequiredScopes.Except(grantedSet, StringComparer.OrdinalIgnoreCase).ToList();
+            var missingRequired = requiredScopes.Except(grantedSet, StringComparer.OrdinalIgnoreCase).ToList();
             
             LogTamperingCheck(
                 request.ClientId,
-                string.Join(",", clientRequiredScopes),
+                string.Join(",", requiredScopes),
                 string.Join(",", grantedSet),
                 string.Join(",", missingRequired));
             

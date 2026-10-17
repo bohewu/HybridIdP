@@ -269,6 +269,43 @@ public class UserInfoServiceTests
         Assert.Contains("mfa", amr);
     }
 
+    [Theory]
+    [InlineData("openid employee-id", true, false)]
+    [InlineData("openid employee-id secondary", true, false)]
+    [InlineData("openid secondary", true, false)]
+    [InlineData("openid", false, false)]
+    [InlineData("openid profile employee-id", true, true)]
+    public async Task GetUserInfoAsync_ShouldRequireProfileForNames_AndKeepAnyGrantedCustomSource(
+        string scopes, bool customGranted, bool profileGranted)
+    {
+        var mappings = new List<ScopeClaim>
+        {
+            CreateScopeClaim("employee-id", "employee_id", "employee_id", "String"),
+            CreateScopeClaim("secondary", "employee_id", "employee_id", "String"),
+            CreateScopeClaim("employee-id", "name", Claims.Name, "String"),
+            CreateScopeClaim("employee-id", "preferred_username", Claims.PreferredUsername, "String"),
+            CreateScopeClaim("profile", "name", Claims.Name, "String"),
+            CreateScopeClaim("profile", "preferred_username", Claims.PreferredUsername, "String")
+        };
+        var principal = CreatePrincipal([
+            new Claim(Claims.Subject, "local-user-id"),
+            new Claim("scope", scopes),
+            new Claim("employee_id", "fixture-employee"),
+            new Claim(Claims.Name, "Fixture User"),
+            new Claim(Claims.PreferredUsername, "fixture-user"),
+            new Claim(Claims.AuthenticationMethodReference, "pwd")
+        ]);
+
+        var result = await new UserInfoService(CreateMockDbContext(mappings).Object).GetUserInfoAsync(principal);
+
+        Assert.Equal("local-user-id", result[Claims.Subject]);
+        Assert.Equal("pwd", result[Claims.AuthenticationMethodReference]);
+        Assert.Equal(customGranted, result.ContainsKey("employee_id"));
+        Assert.Equal(profileGranted, result.ContainsKey(Claims.Name));
+        Assert.Equal(profileGranted, result.ContainsKey(Claims.PreferredUsername));
+        Assert.False(result.ContainsKey("profile"));
+    }
+
     #region Helper Methods
 
     private static ClaimsPrincipal CreatePrincipal(List<Claim> claims)
