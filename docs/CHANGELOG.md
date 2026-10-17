@@ -4,7 +4,46 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
-No unreleased changes.
+Planned version: 1.6.2. This entry does not establish tag, image or release
+publication. See the [release readiness notes](./RELEASE_READINESS.md).
+
+### Security and dependencies
+
+- Updated transitive brace-expansion resolutions to 1.1.21 and 2.1.7 and applied
+  a scoped ExcelJS override for the installed UUID dependency at 11.1.1.
+- Removed unused jQuery, jQuery Validation, unobtrusive validation assets and
+  their unused TestClient partial. Bootstrap and antiforgery protection remain.
+- Retained the documented controls and reopening conditions for the scanner
+  findings triaged in issues #2 and #3. Their closure does not mean all findings
+  were remediated. ExcelJS's prebuilt browser bundle still contains older UUID
+  code; the dependency override does not rewrite those embedded bytes.
+
+### Authorization and administration
+
+- Corrected consent POST validation to apply global and client Required scope
+  rules only within the effective request, without adding unrequested scopes.
+- Aligned consent, existing grant reuse, refresh narrowing and UserInfo claim
+  behavior. Standard name claims require granted `profile`, including when
+  custom claim mappings supply them.
+- Restored sanitized SQL Server/PostgreSQL and enabled Redis dependency status
+  to the permission-protected dashboard; public liveness stays shallow.
+- Unified Loading feedback, removed duplicate primary spinners, guarded linked
+  account dialogs during submission, and completed audit event translations
+  and interactive cursor feedback.
+
+### Deployment and compatibility
+
+- Fixed readiness probes to send the configured public Host header.
+- Added the guarded one-time SQL Server Legacy-to-Provider-Proof binding script
+  and corrected setup wizard, environment example and upgrade documentation.
+- No EF schema migrations were added after 1.6.1. Preserve the existing `.env`,
+  certificates and Data Protection keys. Legacy backfill is a separate approved
+  data operation and is not automatically run during deployment.
+- Existing clients do not require blanket re-registration for the consent fix.
+  Clients displaying standard names must allow, request and obtain `profile`;
+  a custom employee-ID scope does not imply it. `sub` and claim nesting are
+  unchanged. Cumulative older upgrades retain their documented resource approval
+  and provider-contract requirements.
 
 ## [1.6.1] - 2026-10-16
 
