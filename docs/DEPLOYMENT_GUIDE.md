@@ -851,17 +851,19 @@ Use this order in an approved maintenance window:
 
    Email confirmation has its own default-off source policy. A valid Proof
    Email is saved for new accounts and fills missing Email on the original
-   account regardless of this policy. To restore trusted organizational Email
-   behavior when the verified selected authority is exactly `ncut.authproxy`,
-   add only this setting to the existing `.env`:
+   account regardless of this policy. Example only: if the operator independently
+   selects and verifies the illustrative `example.provider` namespace, they may
+   add this setting to the existing private `.env`. Replace the example with
+   the operator's own EXACT configured provider namespace:
 
    ```dotenv
-   ProviderProof__TrustedEmailProviderNamespaces__0=ncut.authproxy
+   ProviderProof__TrustedEmailProviderNamespaces__0=example.provider
    ```
 
-   This requires `ProviderProof__TrustedProviderNamespace=ncut.authproxy` and
-   explicit Email assurance in a valid Proof response. Namespace matching is
-   exact and case-sensitive. Omit the list to leave new confirmation off;
+   In the private environment, `ProviderProof__TrustedProviderNamespace` must
+   use the same exact namespace, with explicit Email assurance in a valid Proof
+   response. Namespace matching is exact and case-sensitive. Omit the list to
+   leave new confirmation off;
    existing confirmations are not revoked. Email never links identity or
    retargets an enrolled Email OTP factor. The Compose modes pass the selected
    env file to the application through `env_file`, including indexed entries;

@@ -3,8 +3,11 @@
   Read cleanup-provider-users-sqlserver.md first. Run on a dedicated connection,
   with application/background writers stopped and a verified restorable backup.
   PREVIEW is the default. No provider/type/active-state filter changes selection.
-  Literal, case-sensitive prefix: ncut.authproxy_ (underscore is NOT a wildcard).
-  Edit ONLY the four confirmation values below after reviewing PREVIEW output.
+  Public example literal prefix: example.provider_ (underscore is NOT a wildcard).
+  In a PRIVATE copy, set @Prefix to your own EXACT configured username prefix
+  BEFORE PREVIEW; this public example is not a deployment target and must not be
+  run against a real deployment as-is. After reviewing PREVIEW, edit ONLY the
+  four APPLY confirmation values below; keep the private @Prefix unchanged.
 */
 SET NOCOUNT ON;
 SET QUOTED_IDENTIFIER ON;
@@ -15,7 +18,7 @@ DECLARE @ExpectedDatabase sysname = NULL;
 DECLARE @ExpectedUsers int = NULL;
 DECLARE @ExpectedPersons int = NULL;
 
-DECLARE @Prefix nvarchar(256) = N'ncut.authproxy_';
+DECLARE @Prefix nvarchar(256) = N'example.provider_';
 DECLARE @Now datetime2 = SYSUTCDATETIME();
 IF @@TRANCOUNT <> 0 THROW 51000, 'Use a dedicated connection without an existing transaction.', 1;
 IF @Apply = 1 AND (@ExpectedDatabase IS NULL OR @ExpectedDatabase <> DB_NAME()
