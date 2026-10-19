@@ -97,11 +97,15 @@ public partial class PersonsController : ControllerBase
     [HttpGet("search")]
     [HasPermission(Permissions.Persons.Read)]
     public async Task<ActionResult<PersonListResponseDto>> SearchPersons(
-        [FromQuery] string term, 
+        [FromQuery] string? term = null,
         [FromQuery] int skip = 0, 
         [FromQuery] int take = 50,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(term))
+            return await GetPersons(skip, take, cancellationToken);
+
+        term = term.Trim();
         try
         {
             var persons = await _personService.SearchPersonsAsync(term, skip, take, cancellationToken);

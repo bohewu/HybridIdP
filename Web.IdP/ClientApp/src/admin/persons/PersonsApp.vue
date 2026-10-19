@@ -63,9 +63,10 @@ const fetchPersons = async () => {
     })
     
     let url = '/api/admin/people'
-    if (search.value) {
+    const term = search.value.trim()
+    if (term) {
       url = '/api/admin/people/search'
-      params.append('term', search.value)
+      params.append('term', term)
     }
     
     const response = await fetch(`${url}?${params.toString()}`)

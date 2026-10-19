@@ -11,6 +11,10 @@ There is no organization-specific or AuthProxy package dependency.
 
 ## Current behavior
 
+The [identity source and field mapping inventory](IDENTITY_FIELD_MAPPING.md)
+lists the implemented User/Person mappings, API responsibilities and the
+remaining decisions for unified source synchronization.
+
 Enable `ProviderProof:Enabled` and configure `TrustedProviderNamespace`, the full
 endpoint and service secret to select API credential proof. Actual local-password
 accounts use local authentication. Upstream-linked accounts without a local

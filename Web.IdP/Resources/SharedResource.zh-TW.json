@@ -449,5 +449,9 @@
   "AccountRecoveryLostFactorGuidance": "遺失 Passkey 或驗證裝置？可使用已儲存的帳戶備援碼。OTP 啟用時，也可使用 OTP 復原碼。若兩者皆無，請聯絡管理員協助帳戶復原。",
   "AccountRecoveryPurpose": "使用帳戶備援碼後",
   "AccountRecoveryReplaceVerificationMethod": "登入並新增替代的驗證方式",
-  "AccountRecoverySignInOnly": "僅登入"
+  "AccountRecoverySignInOnly": "僅登入",
+  "AdminSystemInfo.Title": "系統資訊",
+  "AdminSystemInfo.BasedOn": "基於 HybridIdP",
+  "AdminSystemInfo.Version": "版本",
+  "AdminSystemInfo.VersionUnavailable": "未提供"
 }
