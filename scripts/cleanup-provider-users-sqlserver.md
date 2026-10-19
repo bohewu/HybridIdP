@@ -1,23 +1,31 @@
 # Targeted SQL Server physical cleanup
 
 `cleanup-provider-users-sqlserver.sql` is an operator-specific, destructive reset
-for the literal, case-sensitive `ncut.authproxy_` username prefix. It never uses
-SQL `LIKE`; `_` is an ordinary character. Candidate selection includes all account
+for a literal, case-sensitive username prefix. Its public `example.provider_`
+prefix is illustrative only. In a private copy, replace `@Prefix` with the
+operator's own EXACT configured username prefix before running PREVIEW; do not
+run the public example against a real deployment as-is. It never uses SQL
+`LIKE`; `_` is an ordinary character. Candidate selection includes all account
 types and states, without inferring identity from a provider name or email.
 
 1. Deploy the corrected account naming/deletion flow first. Confirm the database
    uses the current repository SQL Server migrations and take a verified,
    restorable backup. Stop all application/background writers and use a dedicated
    SQL connection; restart application instances after completion to clear caches.
-2. Select the intended database explicitly. Run the unchanged SQL with
-   `@Apply = 0`. Review the database name, separate User and Person candidate
+2. In a private copy, set `@Prefix` to the operator's own exact literal prefix
+   before PREVIEW. Select the intended database explicitly and run with
+   `@Apply = 0`. The public `example.provider_` value is illustrative only and
+   must not be used automatically against a real deployment. Review the database
+   name, separate User and Person candidate
    lists/counts, owned-record effects and blocking dependency rows. Protect output
    as account data. A Person qualifies only if exactly one account link existed
    before cleanup and that account is targeted. Every multi-account Person stays,
    including one whose accounts all match.
-3. In a private copy of the SQL set `@Apply = 1`, `@ExpectedDatabase` to the exact
-   selected database name, and both expected counts to the reviewed values.
-   Execute the entire batch. A count mismatch, blocker or SQL error rolls back
+3. In the same private copy, set the four APPLY confirmation values only after
+   reviewing PREVIEW: `@Apply = 1`, `@ExpectedDatabase` to the exact selected
+   database name, and both expected counts to the reviewed values. Keep the
+   privately selected `@Prefix` unchanged. Execute the entire batch. A count
+   mismatch, blocker or SQL error rolls back
    the entire operation. Rerun preview after any mismatch; counts are a guard,
    not a substitute for reviewing the selected identities in a maintenance window.
 4. Retain the result securely. Restart application instances, verify the intended

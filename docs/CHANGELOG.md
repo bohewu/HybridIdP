@@ -32,10 +32,10 @@ No unreleased changes recorded.
 
 - No EF migration or deployment-script changes were added after 1.7.0. Preserve
   the existing `.env`, certificates, Data Protection keys, account bindings and
-  existing accounts; no account deletion is required. The exact
-  `ncut.authproxy` Email trust opt-in remains a local deployment choice and
-  requires explicit Proof Email assurance; all other providers remain off by
-  default.
+  existing accounts; no account deletion is required. Email trust remains a
+  local deployment choice and requires explicit Proof Email assurance. Any
+  namespace in public examples is illustrative only; deployments remain off by
+  default until operators configure their own exact namespace.
 
 ## [1.7.0] - 2026-10-19
 

@@ -33,9 +33,11 @@ confirmation remains default-off unless the exact namespace is configured in
 `ProviderProof__TrustedEmailProviderNamespaces__0` and Proof carries explicit
 Email assurance. Without that trust opt-in, Email is saved without new
 confirmation; existing confirmations and enrolled Email OTP targets remain.
-For an already selected `ncut.authproxy` authority, the deployment may opt in
-with `ProviderProof__TrustedEmailProviderNamespaces__0=ncut.authproxy`; this is
-an exact, case-sensitive local trust choice. Other providers remain off.
+The public configuration example uses the illustrative namespace
+`example.provider` only. A deployment may opt in only after independently
+selecting its own authority, and must use that same EXACT configured namespace
+in its private environment. This is a local, case-sensitive trust choice.
+Other providers remain off.
 
 ### Security and verification boundaries
 

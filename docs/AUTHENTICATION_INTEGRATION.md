@@ -38,19 +38,21 @@ separate from local authority to set `EmailConfirmed`: unassured nonempty Proof
 fields are denied even when source trust is on.
 
 The email trust list compares namespaces exactly, without trimming, case folding,
-or wildcards. To restore trusted organizational Email behavior for a deployment
-that has independently selected and verified `ncut.authproxy`, add this to its
-existing `.env` (keep its current Proof endpoint, secret and identity bindings):
+or wildcards. For example, a deployment that has independently selected and
+verified the illustrative namespace `example.provider` could add this to its
+existing private `.env` (keep its current Proof endpoint, secret and identity
+bindings). Replace the example with your own EXACT configured provider namespace;
+the public example does not identify or select a deployment authority:
 
 ```dotenv
-ProviderProof__TrustedEmailProviderNamespaces__0=ncut.authproxy
+ProviderProof__TrustedEmailProviderNamespaces__0=example.provider
 ```
 
-The Proof authority must also be configured as
-`ProviderProof__TrustedProviderNamespace=ncut.authproxy`. This is a deployment
-choice; no organization-specific source is built into the application. The
-setting confirms only explicitly assured Email during valid Proof login. It
-does not enroll MFA, bypass local MFA or enable recovery-address trust.
+In the private deployment environment, `ProviderProof__TrustedProviderNamespace`
+must be set to that same exact namespace. This is a deployment choice; no
+organization-specific source is built into the application. The setting
+confirms only explicitly assured Email during valid Proof login. It does not
+enroll MFA, bypass local MFA or enable recovery-address trust.
 
 Explicit administrative deletion of an eligible ordinary account retires its
 username and email lookup identifiers and invalidates its security stamp before
