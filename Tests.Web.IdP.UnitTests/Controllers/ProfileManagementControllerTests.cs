@@ -97,7 +97,8 @@ public class ProfileManagementControllerTests : IDisposable
             _mockPasskeyService.Object,
             _mockAuditService.Object,
             _mockLogger.Object,
-            externalLoginOptions);
+            externalLoginOptions,
+            Microsoft.Extensions.Options.Options.Create(new Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
 
         var user = new ClaimsPrincipal(new ClaimsIdentity(new[]
         {
@@ -118,6 +119,71 @@ public class ProfileManagementControllerTests : IDisposable
     }
 
     #region GetProfile Tests
+
+    [Theory]
+    [InlineData("example.organization")]
+    [InlineData("Legacy")]
+    [InlineData("EXAMPLE.ORGANIZATION")]
+    [InlineData("legacy")]
+    public async Task RemoveLogin_ShouldRejectManagedCredentialBeforeMutation_WithCurrentAuthentication(string provider)
+    {
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        var binding = new IdentityUserLogin<Guid> { UserId = _testUser.Id, LoginProvider = provider,
+            ProviderKey = "immutable-key", ProviderDisplayName = "Assured Name" };
+        _dbContext.UserLogins.Add(binding);
+        await _dbContext.SaveChangesAsync();
+        var result = Assert.IsType<ObjectResult>(await _controller.RemoveLogin(
+            new RemoveLoginRequest { LoginProvider = provider, ProviderKey = binding.ProviderKey }));
+        Assert.Equal(403, result.StatusCode);
+        _mockUserManager.Verify(manager => manager.RemoveLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+        _mockSignInManager.Verify(manager => manager.RefreshSignInAsync(It.IsAny<ApplicationUser>()), Times.Never);
+        _mockAuditService.VerifyNoOtherCalls();
+        var retained = Assert.Single(await _dbContext.UserLogins.AsNoTracking().ToListAsync());
+        Assert.Equal(_testUser.Id, retained.UserId);
+        Assert.Equal("immutable-key", retained.ProviderKey);
+        Assert.Equal("Assured Name", retained.ProviderDisplayName);
+        Assert.Equal("current-stamp", _testUser.SecurityStamp);
+    }
+
+    [Theory]
+    [InlineData("Account", "Person", "Assured Name", "Account")]
+    [InlineData(null, "Person", "Assured Name", "Person")]
+    [InlineData(null, null, "Assured Name", "Assured Name")]
+    [InlineData(null, null, "  ", "example_subject")]
+    [InlineData(null, null, "opaque-key", "example_subject")]
+    public async Task GetProfile_ShouldSeparateManagedCredentialsAndUseTrustedNameFallback(
+        string? accountName, string? personName, string? assuredName, string expected)
+    {
+        _testUser.UserName = "example_subject";
+        _testUser.FirstName = accountName;
+        var person = new Person { Id = Guid.NewGuid(), FirstName = personName };
+        _testUser.PersonId = person.Id;
+        _dbContext.Persons.Add(person);
+        await _dbContext.SaveChangesAsync();
+        _mockUserManager.Setup(manager => manager.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        _mockUserManager.Setup(manager => manager.GetLoginsAsync(_testUser)).ReturnsAsync(new List<UserLoginInfo>
+        {
+            new("example.organization", "opaque-key", assuredName),
+            new("Legacy", "old-key", "Untrusted Legacy Name"),
+            new("Google", "social-key", "Social Name")
+        });
+        _mockSecurityPolicyService.Setup(service => service.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
+        _mockSignInManager.Setup(manager => manager.GetExternalAuthenticationSchemesAsync()).ReturnsAsync(new[]
+        {
+            new AuthenticationScheme("example.organization", "Organization", typeof(CookieAuthenticationHandler)),
+            new AuthenticationScheme("Legacy", "Legacy", typeof(CookieAuthenticationHandler)),
+            new AuthenticationScheme("Google", "Google", typeof(CookieAuthenticationHandler))
+        });
+        var profile = Assert.IsType<ProfileDto>(Assert.IsType<OkObjectResult>((await _controller.GetProfile()).Result).Value);
+        Assert.Equal(expected, profile.DisplayName);
+        Assert.Equal("example_subject", profile.UserName);
+        Assert.Equal(_testUser.Id, profile.UserId);
+        Assert.Equal("Google", Assert.Single(profile.ExternalLogins).LoginProvider);
+        Assert.Equal("Google", Assert.Single(profile.AvailableProviders).Scheme);
+        Assert.Equal(2, profile.ManagedCredentials.Count);
+        Assert.Contains(profile.ManagedCredentials, credential => credential.LoginProvider == "Legacy" && credential.IsLegacy);
+        Assert.Contains(profile.ManagedCredentials, credential => credential.LoginProvider == "example.organization" && !credential.IsLegacy);
+    }
 
     [Fact]
     public async Task RemoveLogin_ShouldNotRenewCookie_WhenRemainingBindingIsIneligible()

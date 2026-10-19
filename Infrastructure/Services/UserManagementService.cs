@@ -10,6 +10,8 @@ using OpenIddict.Abstractions;
 using System.Text.Json;
 using System.Threading;
 using Infrastructure.Authorization;
+using Infrastructure.Identity;
+using Infrastructure.Options;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
@@ -22,6 +24,7 @@ public class UserManagementService : IUserManagementService
     private readonly IApplicationDbContext _context;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly PrivilegedRoleProtectionOptions _roleProtection;
+    private readonly string? _trustedProviderNamespace;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
@@ -29,7 +32,8 @@ public class UserManagementService : IUserManagementService
         IDomainEventPublisher eventPublisher,
         IApplicationDbContext context,
         IOpenIddictApplicationManager applicationManager,
-        IOptions<PrivilegedRoleProtectionOptions>? roleProtection = null)
+        IOptions<PrivilegedRoleProtectionOptions>? roleProtection = null,
+        IOptions<ProviderProofOptions>? providerProofOptions = null)
     {
         _userManager = userManager;
         _roleManager = roleManager;
@@ -37,6 +41,7 @@ public class UserManagementService : IUserManagementService
         _context = context;
         _applicationManager = applicationManager;
         _roleProtection = roleProtection?.Value ?? new PrivilegedRoleProtectionOptions();
+        _trustedProviderNamespace = providerProofOptions?.Value.TrustedProviderNamespace;
     }
 
     public async Task<PagedUsersDto> GetUsersAsync(
@@ -111,6 +116,16 @@ public class UserManagementService : IUserManagementService
             .ToList();
 
         var userSummaries = new List<UserSummaryDto>();
+        // Fetch only this page's managed display metadata in one query; never query per user.
+        var userIds = users.Select(user => user.Id).ToList();
+        var managedLogins = string.IsNullOrWhiteSpace(_trustedProviderNamespace) || userIds.Count == 0
+            ? new List<IdentityUserLogin<Guid>>()
+            : await _context.UserLogins.AsNoTracking()
+                .Where(login => userIds.Contains(login.UserId) && login.LoginProvider == _trustedProviderNamespace)
+                .ToListAsync(cancellationToken);
+        var managedNames = managedLogins.GroupBy(login => login.UserId).ToDictionary(group => group.Key,
+            group => ManagedCredentialDisplay.GetAssuredName(group.Select(login =>
+                new UserLoginInfo(login.LoginProvider, login.ProviderKey, login.ProviderDisplayName)), _trustedProviderNamespace));
 
         foreach (var user in users)
         {
@@ -128,6 +143,8 @@ public class UserManagementService : IUserManagementService
                 Id = user.Id,
                 Email = user.Email ?? string.Empty,
                 UserName = user.UserName,
+                DisplayName = ManagedCredentialDisplay.GetDisplayName(user, user.Person,
+                    managedNames.GetValueOrDefault(user.Id), user.UserName ?? string.Empty),
                 FirstName = user.Person?.FirstName ?? user.FirstName,
                 LastName = user.Person?.LastName ?? user.LastName,
                 Department = user.Person?.Department ?? user.Department,

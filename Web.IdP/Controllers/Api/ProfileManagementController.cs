@@ -12,6 +12,8 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure;
+using Infrastructure.Identity;
+using Infrastructure.Options;
 using Core.Application.Interfaces;
 using Core.Application.Utilities;
 using Core.Application.Options; // Added
@@ -37,6 +39,7 @@ public class ProfileManagementController : ControllerBase
     private readonly IAuditService _auditService;
     private readonly ILogger<ProfileManagementController> _logger;
     private readonly ExternalLoginOptions _externalLoginOptions; // Added
+    private readonly string? _trustedProviderNamespace;
 
     public ProfileManagementController(
         Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
@@ -47,7 +50,8 @@ public class ProfileManagementController : ControllerBase
         IPasskeyService passkeyService,
         IAuditService auditService,
         ILogger<ProfileManagementController> logger,
-        IOptions<ExternalLoginOptions> externalLoginOptions) // Added
+        IOptions<ExternalLoginOptions> externalLoginOptions,
+        IOptions<ProviderProofOptions>? providerProofOptions = null)
     {
         _lifecycleEligibility = lifecycleEligibility;
         _userManager = userManager;
@@ -58,6 +62,7 @@ public class ProfileManagementController : ControllerBase
         _auditService = auditService;
         _logger = logger;
         _externalLoginOptions = externalLoginOptions.Value;
+        _trustedProviderNamespace = providerProofOptions?.Value.TrustedProviderNamespace;
     }
 
     /// <summary>
@@ -85,7 +90,7 @@ public class ProfileManagementController : ControllerBase
             .ToDictionary(g => g.Key, g => g.Count());
         
         var availableProviders = allSchemes
-            .Where(s => s.Name != Core.Domain.Constants.AuthConstants.Providers.Legacy) // Exclude Legacy
+            .Where(s => !ManagedCredentialDisplay.IsManaged(s.Name, _trustedProviderNamespace))
             .Where(s => 
             {
                 // If MaxLoginsPerProvider is 0, allow unlimited
@@ -118,9 +123,9 @@ public class ProfileManagementController : ControllerBase
         var dto = new ProfileDto
         {
             UserId = user.Id,
-            DisplayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
-                ?? (person != null ? NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName) : null)
-                ?? user.UserName ?? string.Empty,
+            DisplayName = ManagedCredentialDisplay.GetDisplayName(user, person,
+                ManagedCredentialDisplay.GetAssuredName(externalLogins, _trustedProviderNamespace),
+                user.UserName ?? string.Empty),
             UserName = user.UserName ?? string.Empty,
             Email = user.Email,
             EmailConfirmed = user.EmailConfirmed,
@@ -135,12 +140,20 @@ public class ProfileManagementController : ControllerBase
             EmailMfaEnabled = user.EmailMfaEnabled,
             PasskeyEnabled = (await _passkeyService.GetUserPasskeysAsync(user.Id)).Count > 0,
             ExternalLogins = externalLogins
-                .Where(l => l.LoginProvider != Core.Domain.Constants.AuthConstants.Providers.Legacy) // Hide legacy provider from UI
+                .Where(l => !ManagedCredentialDisplay.IsManaged(l.LoginProvider, _trustedProviderNamespace))
                 .Select(l => new ExternalLoginDto
                 {
                     LoginProvider = l.LoginProvider,
                     ProviderKey = l.ProviderKey,
                     ProviderDisplayName = l.ProviderDisplayName
+                }).ToList(),
+            ManagedCredentials = externalLogins
+                .Where(l => ManagedCredentialDisplay.IsManaged(l.LoginProvider, _trustedProviderNamespace))
+                .Select(l => l.LoginProvider).Distinct(StringComparer.Ordinal)
+                .Select(provider => new ManagedCredentialDto
+                {
+                    LoginProvider = provider,
+                    IsLegacy = provider == AuthConstants.Providers.Legacy
                 }).ToList(),
             AvailableProviders = availableProviders
         };
@@ -382,6 +395,17 @@ public class ProfileManagementController : ControllerBase
             authentication.Principal.FindFirstValue(_userManager.Options.ClaimsIdentity.SecurityStampClaimType) != user.SecurityStamp ||
             !Web.IdP.Helpers.AuthorizationAuthenticationSession.HasCurrentAssuranceVersion(authentication.Principal))
             return Unauthorized();
+
+        // Identity stores may compare provider keys using a case-insensitive database collation.
+        if (ManagedCredentialDisplay.IsManaged(request.LoginProvider, _trustedProviderNamespace, StringComparison.OrdinalIgnoreCase))
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "managedCredentialRemovalNotAllowed" });
+
+        // Resolve using the same store collation as Identity (including trailing-space/accent rules).
+        var storedLogin = await _dbContext.UserLogins.AsNoTracking().SingleOrDefaultAsync(login =>
+            login.UserId == user.Id && login.LoginProvider == request.LoginProvider &&
+            login.ProviderKey == request.ProviderKey, cancellationToken);
+        if (storedLogin is not null && ManagedCredentialDisplay.IsManaged(storedLogin.LoginProvider, _trustedProviderNamespace))
+            return StatusCode(StatusCodes.Status403Forbidden, new { error = "managedCredentialRemovalNotAllowed" });
 
         var result = await _userManager.RemoveLoginAsync(user, request.LoginProvider, request.ProviderKey);
         if (!result.Succeeded)

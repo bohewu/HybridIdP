@@ -311,15 +311,35 @@ public partial class LoginService : ILoginService
 
         // Mailbox ownership is separate from display-profile assurance. Never auto-link by this email.
         var profile = proof.Profile;
-        var provisioned = await _jitProvisioningService.ProvisionExternalUserAsync(new ExternalAuthResult
+        ApplicationUser provisioned;
+        try
         {
-            Provider = proof.ProviderNamespace!, ProviderKey = proof.StableSubject!,
-            DisplayName = profile?.DisplayName, FirstName = profile?.GivenName, LastName = profile?.Surname,
-            Department = profile?.Department, JobTitle = profile?.Title, EmployeeId = profile?.EmployeeId
-        }, cancellationToken);
+            provisioned = await _jitProvisioningService.ProvisionExternalUserAsync(new ExternalAuthResult
+            {
+                Provider = proof.ProviderNamespace!, ProviderKey = proof.StableSubject!,
+                AssuredCanonicalAccount = proof.CanonicalAccount,
+                DisplayName = profile?.DisplayName, FirstName = profile?.GivenName, LastName = profile?.Surname,
+                Department = profile?.Department, JobTitle = profile?.Title, EmployeeId = profile?.EmployeeId
+            }, cancellationToken);
+        }
+        catch (InvalidOperationException) { return LoginResult.InvalidCredentials(); }
+        catch (DbUpdateException) { return LoginResult.InvalidCredentials(); }
         if (existingUser is not null && provisioned.Id != existingUser.Id) return LoginResult.InvalidCredentials();
         var result = await ValidateExternalUserSignInAsync(provisioned, cancellationToken);
         if (!result.IsSuccess) return result;
+        // Only validated Proof may refresh this display-only field on an existing exact binding.
+        // Do not remove/re-add the login or change account identifiers or mailbox ownership.
+        if (linked is not null && !string.IsNullOrWhiteSpace(profile?.DisplayName))
+        {
+            var binding = await _dbContext.UserLogins.SingleOrDefaultAsync(login =>
+                login.UserId == provisioned.Id && login.LoginProvider == proof.ProviderNamespace &&
+                login.ProviderKey == proof.StableSubject, cancellationToken);
+            if (binding is not null && binding.ProviderDisplayName != profile.DisplayName)
+            {
+                binding.ProviderDisplayName = profile.DisplayName;
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+        }
         await RefreshProviderProfileAsync(provisioned, proof.ProviderNamespace!, proof.StableSubject!, cancellationToken);
         return LoginResult.LegacySuccess(provisioned);
     }

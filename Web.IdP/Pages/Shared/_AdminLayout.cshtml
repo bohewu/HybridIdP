@@ -87,7 +87,7 @@
                 </a>
                 
                 @* OIDC Management *@
-                @if (userPermissions.HasAnyPermission(Permissions.Clients.Read, Permissions.Scopes.Read, Permissions.Claims.Read))
+                @if (userPermissions.HasAnyPermission(Permissions.Clients.Read, Permissions.Scopes.Read, Permissions.Claims.Read, Permissions.Claims.Preview))
                 {
                     <div class="nav-section-title px-4 py-2 mt-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">@Localizer["OidcManagement"]</div>
                 }
@@ -120,6 +120,14 @@
                     </a>
                 }
                 
+                @if (userPermissions.HasPermission(Permissions.Claims.Preview))
+                {
+                    <a href="/Admin/ClaimsPreview" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/ClaimsPreview" ? "active bg-google-100 text-google-500 border-google-500" : "")">
+                        <i class="bi bi-eye text-lg"></i>
+                        <span>@Localizer["ClaimsPreview"]</span>
+                    </a>
+                }
+
                 @* Identity Management *@
                 @if (userPermissions.HasAnyPermission(Permissions.Users.Read, Permissions.Roles.Read, Permissions.Persons.Read))
                 {

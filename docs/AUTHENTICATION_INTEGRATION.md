@@ -19,6 +19,23 @@ provider/key; denial never falls back to another credential authority. Successfu
 Proof may provision a new durable account/Person link. An assured display email
 is not mailbox-ownership evidence and cannot silently link an existing account.
 
+For a new Proof account, the assured `canonicalAccount` is used as the local
+username only when it meets the local username length/character policy and is
+unoccupied. An unusable or occupied name denies provisioning; it never selects
+or links the account holding that name. The exact namespace/subject tuple stays
+the identity key. Subsequent Proof does not rename an existing account, including
+historical namespace-prefixed names. Display-profile email remains separate from
+mailbox ownership.
+
+Explicit administrative deletion of an eligible ordinary account retires its
+username and email lookup identifiers and invalidates its security stamp before
+releasing external logins. A later valid Proof may create a fresh account and
+Person with no inherited roles, MFA or consent; only configured new-account
+defaults apply. Person lifecycle denial and directory/migration bindings remain
+terminal and are not released for this reprovisioning path. Deactivation alone
+does not release names or bindings. This does not rename existing live accounts
+or migrate prior deletion records.
+
 The old flat `authenticated` HTTP response, `LegacyAuthService`, and `LegacyAuth`
 settings are retired. Historical `Legacy` provider/key rows are retained. Before
 switching a deployment, explicitly establish the new tuple through the protected

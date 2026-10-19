@@ -212,6 +212,62 @@ public sealed class ProviderProfileTests
         Assert.Equal(0, handler.CallCount);
     }
 
+    [Theory]
+    [InlineData("confirmed", "confirmed")]
+    [InlineData("expired", "expired")]
+    [InlineData("unconfirmed", "unconfirmed")]
+    [InlineData("policy", "configuration_changed")]
+    [InlineData("link", "link_missing_or_ambiguous")]
+    [InlineData("missing", "snapshot_missing")]
+    [InlineData("disabled", "disabled")]
+    [InlineData("inactive", "account_ineligible")]
+    [InlineData("person", "person_ineligible")]
+    [InlineData("zero-age", "expired")]
+    public async Task ReadSnapshotAsync_ShouldValidateConfirmationWithoutNetworkTrackingOrWrites(string scenario, string expected)
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        var clock = new TestClock();
+        var source = Source();
+        var config = Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = source } });
+        var status = HttpStatusCode.OK;
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success("{\"flag\":false,\"code\":\"fixture-value\"}"), status)));
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)), config, clock);
+        await service.GetPropertiesAsync(user, "source");
+        switch (scenario)
+        {
+            case "expired": clock.Now += config.Value.MaximumAge; break;
+            case "zero-age": config.Value.MaximumAge = TimeSpan.Zero; break;
+            case "unconfirmed":
+                status = HttpStatusCode.ServiceUnavailable;
+                await service.RefreshAfterLoginAsync(user, "provider", "subject");
+                break;
+            case "policy": source.AllowedProperties["code"] = "StringArray"; break;
+            case "link": db.UserLogins.RemoveRange(db.UserLogins); break;
+            case "missing": db.Persons.Single().ProviderProfilesJson = null; break;
+            case "disabled": config.Value.Enabled = false; break;
+            case "inactive": db.Users.Single().IsActive = false; break;
+            case "person": db.Persons.Single().IsDeleted = true; break;
+        }
+        await db.SaveChangesAsync();
+        var before = db.Persons.Single().ProviderProfilesJson;
+        var calls = handler.CallCount;
+        db.ChangeTracker.Clear();
+        // Reuse the service: its ordinary request cache must never bypass preview freshness.
+        var result = await service.ReadSnapshotAsync(user, "source");
+        Assert.Equal(expected, result.Status);
+        Assert.Equal(calls, handler.CallCount);
+        Assert.Empty(db.ChangeTracker.Entries());
+        Assert.Equal(before, (await db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+        if (expected == "confirmed")
+        {
+            Assert.False(result.Properties["flag"].GetBoolean());
+            Assert.NotNull(result.ConfirmedAt);
+            Assert.NotNull(result.ExpiresAt);
+        }
+        else Assert.Empty(result.Properties);
+    }
+
     private static ApplicationDbContext Context() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
     private static async Task<ApplicationUser> SeedAsync(ApplicationDbContext db)

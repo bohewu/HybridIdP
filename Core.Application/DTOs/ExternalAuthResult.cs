@@ -15,6 +15,13 @@ public class ExternalAuthResult
     /// Examples: AD username, Google user ID, Facebook user ID
     /// </summary>
     public string ProviderKey { get; set; } = string.Empty;
+
+    /// <summary>
+    /// Canonical account from validated, assured credential proof. Naming hint for
+    /// a new isolated account only; never an identity key or an account-linking signal.
+    /// Browser/social registration leaves this null.
+    /// </summary>
+    public string? AssuredCanonicalAccount { get; set; }
     
     /// <summary>
     /// Email (primarily used to determine if it's the same Person)

@@ -63,6 +63,11 @@ When you write `Permissions.Clients.READ`, it evaluates to `undefined` which nev
 - `Permissions.Clients.Update` → `'clients.update'`
 - `Permissions.Clients.Delete` → `'clients.delete'`
 
+These permissions authorize the human/admin caller managing clients. They are
+separate from an OAuth application's endpoint, grant, response-type and scope
+permissions. See [client settings and protocol permissions](OAUTH_FLOWS.md#client-settings-and-protocol-permissions)
+for public/confidential, PKCE, Basic authentication and authorization-code setup.
+
 In the client editor, allowed scopes and Required are separate settings.
 Required means that users cannot deselect a scope **when the client actually
 requests it**; it does not add scopes to requests, grants or existing tokens.
@@ -77,6 +82,24 @@ it, then obtain consent under its configured policy and fresh tokens. Marking
 also do not replace API resource usage approval. See
 [OAuth consent and upgrade guidance](OAUTH_FLOWS.md#requested-scopes-required-and-consent)
 for grant reuse, refresh, older registrations and revocation behavior.
+
+### Claims preview
+
+`Permissions.Claims.Preview` resolves to `claims.preview`. This dedicated
+permission protects both the application-cookie Razor page `/Admin/ClaimsPreview`
+and `/api/admin/claims-preview`, including its bounded client/account/scope
+lookups. The navigation entry uses the same permission. No unrelated client,
+account or claim-management permission is required for these preview lookups.
+The Admin permission registry includes it; ApplicationManager is not granted it
+automatically. Ordinary OAuth bearer tokens cannot authorize the preview.
+
+POST requires antiforgery and returns no-store typed JSON, never a token.
+The selected scopes are hypothetical and still subject to current client and
+resource usage checks. Preview does not create consent or authorization and
+does not authenticate the selected account. `ClaimsPreviewed` records the actor,
+target account, client ID, scope/source counts and hypothetical flag without
+claim values. Profile data comes only from eligible confirmed cached snapshots;
+no refresh or snapshot write is performed.
 
 ### Scopes
 - `Permissions.Scopes.Read` → `'scopes.read'`

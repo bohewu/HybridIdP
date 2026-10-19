@@ -68,6 +68,24 @@ describe('ChangePasswordForm', () => {
     expect(wrapper.text()).toContain('profile.changePassword.passwordMismatch')
   })
 
+  it('keeps managed-only accounts without a local password out of the local password form', async () => {
+    fetch.mockResolvedValueOnce(response({}))
+    const wrapper = await render()
+    await wrapper.setProps({
+      hasLocalPassword: false,
+      managedCredentials: [{ loginProvider: 'example.organization', isLegacy: false }],
+      externalLogins: []
+    })
+
+    expect(wrapper.get('[data-testid="managed-password-guidance"]').text()).toContain('profile.managedCredentials.passwordGuidance')
+    expect(wrapper.find('form').exists()).toBe(false)
+    expect(passwordRequests()).toHaveLength(0)
+
+    await wrapper.setProps({ hasLocalPassword: true })
+    expect(wrapper.find('form').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="managed-password-guidance"]').exists()).toBe(false)
+  })
+
   it('blocks unsatisfied loaded requirements and enables a matching compliant password', async () => {
     fetch.mockResolvedValueOnce(response({ minPasswordLength: 12, requireDigit: true }))
     const wrapper = await render()

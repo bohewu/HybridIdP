@@ -815,7 +815,7 @@ namespace Web.IdP.Services
             return new Microsoft.AspNetCore.Mvc.SignInResult(OpenIddictServerAspNetCoreDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
         }
 
-        private static IEnumerable<string> GetDestinations(Claim claim)
+        internal static IEnumerable<string> GetDestinations(Claim claim)
         {
             if (claim.Type == ClaimsEnrichmentService.ProfileClaimMarker) yield break;
             switch (claim.Type)

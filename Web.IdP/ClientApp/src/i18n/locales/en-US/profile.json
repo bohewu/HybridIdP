@@ -11,6 +11,13 @@
   "department": "Department",
   "jobTitle": "Job Title",
   "externalLogins": "External Logins",
+  "managedCredentials": {
+    "title": "Organization Account",
+    "description": "This account is managed by your organization.",
+    "managed": "Organization-managed sign-in source",
+    "legacy": "Historical account binding retained for compatibility",
+    "passwordGuidance": "This account has no local password. Follow your organization's instructions to manage your sign-in credentials."
+  },
   "edit": {
     "title": "Edit Profile",
     "phoneNumber": "Phone Number",
@@ -29,7 +36,8 @@
     "email": "Email",
     "accountDetails": "Account Details",
     "personalDetails": "Personal Details",
-    "fullName": "Full Name",
+    "fullName": "Name",
+    "notProvided": "Not provided",
     "identityType": "Identity Document",
     "emailVerified": "Email Verified",
     "identityVerified": "Identity Verified",
@@ -90,7 +98,8 @@
     "mfaEnabled": "Two-step verification is enabled",
     "mfaNotEnabled": "Two-step verification is not enabled - Set up now for better security",
     "passwordSet": "Password is set",
-    "noPassword": "Using external login only (no local password)",
+    "passwordManaged": "Password is managed by your organization",
+    "noPassword": "No local password is set",
     "timeZones": {
       "Asia/Taipei": "Taipei (GMT+8)",
       "America/Los_Angeles": "Los Angeles (PST)",

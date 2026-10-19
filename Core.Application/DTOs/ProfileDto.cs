@@ -24,6 +24,9 @@ public class ProfileDto
     
     // External logins (read-only)
     public List<ExternalLoginDto> ExternalLogins { get; set; } = new();
+
+    // Organization credentials are read-only and cannot be removed through self-service.
+    public List<ManagedCredentialDto> ManagedCredentials { get; set; } = new();
     
     // Providers available for linking
     public List<AvailableProviderDto> AvailableProviders { get; set; } = new();
@@ -65,6 +68,12 @@ public class ExternalLoginDto
     public string LoginProvider { get; set; } = string.Empty;
     public string ProviderKey { get; set; } = string.Empty;
     public string? ProviderDisplayName { get; set; }
+}
+
+public class ManagedCredentialDto
+{
+    public string LoginProvider { get; set; } = string.Empty;
+    public bool IsLegacy { get; set; }
 }
 
 /// <summary>

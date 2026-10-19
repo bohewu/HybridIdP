@@ -108,7 +108,8 @@
     "AdminRecoveryAddressReplaced": "管理員已替換復原地址",
     "AdminMigrationOtpResent": "管理員已重新寄送密碼移轉驗證碼",
     "AdminResetApprovalIssued": "已核發重設核准",
-    "AdminResetApprovalConsumed": "重設核准已使用"
+    "AdminResetApprovalConsumed": "重設核准已使用",
+    "ClaimsPreviewed": "已預覽宣告"
   },
   "recovery": {
     "recordedOutcome": "已記錄"

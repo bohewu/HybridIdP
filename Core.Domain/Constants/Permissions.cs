@@ -68,6 +68,7 @@ public static class Permissions
     public static class Claims
     {
         public const string Read = "claims.read";
+        public const string Preview = "claims.preview";
         public const string Create = "claims.create";
         public const string Update = "claims.update";
         public const string Delete = "claims.delete";
@@ -121,7 +122,7 @@ public static class Permissions
             ApiResources.Read, ApiResources.Create, ApiResources.Update, ApiResources.Delete,
             Users.Read, Users.Create, Users.Update, Users.Delete, Users.Impersonate, Users.ResetMfa,
             Roles.Read, Roles.Create, Roles.Update, Roles.Delete,
-            Claims.Read, Claims.Create, Claims.Update, Claims.Delete,
+            Claims.Read, Claims.Create, Claims.Update, Claims.Delete, Claims.Preview,
             Persons.Read, Persons.Create, Persons.Update, Persons.Delete,
             Audit.Read,
             Monitoring.Read,

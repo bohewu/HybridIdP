@@ -25,7 +25,9 @@ ownership requires full Admin approval; no legacy permission is auto-approved.
 **Grant Type:** `authorization_code`
 **Response Type:** `code`
 
-The most secure flow for user-centric applications. Requires PKCE (Proof Key for Code Exchange).
+The recommended flow for user-centric applications. Public clients require PKCE
+(Proof Key for Code Exchange); confidential clients have a per-client requirement
+setting as described below.
 1. Client redirects user to `/connect/authorize`.
 2. User authenticates and consents.
 3. Code is returned to `redirect_uri`.
@@ -78,6 +80,76 @@ migration eligibility, scope permissions and API usage approval checks.
 
 - **Policy:** Rolling refresh tokens (new RT issued with every use).
 - **Lifetime:** Configurable (default 14 days).
+
+## Client settings and protocol permissions
+
+The client editor selects `public` or `confidential` when creating a client.
+Public clients (for example a browser SPA) cannot keep a client secret; their
+PKCE requirement is always enabled. Confidential clients (for example a server
+web application that securely holds its secret) expose a **Require PKCE**
+checkbox. New confidential clients default to requiring PKCE; an update omitting
+that field preserves their existing requirement. Native applications must be
+public. Application type `web` alone does not mean confidential.
+
+The checkbox persists OpenIddict's `ProofKeyForCodeExchange` requirement. It
+does not select a challenge algorithm or enforce S256-only. Configure the
+downstream OAuth client to send `code_challenge_method=S256`, its derived
+`code_challenge`, and the matching `code_verifier` at code redemption. The admin
+authorization URL helper generates S256 requests. There is no per-client
+challenge-method selector in the current editor or DTO.
+
+`client_secret_basic` authenticates a confidential client at `/connect/token`
+using HTTP Basic over HTTPS. Configure that method in the downstream client
+library and keep its registered secret on the server. PKCE is an additional
+code-redemption check, not a replacement for confidential-client authentication.
+There is no current per-client token authentication method selector or setting
+that restricts a client to Basic only. A registration with `type=public` and
+`clientSecret=null` has no confidential secret to use for Basic. Changing the
+downstream method alone cannot convert that registration; any migration must
+be deliberate. The editor does not expose client-type changes on existing
+registrations.
+
+| Setting | Server web application | Browser SPA |
+|---------|------------------------|-------------|
+| Registration type | `confidential`, application type `web` | `public`, application type `web` |
+| Secret | Generated on creation; store securely on the backend | No secret |
+| Require PKCE | Checked | Always required |
+| Downstream PKCE method | `S256` | `S256` |
+| Downstream token authentication | `client_secret_basic` | No client authentication (`none` in client libraries); send `client_id` |
+| Authorization request | `response_type=code` | `response_type=code` |
+| Client permissions | `ept:authorization`, `ept:token`, `gt:authorization_code` | Same |
+| Redirect URI | Register the exact server callback URI | Register the exact SPA callback URI |
+| Identity scopes | Allow and request `openid profile`; add `email` if needed | Same |
+
+On create, and on update when permissions are supplied, ClientService adds
+`OpenIddictConstants.Permissions.ResponseTypes.Code` when the authorization-code
+grant permission is present. The editor has endpoint/grant permission checkboxes
+and allowed scopes, but no separate response-type selector. Global server flow
+enablement is still required; a checkbox in the generic permission list is not
+proof that its flow is enabled. The current server enables authorization code
+and does not enable the removed OAuth Implicit flow.
+
+Endpoint, grant, response-type and scope permissions govern the OAuth application.
+They do not grant the operator's `clients.create`/`clients.update` RBAC permissions,
+end-user consent, or API resource usage approval. `ept:token` alone does not allow
+every grant or scope. Allowing `profile` does not request or grant it; the
+downstream application must request it and obtain approval under the consent
+policy. Add `gt:refresh_token` and request `offline_access` only if refresh is
+needed; add logout permission and an exact post-logout URI only if using logout.
+
+A read-only local discovery snapshot on 2026-10-19 advertised response type
+`code`, PKCE methods `plain` and `S256`, and token authentication methods
+`client_secret_post`, `private_key_jwt` and `client_secret_basic`. This is local
+advertisement evidence, not proof of every method's successful/rejected protocol
+exchange, client credential provisioning, or deployed configuration. In
+particular it does not establish S256-only or Basic-only enforcement, and does
+not imply that public clients require a secret because `none` is absent from
+that advertised list.
+
+The client-type and Basic distinction follows
+[RFC 6749 sections 2.1 and 2.3.1](https://www.rfc-editor.org/rfc/rfc6749#section-2.1).
+The challenge/verifier relationship follows
+[RFC 7636 section 4](https://www.rfc-editor.org/rfc/rfc7636#section-4).
 
 ## Requested scopes, Required and consent
 

@@ -11,6 +11,13 @@
   "department": "部門",
   "jobTitle": "職稱",
   "externalLogins": "外部登入",
+  "managedCredentials": {
+    "title": "組織帳號",
+    "description": "此帳號由組織管理",
+    "managed": "由組織管理的登入來源",
+    "legacy": "為相容性保留的歷史帳號繫結",
+    "passwordGuidance": "此帳號沒有本機密碼。請依照組織的指示管理登入憑證。"
+  },
   "edit": {
     "title": "編輯個人檔案",
     "phoneNumber": "電話號碼",
@@ -29,7 +36,8 @@
     "email": "電子郵件",
     "accountDetails": "帳戶詳情",
     "personalDetails": "個人詳細資料",
-    "fullName": "全名",
+    "fullName": "姓名",
+    "notProvided": "未提供",
     "identityType": "身分證件類型",
     "emailVerified": "Email 已驗證",
     "identityVerified": "身分已驗證",
@@ -91,7 +99,8 @@
     "mfaEnabled": "已啟用兩步驟驗證",
     "mfaNotEnabled": "尚未啟用兩步驟驗證 - 立即設定以提升帳戶安全",
     "passwordSet": "已設定密碼",
-    "noPassword": "僅使用外部登入（無本機密碼）",
+    "passwordManaged": "密碼由組織管理",
+    "noPassword": "未設定本機密碼",
     "timeZones": {
       "Asia/Taipei": "台北 (GMT+8)",
       "America/Los_Angeles": "洛杉磯 (PST)",

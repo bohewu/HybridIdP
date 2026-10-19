@@ -51,7 +51,7 @@ public class UserInfoService : IUserInfoService
         }
 
         // Query scope-to-claims mappings from database
-        var scopeClaims = await _db.ScopeClaims
+        var scopeClaims = await _db.ScopeClaims.AsNoTracking()
             .Where(sc => grantedScopes.Contains(sc.ScopeName))
             .Include(sc => sc.ClaimDefinition)
             .ToListAsync(cancellationToken);

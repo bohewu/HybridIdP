@@ -224,4 +224,44 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
         _userManagerMock.Setup(manager => manager.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
     }
 
+    [Theory]
+    [InlineData("Account", "Person", "Managed Name", "Account")]
+    [InlineData(null, "Person", "Managed Name", "Person")]
+    [InlineData(null, null, "Managed Name", "Managed Name")]
+    [InlineData(null, null, null, "provider_subject")]
+    [InlineData("Account", "Person", "example.organization", "Account")]
+    [InlineData(null, "Person", "example.organization", "Person")]
+    [InlineData(null, null, "example.organization", "provider_subject")]
+    public async Task CreateAsync_ShouldUseManagedDisplayFallbackWithoutChangingIdentifiers(
+        string? accountName, string? personName, string? managedName, string expected)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), FirstName = personName };
+        var userId = Guid.NewGuid();
+        var user = new ApplicationUser { Id = userId, UserName = "provider_subject",
+            Email = "contact@example.test", FirstName = accountName, PersonId = person.Id, Person = person };
+        SetupPrincipalGeneration(user);
+        var logins = new List<UserLoginInfo>
+        {
+            new("example.organization", "subject", managedName),
+            new("Google", "social-subject", "Social Name"),
+            new("Legacy", "subject", "Legacy Name")
+        };
+        var originalLogins = logins.Select(login => (login.LoginProvider, login.ProviderKey, login.ProviderDisplayName)).ToArray();
+        _userManagerMock.Setup(manager => manager.GetLoginsAsync(user)).ReturnsAsync(logins);
+        var factory = new MyUserClaimsPrincipalFactory(_userManagerMock.Object, _roleManagerMock.Object,
+            _optionsAccessorMock.Object, context, _auditServiceMock.Object, _httpContextAccessorMock.Object,
+            _loggerMock.Object, Options.Create(new global::Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
+        var principal = await factory.CreateAsync(user);
+        Assert.Equal(expected, principal.Identity!.Name);
+        Assert.Equal(userId.ToString(), principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        Assert.Equal(user.Email, principal.FindFirst(AuthConstants.Claims.PreferredUsername)!.Value);
+        Assert.Equal(userId, user.Id);
+        Assert.Equal("provider_subject", user.UserName);
+        Assert.Equal(originalLogins, logins.Select(login => (login.LoginProvider, login.ProviderKey, login.ProviderDisplayName)).ToArray());
+        _userManagerMock.Verify(manager => manager.UpdateAsync(user), Times.Never);
+        _userManagerMock.Verify(manager => manager.AddLoginAsync(user, It.IsAny<UserLoginInfo>()), Times.Never);
+        _userManagerMock.Verify(manager => manager.RemoveLoginAsync(user, It.IsAny<string>(), It.IsAny<string>()), Times.Never);
+    }
+
 }
