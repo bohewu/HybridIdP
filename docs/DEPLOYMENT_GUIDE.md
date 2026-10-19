@@ -849,6 +849,25 @@ Use this order in an approved maintenance window:
    `TrustedProviderNamespace` must not be `Legacy`. Old `LegacyAuth__*` entries
    may remain for application rollback, but the new image ignores them.
 
+   Email confirmation has its own default-off source policy. A valid Proof
+   Email is saved for new accounts and fills missing Email on the original
+   account regardless of this policy. To restore trusted organizational Email
+   behavior when the verified selected authority is exactly `ncut.authproxy`,
+   add only this setting to the existing `.env`:
+
+   ```dotenv
+   ProviderProof__TrustedEmailProviderNamespaces__0=ncut.authproxy
+   ```
+
+   This requires `ProviderProof__TrustedProviderNamespace=ncut.authproxy` and
+   explicit Email assurance in a valid Proof response. Namespace matching is
+   exact and case-sensitive. Omit the list to leave new confirmation off;
+   existing confirmations are not revoked. Email never links identity or
+   retargets an enrolled Email OTP factor. The Compose modes pass the selected
+   env file to the application through `env_file`, including indexed entries;
+   direct host deployments must expose these keys as application environment
+   variables. Do not regenerate the existing `.env` with the setup wizard.
+
    Retain database strings, issuer/public authority, certificate passwords,
    SMTP and Fido2 domain/origins. Current Nginx modes additionally require a
    nonempty `Proxy__KnownProxies` containing the actual trusted proxy/gateway

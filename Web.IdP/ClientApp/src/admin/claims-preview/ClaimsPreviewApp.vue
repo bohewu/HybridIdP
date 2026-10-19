@@ -187,7 +187,6 @@ onBeforeUnmount(() => { clientRequest++; accountRequest++; scopeRequest++; previ
         <dl v-for="source in result.sources" :key="source.source" class="text-sm border-l-2 border-gray-300 pl-4 space-y-1 break-words">
           <dt class="font-medium text-gray-900">{{ source.source }}: {{ message('sourceStatuses', source.status) }}</dt>
           <dd class="text-gray-600">{{ t('claims-preview.confirmedAt') }}: {{ source.confirmedAt || t('claims-preview.unknown') }}</dd>
-          <dd class="text-gray-600">{{ t('claims-preview.expiresAt') }}: {{ source.expiresAt || t('claims-preview.unknown') }}</dd>
         </dl>
       </div>
     </section>

@@ -40,6 +40,8 @@ public class JitProvisioningService : IJitProvisioningService
         var hasVerifiedEmail =
             externalAuth.EmailVerified &&
             !string.IsNullOrWhiteSpace(externalAuth.Email);
+        var hasAssuredContactEmail = externalAuth.AssuredCanonicalAccount is not null &&
+            !string.IsNullOrWhiteSpace(externalAuth.Email);
 
         // Step 1: Check if this external login already exists
         var existingUser = await _userManager.FindByLoginAsync(
@@ -55,7 +57,10 @@ public class JitProvisioningService : IJitProvisioningService
             }
 
             // Already exists, update ApplicationUser information
-            if (hasVerifiedEmail && !existingUser.EmailMfaEnabled)
+            // A verified provider address retains its assurance. A display-only
+            // contact may only fill a missing address; neither retargets Email MFA.
+            if ((hasVerifiedEmail || hasAssuredContactEmail && string.IsNullOrWhiteSpace(existingUser.Email)) &&
+                !existingUser.EmailMfaEnabled)
             {
                 if (!string.Equals(existingUser.Email, externalAuth.Email, StringComparison.Ordinal))
                 {
@@ -64,7 +69,7 @@ public class JitProvisioningService : IJitProvisioningService
                     existingUser.EmailMfaVerificationAttempts = 0;
                 }
                 existingUser.Email = externalAuth.Email;
-                existingUser.EmailConfirmed = true;
+                existingUser.EmailConfirmed = hasVerifiedEmail;
             }
             existingUser.FirstName = externalAuth.FirstName ?? existingUser.FirstName;
             existingUser.LastName = externalAuth.LastName ?? existingUser.LastName;
@@ -91,7 +96,7 @@ public class JitProvisioningService : IJitProvisioningService
                 if (existingPerson != null)
                 {
                     // Update Person fields
-                    if (hasVerifiedEmail)
+                    if (hasVerifiedEmail || hasAssuredContactEmail && string.IsNullOrWhiteSpace(existingPerson.Email))
                     {
                         existingPerson.Email = externalAuth.Email;
                     }
@@ -305,6 +310,7 @@ public class JitProvisioningService : IJitProvisioningService
         ExternalAuthResult externalAuth, CancellationToken cancellationToken)
     {
         var username = externalAuth.AssuredCanonicalAccount!;
+        var contactEmail = string.IsNullOrWhiteSpace(externalAuth.Email) ? null : externalAuth.Email;
         var allowedCharacters = _userManager.Options.User.AllowedUserNameCharacters;
         if (string.IsNullOrWhiteSpace(username) || username.Length > 256 ||
             (!string.IsNullOrEmpty(allowedCharacters) && username.Any(c => !allowedCharacters.Contains(c))) ||
@@ -319,13 +325,14 @@ public class JitProvisioningService : IJitProvisioningService
             ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
         var person = new Person
         {
-            Id = Guid.NewGuid(), FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
+            Id = Guid.NewGuid(), Email = contactEmail, FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
             Department = externalAuth.Department, JobTitle = externalAuth.JobTitle,
             EmployeeId = externalAuth.EmployeeId, CreatedAt = DateTime.UtcNow
         };
         var user = new ApplicationUser
         {
-            Id = Guid.NewGuid(), UserName = username, PersonId = person.Id,
+            Id = Guid.NewGuid(), UserName = username, Email = contactEmail,
+            EmailConfirmed = externalAuth.EmailVerified && contactEmail is not null, PersonId = person.Id,
             FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
             Department = externalAuth.Department, JobTitle = externalAuth.JobTitle,
             EmployeeId = externalAuth.EmployeeId, IsActive = true, CreatedAt = DateTime.UtcNow

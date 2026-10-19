@@ -98,8 +98,11 @@ The selected scopes are hypothetical and still subject to current client and
 resource usage checks. Preview does not create consent or authorization and
 does not authenticate the selected account. `ClaimsPreviewed` records the actor,
 target account, client ID, scope/source counts and hypothetical flag without
-claim values. Profile data comes only from eligible confirmed cached snapshots;
-no refresh or snapshot write is performed.
+claim values; the read mode is recorded as `live_read_only`. Profile data is read
+from enabled upstream sources through existing eligible identity bindings and
+approved property schemas, without a prior user login. Preview never saves a
+snapshot or changes its confirmation, and never falls back to stale values on
+upstream failure. Normal login refresh and token-issuance behavior remain unchanged.
 
 ### Scopes
 - `Permissions.Scopes.Read` → `'scopes.read'`

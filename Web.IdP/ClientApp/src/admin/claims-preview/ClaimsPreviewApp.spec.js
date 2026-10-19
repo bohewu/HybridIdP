@@ -18,7 +18,7 @@ const payload = () => ({ idToken: { sub: 'account-1', enabled: false, categories
     { claimType: 'amr', destination: 'idToken', status: 'unknown', code: 'authentication_not_performed' },
     { claimType: 'name', destination: 'idToken', status: 'omitted', code: 'scope_not_selected' },
     { claimType: 'jti', destination: 'accessToken', status: 'unknown', code: 'issuance_not_performed' }
-  ], sources: [{ source: 'example', status: 'expired', confirmedAt: '2026-10-18T00:00:00Z', expiresAt: '2026-10-19T00:00:00Z' }] })
+  ], sources: [{ source: 'example', status: 'confirmed', confirmedAt: '2026-10-19T00:00:00Z', expiresAt: null }] })
 function render(locale = 'en-US') {
   return mount(ClaimsPreviewApp, { global: { plugins: [createI18n({ legacy: false, locale,
     messages: { 'en-US': { 'claims-preview': en }, 'zh-TW': { 'claims-preview': zh } } })] } })
@@ -51,8 +51,10 @@ describe('Claims preview', () => {
     expect(json.categories).toEqual(['staff', 'reader'])
     expect(json.empty).toEqual([])
     expect(json).not.toHaveProperty('missing')
-    expect(wrapper.text()).toContain((locale === 'en-US' ? en : zh).sourceStatuses.expired)
-    expect(wrapper.text()).toContain('2026-10-18T00:00:00Z')
+    expect(wrapper.text()).toContain((locale === 'en-US' ? en : zh).sourceStatuses.confirmed)
+    expect(wrapper.text()).toContain((locale === 'en-US' ? en : zh).sourcesHelp)
+    expect(wrapper.get('dl').text()).not.toContain((locale === 'en-US' ? en : zh).expiresAt)
+    expect(wrapper.text()).toContain('2026-10-19T00:00:00Z')
     expect(wrapper.text()).toContain((locale === 'en-US' ? en : zh).codes.authentication_not_performed)
     await wrapper.get('#tab-accessToken').trigger('click')
     expect(JSON.parse(wrapper.get('pre').text())).toEqual(payload().accessToken)

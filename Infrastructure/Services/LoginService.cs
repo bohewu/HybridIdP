@@ -309,7 +309,8 @@ public partial class LoginService : ILoginService
             if (!eligibility.IsSuccess) return eligibility;
         }
 
-        // Mailbox ownership is separate from display-profile assurance. Never auto-link by this email.
+        // Store contract-valid contact email independently of local source trust.
+        // Only an explicitly trusted source plus Email assurance may confirm it.
         var profile = proof.Profile;
         ApplicationUser provisioned;
         try
@@ -318,6 +319,10 @@ public partial class LoginService : ILoginService
             {
                 Provider = proof.ProviderNamespace!, ProviderKey = proof.StableSubject!,
                 AssuredCanonicalAccount = proof.CanonicalAccount,
+                Email = profile?.Email,
+                EmailVerified = _proofOptions.TrustedEmailProviderNamespaces.Contains(proof.ProviderNamespace!, StringComparer.Ordinal) &&
+                    profile?.AssuredFields.Contains(AssuredProfileField.Email) == true &&
+                    !string.IsNullOrWhiteSpace(profile.Email),
                 DisplayName = profile?.DisplayName, FirstName = profile?.GivenName, LastName = profile?.Surname,
                 Department = profile?.Department, JobTitle = profile?.Title, EmployeeId = profile?.EmployeeId
             }, cancellationToken);

@@ -16,16 +16,41 @@ endpoint and service secret to select API credential proof. Actual local-passwor
 accounts use local authentication. Upstream-linked accounts without a local
 password use the configured Proof authority and require the exact existing
 provider/key; denial never falls back to another credential authority. Successful
-Proof may provision a new durable account/Person link. An assured display email
-is not mailbox-ownership evidence and cannot silently link an existing account.
+Proof may provision a new durable account/Person link. Contract-valid Email is
+saved independently of source trust. New email confirmation requires both
+explicit `AssuredFields.Email` and an exact entry in
+`ProviderProof:TrustedEmailProviderNamespaces`, which defaults to empty.
+Selecting `TrustedProviderNamespace` alone does not trust its Email for local
+confirmation. Email cannot silently link an existing account.
 
 For a new Proof account, the assured `canonicalAccount` is used as the local
 username only when it meets the local username length/character policy and is
 unoccupied. An unusable or occupied name denies provisioning; it never selects
 or links the account holding that name. The exact namespace/subject tuple stays
 the identity key. Subsequent Proof does not rename an existing account, including
-historical namespace-prefixed names. Display-profile email remains separate from
-mailbox ownership.
+historical namespace-prefixed names. Validated Proof Email is retained on a new
+account and its Person without email matching or automatic linking. Repeat Proof
+login can repair missing email values on the original account in either trust
+state. With trust off, existing nonempty addresses and confirmations are retained;
+no new confirmation is inferred. An enrolled Email OTP factor is not retargeted
+by an upstream address change. `AssuredFields.Email` is required contract evidence,
+separate from local authority to set `EmailConfirmed`: unassured nonempty Proof
+fields are denied even when source trust is on.
+
+The email trust list compares namespaces exactly, without trimming, case folding,
+or wildcards. To restore trusted organizational Email behavior for a deployment
+that has independently selected and verified `ncut.authproxy`, add this to its
+existing `.env` (keep its current Proof endpoint, secret and identity bindings):
+
+```dotenv
+ProviderProof__TrustedEmailProviderNamespaces__0=ncut.authproxy
+```
+
+The Proof authority must also be configured as
+`ProviderProof__TrustedProviderNamespace=ncut.authproxy`. This is a deployment
+choice; no organization-specific source is built into the application. The
+setting confirms only explicitly assured Email during valid Proof login. It
+does not enroll MFA, bypass local MFA or enable recovery-address trust.
 
 Explicit administrative deletion of an eligible ordinary account retires its
 username and email lookup identifiers and invalidates its security stamp before

@@ -268,6 +268,99 @@ public sealed class ProviderProfileTests
         else Assert.Empty(result.Properties);
     }
 
+    [Theory]
+    [InlineData("missing", "snapshot_missing")]
+    [InlineData("expired", "expired")]
+    [InlineData("invalid", "snapshot_invalid")]
+    public async Task ReadForPreviewAsync_ShouldFetchWithoutLoginAndLeaveStoredSnapshotUnchanged(string scenario, string storedStatus)
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        var clock = new TestClock();
+        var source = Source();
+        source.AllowedProperties["divis"] = "String";
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success(
+            "{\"flag\":true,\"code\":\"current\",\"divis\":\"4\",\"unapproved\":\"ignored\"}"))));
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)),
+            Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = source } }), clock);
+        if (scenario == "expired")
+        {
+            await service.GetPropertiesAsync(user, "source");
+            clock.Now += TimeSpan.FromMinutes(10);
+        }
+        if (scenario == "invalid")
+        {
+            db.Persons.Single().ProviderProfilesJson = "not-json";
+            await db.SaveChangesAsync();
+        }
+        var before = (await db.Persons.SingleAsync()).ProviderProfilesJson;
+        var calls = handler.CallCount;
+        db.ChangeTracker.Clear();
+
+        var result = await service.ReadForPreviewAsync(user, "source");
+
+        Assert.Equal("confirmed", result.Status);
+        Assert.Equal("4", result.Properties["divis"].GetString());
+        Assert.False(result.Properties.ContainsKey("unapproved"));
+        Assert.Equal(clock.Now, result.ConfirmedAt);
+        Assert.Null(result.ExpiresAt);
+        Assert.Equal(calls + 1, handler.CallCount);
+        Assert.Empty(db.ChangeTracker.Entries());
+        Assert.Equal(before, (await db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+        Assert.Equal(storedStatus, (await service.ReadSnapshotAsync(user, "source")).Status);
+        Assert.Equal(calls + 1, handler.CallCount);
+    }
+
+    [Fact]
+    public async Task ReadForPreviewAsync_ShouldNotChangeIssuanceCacheAndPreserveNormalLoginRefresh()
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        var code = "login-value";
+        var status = HttpStatusCode.OK;
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success(
+            JsonSerializer.Serialize(new { code, flag = true })), status)));
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)),
+            Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = Source() } }));
+        await service.RefreshAfterLoginAsync(user, "provider", "subject");
+        var stored = (await db.Persons.SingleAsync()).ProviderProfilesJson;
+        code = "preview-value";
+
+        Assert.Equal("preview-value", (await service.ReadForPreviewAsync(user, "source")).Properties["code"].GetString());
+        Assert.Equal(stored, (await db.Persons.SingleAsync()).ProviderProfilesJson);
+        Assert.Equal("login-value", (await service.GetPropertiesAsync(user, "source"))["code"].GetString());
+        status = HttpStatusCode.ServiceUnavailable;
+        var failed = await service.ReadForPreviewAsync(user, "source");
+        Assert.Equal("unavailable", failed.Status);
+        Assert.Empty(failed.Properties);
+        Assert.Equal(stored, (await db.Persons.SingleAsync()).ProviderProfilesJson);
+
+        status = HttpStatusCode.OK;
+        code = "next-login-value";
+        await service.RefreshAfterLoginAsync(user, "provider", "subject");
+        Assert.Equal("next-login-value", (await service.ReadSnapshotAsync(user, "source")).Properties["code"].GetString());
+        Assert.Equal("next-login-value", (await service.GetPropertiesAsync(user, "source"))["code"].GetString());
+    }
+
+    [Fact]
+    public async Task ReadForPreviewAsync_ShouldDenyBindingChangeDuringUpstreamReadWithoutSaving()
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        var handler = new UpstreamStubHandler(async (_, _) =>
+        {
+            db.UserLogins.RemoveRange(db.UserLogins);
+            await db.SaveChangesAsync();
+            return Response(Success("{\"flag\":true}"));
+        });
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)),
+            Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = Source() } }));
+        var result = await service.ReadForPreviewAsync(user, "source");
+        Assert.Equal("account_ineligible", result.Status);
+        Assert.Empty(result.Properties);
+        Assert.Null((await db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+    }
+
     private static ApplicationDbContext Context() => new(new DbContextOptionsBuilder<ApplicationDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
     private static async Task<ApplicationUser> SeedAsync(ApplicationDbContext db)

@@ -82,6 +82,17 @@ profile value must name its corresponding field in `assuredFields`; unassured
 profile values invalidate the result. The only current required action is
 `EmailOtp`.
 
+Profile assurance is contract evidence, not automatic local Email confirmation.
+Independent API login stores valid Email on new accounts and repairs missing
+Email on the original durable account in either trust state. Setting
+`EmailConfirmed` requires explicit Email assurance AND an exact namespace entry
+in `ProviderProof:TrustedEmailProviderNamespaces` (empty/default-off). Namespace
+comparison is ordinal, without case folding, trimming or wildcards. Selecting
+the credential authority alone does not enable Email trust. Existing confirmed
+addresses are preserved when trust is off; enrolled Email OTP is never retargeted.
+Email is not used to infer or link a Proof identity. Unassured nonempty profile
+fields still invalidate the result regardless of local trust configuration.
+
 ## Failure, timeout and compatibility behavior
 
 HybridIdP accepts any HTTP `2xx` response that deserializes to a valid result.
@@ -112,6 +123,8 @@ ProviderProof__Endpoint=https://provider.example.org/api/authenticate/login
 ProviderProof__SharedSecret=<PROVISION_THROUGH_SECRET_CONFIGURATION>
 ProviderProof__AllowPrivateNetworkHttp=false
 ProviderProof__Timeout=00:00:05
+# Optional local Email confirmation trust; omit to keep it off.
+# ProviderProof__TrustedEmailProviderNamespaces__0=example.provider
 ```
 
 A third-party producer must authenticate the caller, bind the response to the
