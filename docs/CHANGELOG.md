@@ -4,8 +4,53 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
-Planned version: 1.6.2. This entry does not establish tag, image or release
-publication. See the [release readiness notes](./RELEASE_READINESS.md).
+No unreleased changes recorded.
+
+## [1.7.0] - 2026-10-19
+
+See the [release readiness notes](./RELEASE_READINESS.md) for upgrade and
+verification boundaries. Release publication and production deployment are
+separate operations.
+
+### Added
+
+- Added administrative Claims preview for a client, account and hypothetical
+  allowed scopes, with separate ID Token, Access Token and UserInfo payloads
+  and claim inclusion, omission and unknown reasons. Preview requires
+  `claims.preview`, preserves existing state and records bounded audit metadata;
+  it does not authenticate, issue tokens or refresh Profile snapshots.
+- Added a guarded, operator-specific SQL Server cleanup script with preview,
+  exact database/count confirmation, dependency blockers and transactional apply.
+  It is a separate destructive data operation, never an automatic deployment step.
+
+### Fixed
+
+- Classified configured Proof and retained Legacy credentials as read-only
+  organization accounts, while keeping optional browser federation separate.
+  Trusted names are preferred for display without renaming existing accounts
+  or replacing their identity bindings, MFA, roles or grants.
+- Used the canonical upstream account name for new Proof users and denied
+  ambiguous name collisions. Ordinary administrative deletion retires local
+  identifiers and releases login bindings only after existing eligibility checks.
+- Corrected Profile's nested Person name binding; localized the label as
+  Name / 姓名 and empty values as Not provided / 未提供. Account display names
+  remain separate. Improved first-password-change placeholders and validation
+  summary visibility, Claims preview controls, search hints and tab spacing.
+- Documented current PKCE S256, code response and client-secret authentication
+  behavior without adding new per-client protocol switches.
+
+### Deployment and compatibility
+
+- No EF schema migrations or deployment-script changes were added after 1.6.2.
+  Preserve the existing `.env`, certificates, Data Protection keys and bindings.
+  Existing 1.6.2 deployments need no mandatory new setting.
+- ApplicationManager does not receive `claims.preview` automatically. Claims
+  preview remains protected by the dedicated administrative permission.
+- Cleanup must follow its own reviewed maintenance procedure after deploying
+  the corrected account flow. Existing account deletion is not required to
+  upgrade, and existing accounts are not automatically renamed or removed.
+
+## [1.6.2] - 2026-10-17
 
 ### Security and dependencies
 

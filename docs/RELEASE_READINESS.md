@@ -1,11 +1,66 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-17 for the planned 1.6.2 patch release. Publishing a release does not
+Updated on 2026-10-19 for the planned 1.7.0 release. Publishing a release does not
 establish production acceptance or deploy the image. The historical 1.6.0 upgrade
 requirements and evidence below remain applicable when upgrading from 1.5.x or
 1.4.x.
 
-## 1.6.2 preparation
+## 1.7.0 preparation
+
+Version metadata selects 1.7.0. This preparation does not create a release tag,
+publish an image or deploy a service. The release adds administrative Claims
+preview and includes the organization-account, provisioning, Profile and
+first-password-change fixes summarized in the [changelog](CHANGELOG.md).
+
+### Upgrade requirements
+
+No EF schema migrations or deployment-script changes were added after 1.6.2.
+A database already at the 1.6.x target needs no additional schema SQL solely
+for 1.7.0. Preserve the existing `.env`, certificates, Data Protection keys,
+accounts and identity bindings. Existing 1.6.2 deployments need no mandatory
+new setting; do not regenerate their configuration with the fresh-install wizard.
+
+Claims preview requires `claims.preview`, available through the Admin permission
+registry and not automatically granted to ApplicationManager. It uses confirmed
+cached Profile data and hypothetical allowed scopes; it neither issues tokens
+nor changes authentication, consent, grants or Profile snapshots. No external
+Profile source is called or refreshed by preview. Existing provider allowlists
+and optional feature switches remain deployment-controlled.
+
+The account fixes preserve existing users and exact provider/subject bindings.
+Existing generated usernames are not bulk-renamed. Account deletion or physical
+cleanup is not required to upgrade. The operator-specific
+[SQL Server cleanup procedure](../scripts/cleanup-provider-users-sqlserver.md)
+is a separate, destructive maintenance operation with backup, writer shutdown,
+preview and exact database/count confirmation. Deploy the corrected account
+flow before any separately approved cleanup; deployment never runs that SQL.
+
+### Security and verification boundaries
+
+On 2026-10-19, GitHub reported zero open Dependabot, main CodeQL and Secret
+scanning alerts. Product main `b29190304d1e169afe1019fc79f07491c98298f0`
+passed Actions, C#, JavaScript/TypeScript and Python CodeQL in
+[run 39226795283](https://github.com/bohewu/HybridIdP/actions/runs/39226795283).
+These checks precede this release-metadata preparation; recheck the final
+release commit after its PR is integrated. Previously documented dismissals,
+ExcelJS prebuilt-bundle limits and deferred dependency upgrades remain applicable.
+
+Independent scoped reviews and local API-backed browser checks cover the account
+and Profile changes. They are not final-image or production acceptance. The
+release-preparation image build and browser smoke use an isolated SQL Server,
+enabled Redis and the native login/MFA/TestClient flows. Retain the exact source
+boundary, local image ID, observed results and cleanup evidence outside Git;
+only an actually exercised image qualifies as image evidence. Local fixtures do
+not establish live AuthProxy, social federation, AD or production interoperability.
+
+Before publication, bind the final checks to the reviewed release commit,
+verify the published OCI metadata and record the immutable registry digest.
+Local image IDs are not registry digests. The existing deployment script accepts
+the approved tag or digest without regenerating `.env`; hosts still need the
+current deployment tools. Release/image publication and production deployment
+remain separate approved operations.
+
+## Historical 1.6.2 preparation
 
 Version metadata selects 1.6.2; no tag, release or image publication is implied.
 This patch includes the changes since 1.6.1: transitive dependency updates,
