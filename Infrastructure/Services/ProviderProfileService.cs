@@ -12,7 +12,7 @@ namespace Infrastructure.Services;
 
 public sealed class ProviderProfileService(
     IApplicationDbContext db, ProviderProfileClient client, IOptions<ProviderProfileOptions> options,
-    TimeProvider? timeProvider = null) : IProviderProfileService, IProviderProfileSnapshotReader
+    TimeProvider? timeProvider = null) : IProviderProfileService, IProviderProfileSnapshotReader, IProviderProfilePreviewReader
 {
     private readonly TimeProvider _clock = timeProvider ?? TimeProvider.System;
     private readonly Dictionary<(Guid User, string Source), IReadOnlyDictionary<string, JsonElement>> _requestValues = [];
@@ -47,8 +47,18 @@ public sealed class ProviderProfileService(
         return ResolveAsync(user, source, configured, false, null, cancellationToken, readOnly: true);
     }
 
+    public Task<ProviderProfileSnapshotResult> ReadForPreviewAsync(ApplicationUser user, string source,
+        CancellationToken cancellationToken = default)
+    {
+        if (!options.Value.Enabled) return Task.FromResult(new ProviderProfileSnapshotResult("disabled", Empty));
+        if (!options.Value.Sources.TryGetValue(source, out var configured))
+            return Task.FromResult(new ProviderProfileSnapshotResult("unconfigured", Empty));
+        return ResolveAsync(user, source, configured, true, null, cancellationToken, readOnly: true, preview: true);
+    }
+
     private async Task<ProviderProfileSnapshotResult> ResolveAsync(ApplicationUser user, string sourceName,
-        ProviderProfileSourceOptions source, bool force, string? loginSubject, CancellationToken cancellationToken, bool readOnly = false)
+        ProviderProfileSourceOptions source, bool force, string? loginSubject, CancellationToken cancellationToken,
+        bool readOnly = false, bool preview = false)
     {
         var currentUser = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
         if (currentUser is not { IsActive: true, IsDeleted: false, PersonId: { } personId }) return new("account_ineligible", Empty);
@@ -65,7 +75,7 @@ public sealed class ProviderProfileService(
 
         var linkIdentity = links[0];
         Dictionary<string, ProfileSnapshot> snapshots;
-        try { snapshots = JsonSerializer.Deserialize<Dictionary<string, ProfileSnapshot>>(person.ProviderProfilesJson ?? "{}") ?? []; }
+        try { snapshots = preview ? [] : JsonSerializer.Deserialize<Dictionary<string, ProfileSnapshot>>(person.ProviderProfilesJson ?? "{}") ?? []; }
         catch (JsonException) { return new("snapshot_invalid", Empty); }
         snapshots.TryGetValue(sourceName, out var snapshot);
         var now = _clock.GetUtcNow();
@@ -86,7 +96,7 @@ public sealed class ProviderProfileService(
             return new("confirmed", snapshot.Properties, confirmed, confirmed + options.Value.MaximumAge);
         }
 
-        if (readOnly)
+        if (readOnly && !preview)
             return new(snapshot is null ? "snapshot_missing" : !matching ? "configuration_changed" :
                 snapshot.ConfirmedAt is null ? "unconfirmed" : "expired", Empty,
                 matching ? snapshot!.ConfirmedAt : null,
@@ -112,6 +122,11 @@ public sealed class ProviderProfileService(
         var properties = result?.ExtraProperties.Where(p => source.AllowedProperties.TryGetValue(p.Key, out var type) &&
             ProviderProfileContract.IsValueOfType(p.Value, type))
             .ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
+        // Administrative preview uses fresh values only for this request. It never
+        // mutates the Person, the ordinary request cache or persisted confirmation.
+        if (preview)
+            return new(properties is null ? "unavailable" : "confirmed", properties is null ? Empty : properties,
+                properties is null ? null : _clock.GetUtcNow());
         snapshot = matching ? snapshot! : new ProfileSnapshot
         {
             AccountId = linkIdentity.Id, ProviderNamespace = source.ProviderNamespace,

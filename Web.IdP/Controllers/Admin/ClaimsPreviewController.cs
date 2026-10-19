@@ -25,7 +25,8 @@ public sealed class ClaimsPreviewController(IClaimsPreviewService preview, IAudi
             var result = await preview.PreviewAsync(request, cancellationToken);
             await audit.LogAdministrativeEventAsync(AuditEventTypes.ClaimsPreviewed, "User", result.UserId.ToString(),
                 JsonSerializer.Serialize(new { clientId = result.ClientId, scopeCount = result.Scopes.Length,
-                    hypotheticalScopes = true, sourceCount = result.Sources.Count }), cancellationToken);
+                    hypotheticalScopes = true, sourceCount = result.Sources.Count,
+                    profileReadMode = "live_read_only" }), cancellationToken);
             return Ok(result);
         }
         catch (ClaimsPreviewException error) { return BadRequest(new { code = error.Code }); }

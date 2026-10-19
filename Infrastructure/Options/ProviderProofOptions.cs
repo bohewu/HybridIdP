@@ -8,6 +8,9 @@ public sealed class ProviderProofOptions
 
     public bool Enabled { get; set; }
     public string? TrustedProviderNamespace { get; set; }
+    // Email confirmation is separate from selecting a credential authority.
+    // Empty by default; namespace matching is exact and case-sensitive.
+    public string[] TrustedEmailProviderNamespaces { get; set; } = [];
 
     public string? Endpoint { get; set; }
     public string? SharedSecret { get; set; }

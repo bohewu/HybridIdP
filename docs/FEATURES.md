@@ -23,9 +23,12 @@ remain unknown. Account-based M2M preview, including mixed client-credentials
 clients, is unsupported. Current account eligibility, client scope permissions
 and resource usage approvals still apply.
 
-Only eligible, confirmed cached Profile snapshots supply values. Source status,
-confirmation time and expiry are shown; missing, stale, unconfirmed or unavailable
-inputs omit dependent claims. Preview never fetches or refreshes a Profile source.
+Preview reads enabled upstream Profile sources through eligible, exact durable
+identity bindings, using approved property schemas. A prior user login or cached
+snapshot is not required. These reads supply only the current preview; no Profile
+snapshot or confirmation is saved. Source status and the current read time are
+shown. Unavailable sources omit dependent claims without falling back to cached
+values. Normal login refresh, issuance caching and freshness rules are unchanged.
 The `ClaimsPreviewed` audit records actor/target and bounded metadata, without
 claim values or payloads. Local test evidence does not establish production
 source freshness or deployment readiness.

@@ -15,7 +15,7 @@ namespace Web.IdP.Services;
 /// <summary>Projects hypothetical user claims. It never enters an authentication or issuance flow.</summary>
 public sealed class ClaimsPreviewService(
     IApplicationDbContext db, IOpenIddictApplicationManager applications,
-    IApiScopeUsagePolicy scopeUsage, IProviderProfileSnapshotReader profiles,
+    IApiScopeUsagePolicy scopeUsage, IProviderProfilePreviewReader profiles,
     ClaimsEnrichmentService enrichment, IUserInfoService userInfo,
     ICurrentUserLifecycleEligibility lifecycle, IMigrationIssuanceGuard migration,
     IApiResourceService resources) : IClaimsPreviewService
@@ -47,7 +47,7 @@ public sealed class ClaimsPreviewService(
         var snapshots = new Dictionary<string, ProviderProfileSnapshotResult>(StringComparer.Ordinal);
         foreach (var source in mappings.Where(m => selected.Contains(m.ScopeName))
                      .Select(m => m.ClaimDefinition?.ProviderProfileSource).OfType<string>().Distinct(StringComparer.Ordinal))
-            snapshots[source] = await profiles.ReadSnapshotAsync(user, source, cancellationToken);
+            snapshots[source] = await profiles.ReadForPreviewAsync(user, source, cancellationToken);
 
         var identity = new ClaimsIdentity();
         identity.SetClaim(Claims.Subject, user.Id.ToString())

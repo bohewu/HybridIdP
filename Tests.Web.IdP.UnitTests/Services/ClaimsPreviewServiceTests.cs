@@ -74,9 +74,39 @@ public sealed class ClaimsPreviewServiceTests
     }
 
     [Theory]
-    [InlineData("expired")]
-    [InlineData("unconfirmed")]
-    [InlineData("snapshot_missing")]
+    [InlineData("4", true)]
+    [InlineData("3", false)]
+    public async Task Preview_ShouldEvaluateGraduateConditionWithoutPriorLoginOrSnapshot(string divis, bool expected)
+    {
+        await using var fixture = new Fixture();
+        await fixture.SeedAsync();
+        fixture.Properties["divis"] = JsonSerializer.SerializeToElement(divis);
+        (await fixture.Db.Persons.SingleAsync()).ProviderProfilesJson = null;
+        (await fixture.Db.Users.SingleAsync()).LastLoginDate = null;
+        fixture.Db.ScopeClaims.Add(new ScopeClaim { ScopeId = "academic", ScopeName = "academic", AlwaysInclude = true,
+            ClaimDefinition = new ClaimDefinition { Name = "is_graduate_student", DisplayName = "Graduate student",
+                ClaimType = "is_graduate_student", DataType = "Boolean", ProviderProfileSource = "source", UserPropertyPath = "divis",
+                ConditionJson = JsonSerializer.Serialize(new ClaimCondition { Operator = "Equals", Property = "divis",
+                    Value = JsonSerializer.SerializeToElement("4") }) } });
+        await fixture.Db.SaveChangesAsync();
+        fixture.Db.ChangeTracker.Clear();
+        var saves = fixture.Db.Saves;
+
+        var result = await fixture.Service.PreviewAsync(fixture.Request("openid", "academic"));
+
+        foreach (var payload in new[] { result.IdToken, result.AccessToken, result.UserInfo })
+            Assert.Equal(expected, payload["is_graduate_student"].GetBoolean());
+        fixture.Reader.Verify(r => r.ReadForPreviewAsync(It.IsAny<ApplicationUser>(), "source", It.IsAny<CancellationToken>()), Times.Once);
+        Assert.Equal(saves, fixture.Db.Saves);
+        Assert.Null((await fixture.Db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+        Assert.Null((await fixture.Db.Users.AsNoTracking().SingleAsync()).LastLoginDate);
+        fixture.WritingProfiles.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("unavailable")]
+    [InlineData("disabled")]
+    [InlineData("link_missing_or_ambiguous")]
     public async Task Preview_ShouldOmitUnknownProfileClaimsEvenWithAlwaysInclude(string status)
     {
         await using var fixture = new Fixture();
@@ -143,7 +173,7 @@ public sealed class ClaimsPreviewServiceTests
         };
         public List<string> Logs { get; } = [];
         public Mock<IProviderProfileService> WritingProfiles { get; } = new(MockBehavior.Strict);
-        public Mock<IProviderProfileSnapshotReader> Reader { get; } = new(MockBehavior.Strict);
+        public Mock<IProviderProfilePreviewReader> Reader { get; } = new(MockBehavior.Strict);
         public ImmutableArray<string> Permissions { get; set; } = [OpenIddictConstants.Permissions.GrantTypes.AuthorizationCode,
             "scp:openid", "scp:profile", "scp:academic"];
         public bool ScopeAllowed { get; set; } = true;
@@ -159,10 +189,10 @@ public sealed class ClaimsPreviewServiceTests
             applications.Setup(m => m.GetPermissionsAsync(app, It.IsAny<CancellationToken>())).ReturnsAsync(() => Permissions);
             var usage = new Mock<IApiScopeUsagePolicy>();
             usage.Setup(p => p.CanUseScopesAsync(app, It.IsAny<IEnumerable<string>>(), It.IsAny<CancellationToken>())).ReturnsAsync(() => ScopeAllowed);
-            Reader.Setup(r => r.ReadSnapshotAsync(It.IsAny<ApplicationUser>(), "source", It.IsAny<CancellationToken>()))
+            Reader.Setup(r => r.ReadForPreviewAsync(It.IsAny<ApplicationUser>(), "source", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(() => new ProviderProfileSnapshotResult(SourceStatus, Properties));
             var options = Microsoft.Extensions.Options.Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new()
-            { ["source"] = new() { AllowedProperties = new() { ["tags"] = "StringArray", ["flag"] = "Boolean", ["code"] = "String", ["missing"] = "String" } } } });
+            { ["source"] = new() { AllowedProperties = new() { ["tags"] = "StringArray", ["flag"] = "Boolean", ["code"] = "String", ["missing"] = "String", ["divis"] = "String" } } } });
             var users = new Mock<UserManager<ApplicationUser>>(Mock.Of<IUserStore<ApplicationUser>>(), null, null, null, null, null, null, null, null);
             var roles = new Mock<RoleManager<ApplicationRole>>(Mock.Of<IRoleStore<ApplicationRole>>(), null, null, null, null);
             var enrichment = new ClaimsEnrichmentService(users.Object, roles.Object, Db, new CaptureLogger<ClaimsEnrichmentService>(Logs), WritingProfiles.Object, options);

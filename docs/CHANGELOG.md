@@ -6,6 +6,37 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 No unreleased changes recorded.
 
+## [1.7.1] - 2026-10-19
+
+### Fixed
+
+- Save a contract-valid Proof Email for new canonical users and fill a missing
+  Email on the original User/Person at the next valid login. Email does not link
+  identities or replace IDs, bindings, MFA, recovery, roles or grants.
+- Keep Email confirmation default-off unless the exact provider namespace is
+  listed in `ProviderProof.TrustedEmailProviderNamespaces` and Proof supplies
+  explicit Email assurance. Without that opt-in, Email is saved without new
+  confirmation; existing confirmations and enrolled Email OTP targets remain.
+
+### Changed
+
+- Administrative Claims preview now fetches current approved upstream
+  properties without target login or cached/fresh Profile snapshot, and does not
+  fall back to stale data when the upstream call fails. Preview writes no
+  snapshot, session, consent, grant or token state. Normal login Profile
+  persistence and issuance cache/freshness behavior are unchanged.
+- Preserve the dedicated `claims.preview` permission, CSRF protection,
+  no-store responses and metadata audit behavior.
+
+### Deployment and compatibility
+
+- No EF migration or deployment-script changes were added after 1.7.0. Preserve
+  the existing `.env`, certificates, Data Protection keys, account bindings and
+  existing accounts; no account deletion is required. The exact
+  `ncut.authproxy` Email trust opt-in remains a local deployment choice and
+  requires explicit Proof Email assurance; all other providers remain off by
+  default.
+
 ## [1.7.0] - 2026-10-19
 
 See the [release readiness notes](./RELEASE_READINESS.md) for upgrade and

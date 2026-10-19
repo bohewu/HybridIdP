@@ -19,6 +19,8 @@ using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
+using System.Net;
+using System.Text;
 using OpenIddict.EntityFrameworkCore.Models;
 using Web.IdP;
 using Web.IdP.Controllers.Admin;
@@ -135,8 +137,10 @@ public sealed class ProviderAccountLifecycleTests
         Assert.Empty(await fixture.Db.Persons.ToListAsync());
     }
 
-    [Fact]
-    public async Task Provision_ShouldUseCanonicalWithoutEmailOrPersonLinking()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Provision_ShouldRetainEmailAssuranceWithoutEmailOrPersonLinking(bool verified)
     {
         await using var fixture = await Fixture.CreateAsync();
         var contact = new Person { Id = Guid.NewGuid(), Email = "shared@example.test" };
@@ -144,12 +148,230 @@ public sealed class ProviderAccountLifecycleTests
         await fixture.Db.SaveChangesAsync();
         var auth = Auth("readable-account");
         auth.Email = contact.Email;
-        auth.EmailVerified = true;
+        auth.EmailVerified = verified;
         var result = await fixture.Jit.ProvisionExternalUserAsync(auth);
         Assert.Equal("readable-account", result.UserName);
         Assert.NotEqual(contact.Id, result.PersonId);
-        Assert.Null(result.Email);
-        Assert.False(result.EmailConfirmed);
+        Assert.Equal(contact.Email, result.Email);
+        Assert.Equal(verified, result.EmailConfirmed);
+        Assert.Equal(contact.Email, (await fixture.Db.Persons.SingleAsync(person => person.Id == result.PersonId)).Email);
+        Assert.Equal(2, await fixture.Db.Persons.CountAsync());
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("existing@example.test", false)]
+    [InlineData("factor@example.test", true)]
+    public async Task Provision_ShouldFillMissingContactWithoutReplacingExistingAddressOrMfa(string? existingEmail, bool emailMfa)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var user = await fixture.Jit.ProvisionExternalUserAsync(Auth("contact-account"));
+        user.Email = existingEmail;
+        user.EmailConfirmed = existingEmail is not null;
+        user.EmailMfaEnabled = emailMfa;
+        user.EmailMfaCode = "pending-factor-code";
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
+        Assert.True((await fixture.Users.UpdateAsync(user)).Succeeded);
+        var originalStamp = user.SecurityStamp;
+        var auth = Auth("contact-account");
+        auth.Email = "upstream@example.test";
+
+        var result = await fixture.Jit.ProvisionExternalUserAsync(auth);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = await fixture.Users.FindByIdAsync(result.Id.ToString());
+        Assert.Equal(existingEmail ?? auth.Email, saved!.Email);
+        Assert.Equal(existingEmail is not null, saved.EmailConfirmed);
+        Assert.Equal(emailMfa, saved.EmailMfaEnabled);
+        Assert.Equal(originalStamp, saved.SecurityStamp);
+        Assert.Equal(existingEmail is null ? null : "pending-factor-code", saved.EmailMfaCode);
+        Assert.Equal(auth.Email, (await fixture.Db.Persons.SingleAsync()).Email);
+        Assert.Equal(user.Id, saved.Id);
+        Assert.Single(await fixture.Db.UserLogins.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("source", "confirmed", 1)]
+    [InlineData("other-source", "snapshot_missing", 0)]
+    public async Task Login_ShouldRetainContactAndExposeSnapshotOnlyUnderItsConfiguredSource(
+        string previewSource, string expectedStatus, int expectedProperties)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var source = new ProviderProfileSourceOptions
+        {
+            ProviderNamespace = "example.provider", Endpoint = "https://profile.example.test/profile",
+            SharedSecret = "synthetic-profile-secret", AllowedProperties = new() { ["divis"] = "String" }
+        };
+        using var http = new HttpClient(new ProfileResponseHandler());
+        var profileOptions = new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = source } };
+        var profiles = new ProviderProfileService(fixture.Db, new ProviderProfileClient(http),
+            Microsoft.Extensions.Options.Options.Create(profileOptions));
+        var login = fixture.Login("fresh-provider-account", new AssuredProfile
+        { Email = "contact@example.test", AssuredFields = [AssuredProfileField.Email] }, profiles,
+            trustedEmailNamespace: "example.provider");
+
+        var result = await login.AuthenticateAsync("upstream-alias", "password");
+
+        Assert.True(result.IsSuccess);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = await fixture.Users.FindByIdAsync(result.User!.Id.ToString());
+        Assert.Equal("contact@example.test", saved!.Email);
+        Assert.True(saved.EmailConfirmed);
+        Assert.Equal("contact@example.test", (await fixture.Db.Persons.AsNoTracking().SingleAsync()).Email);
+        // A different source alias must not borrow the original source's snapshot.
+        profileOptions.Sources["other-source"] = source;
+        var snapshot = await profiles.ReadSnapshotAsync(saved, previewSource);
+        Assert.Equal(expectedStatus, snapshot.Status);
+        Assert.Equal(expectedProperties, snapshot.Properties.Count);
+        if (expectedProperties > 0) Assert.Equal("4", snapshot.Properties["divis"].GetString());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Login_ShouldRepairMissingEmailWithoutRecreatingAccount(bool trustEmail)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var original = await fixture.Jit.ProvisionExternalUserAsync(Auth("existing-provider-account"));
+        var personId = original.PersonId;
+        original.TwoFactorEnabled = true;
+        original.RecoveryCodes = "existing-recovery-material";
+        Assert.True((await fixture.Users.UpdateAsync(original)).Succeeded);
+        Assert.True((await fixture.Users.AddToRoleAsync(original, "OldAuthority")).Succeeded);
+        var originalStamp = original.SecurityStamp;
+        var grant = new OpenIddictEntityFrameworkCoreAuthorization<Guid>
+        { Id = Guid.NewGuid(), Subject = original.Id.ToString(), Status = "valid", Type = "permanent" };
+        fixture.Db.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().Add(grant);
+        await fixture.Db.SaveChangesAsync();
+        var login = fixture.Login("existing-provider-account", new AssuredProfile
+        { Email = "verified@example.test", AssuredFields = [AssuredProfileField.Email] },
+            trustedEmailNamespace: trustEmail ? "example.provider" : null);
+
+        var result = await login.AuthenticateAsync("existing-provider-account", "password");
+
+        Assert.True(result.IsSuccess);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = await fixture.Users.FindByIdAsync(original.Id.ToString());
+        Assert.Equal(original.Id, result.User!.Id);
+        Assert.Equal(personId, saved!.PersonId);
+        Assert.Equal("verified@example.test", saved.Email);
+        Assert.Equal(trustEmail, saved.EmailConfirmed);
+        Assert.Equal(originalStamp, saved.SecurityStamp);
+        Assert.True(saved.TwoFactorEnabled);
+        Assert.Equal("existing-recovery-material", saved.RecoveryCodes);
+        Assert.Equal(new[] { "OldAuthority" }, await fixture.Users.GetRolesAsync(saved));
+        Assert.Equal(grant.Id, (await fixture.Db.Set<OpenIddictEntityFrameworkCoreAuthorization<Guid>>().SingleAsync()).Id);
+        Assert.Equal("verified@example.test", (await fixture.Db.Persons.SingleAsync()).Email);
+        Assert.Single(await fixture.Db.Users.ToListAsync());
+        var binding = await fixture.Db.UserLogins.SingleAsync();
+        Assert.Equal(original.Id, binding.UserId);
+        Assert.Equal("example.provider", binding.LoginProvider);
+        Assert.Equal("subject", binding.ProviderKey);
+    }
+
+    [Theory]
+    [InlineData(null, false)]
+    [InlineData("example.provider", true)]
+    [InlineData("Example.Provider", false)]
+    [InlineData("example.provider ", false)]
+    [InlineData("other.provider", false)]
+    public async Task Login_ShouldStoreNewContactAndConfirmOnlyExactTrustedSource(string? trustedNamespace, bool confirmed)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var otherPerson = new Person { Id = Guid.NewGuid(), Email = "contact@example.test" };
+        fixture.Db.Persons.Add(otherPerson);
+        await fixture.Db.SaveChangesAsync();
+        var login = fixture.Login("new-provider-account", new AssuredProfile
+        { Email = otherPerson.Email, AssuredFields = [AssuredProfileField.Email] },
+            trustedEmailNamespace: trustedNamespace);
+
+        var result = await login.AuthenticateAsync("upstream-alias", "password");
+
+        Assert.True(result.IsSuccess);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = await fixture.Users.FindByIdAsync(result.User!.Id.ToString());
+        Assert.Equal(otherPerson.Email, saved!.Email);
+        Assert.Equal(confirmed, saved.EmailConfirmed);
+        Assert.NotEqual(otherPerson.Id, saved.PersonId);
+        Assert.Equal(otherPerson.Email, (await fixture.Db.Persons.SingleAsync(p => p.Id == saved.PersonId)).Email);
+        Assert.Equal(2, await fixture.Db.Persons.CountAsync());
+        Assert.Single(await fixture.Db.UserLogins.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Login_ShouldRequireEmailAssuranceEvenForTrustedSource(bool trustEmail, bool omitEmail)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var result = await fixture.Login("new-provider-account", new AssuredProfile
+        { Email = omitEmail ? null : "unassured@example.test", AssuredFields = [] },
+            trustedEmailNamespace: trustEmail ? "example.provider" : null)
+            .AuthenticateAsync("upstream-alias", "password");
+
+        Assert.Equal(omitEmail, result.IsSuccess);
+        if (omitEmail)
+        {
+            Assert.Null(result.User!.Email);
+            Assert.False(result.User.EmailConfirmed);
+        }
+        else
+        {
+            Assert.Empty(await fixture.Db.Users.ToListAsync());
+            Assert.Empty(await fixture.Db.Persons.ToListAsync());
+            Assert.Empty(await fixture.Db.UserLogins.ToListAsync());
+        }
+    }
+
+    [Theory]
+    [InlineData(false, false, false)]
+    [InlineData(true, false, false)]
+    [InlineData(false, true, true)]
+    [InlineData(true, true, true)]
+    public async Task Login_ShouldPreserveConfirmedAddressAndEnrolledFactor(bool trustEmail, bool emailMfa, bool changedEmail)
+    {
+        await using var fixture = await Fixture.CreateAsync();
+        var auth = Auth("existing-provider-account");
+        auth.Email = "original@example.test";
+        auth.EmailVerified = true;
+        var original = await fixture.Jit.ProvisionExternalUserAsync(auth);
+        original.EmailMfaEnabled = emailMfa;
+        original.TwoFactorEnabled = emailMfa;
+        original.EmailMfaCode = "existing-code-hash";
+        original.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(5);
+        original.EmailMfaVerificationAttempts = 2;
+        Assert.True((await fixture.Users.UpdateAsync(original)).Succeeded);
+        var stamp = original.SecurityStamp;
+        var expiry = original.EmailMfaCodeExpiry;
+        var result = await fixture.Login("existing-provider-account", new AssuredProfile
+        { Email = changedEmail ? "new@example.test" : original.Email, AssuredFields = [AssuredProfileField.Email] },
+            trustedEmailNamespace: trustEmail ? "example.provider" : null)
+            .AuthenticateAsync("existing-provider-account", "password");
+
+        Assert.True(result.IsSuccess);
+        fixture.Db.ChangeTracker.Clear();
+        var saved = await fixture.Users.FindByIdAsync(original.Id.ToString());
+        Assert.Equal("original@example.test", saved!.Email);
+        Assert.True(saved.EmailConfirmed);
+        Assert.Equal(emailMfa, saved.EmailMfaEnabled);
+        Assert.Equal(emailMfa, saved.TwoFactorEnabled);
+        Assert.Equal("existing-code-hash", saved.EmailMfaCode);
+        Assert.Equal(expiry, saved.EmailMfaCodeExpiry);
+        Assert.Equal(2, saved.EmailMfaVerificationAttempts);
+        Assert.Equal(stamp, saved.SecurityStamp);
+        Assert.Equal(original.PersonId, saved.PersonId);
+        Assert.Equal(original.Id, (await fixture.Db.UserLogins.SingleAsync()).UserId);
+    }
+
+    private sealed class ProfileResponseHandler : HttpMessageHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken) =>
+            Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            {
+                Content = new StringContent("""
+                    {"contractVersion":"1.0","providerNamespace":"example.provider","stableSubject":"subject","extraProperties":{"divis":"4"}}
+                    """, Encoding.UTF8, "application/json")
+            });
     }
 
     [Theory]
@@ -273,18 +495,21 @@ public sealed class ProviderAccountLifecycleTests
         public JitProvisioningService Jit { get; }
         public UsersController Controller { get; }
 
-        public LoginService Login(string canonical)
+        public LoginService Login(string canonical, AssuredProfile? profile = null, IProviderProfileService? profiles = null,
+            string? trustedEmailNamespace = null)
         {
             var proof = new Mock<IProofProvider>();
             proof.Setup(provider => provider.ProveAsync(It.IsAny<ProofRequest>(), "password", It.IsAny<CancellationToken>()))
                 .ReturnsAsync(new ProofResult { Outcome = ProofOutcome.Authenticated,
                     ProviderNamespace = "example.provider", StableSubject = "subject", CanonicalAccount = canonical,
-                    Assurance = new() { StableSubjectAssured = true, CanonicalAccountAssured = true } });
+                    Assurance = new() { StableSubjectAssured = true, CanonicalAccountAssured = true }, Profile = profile });
             return new LoginService(Users, Mock.Of<ISecurityPolicyService>(), Jit, Db,
                 Mock.Of<ILogger<LoginService>>(), Microsoft.Extensions.Options.Options.Create(new ExternalLoginOptions()),
                 proofProvider: proof.Object, credentialMigrationStateStore: Mock.Of<ICredentialMigrationStateStore>(),
                 providerProofOptions: Microsoft.Extensions.Options.Options.Create(new ProviderProofOptions
-                { Enabled = true, TrustedProviderNamespace = "example.provider" }));
+                { Enabled = true, TrustedProviderNamespace = "example.provider",
+                    TrustedEmailProviderNamespaces = trustedEmailNamespace is null ? [] : [trustedEmailNamespace] }),
+                providerProfileService: profiles);
         }
 
         private Fixture(SqliteConnection connection)

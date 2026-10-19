@@ -30,6 +30,7 @@ public sealed class ProviderProofConfigurationTests
         Assert.False(Assert.IsType<HttpClientHandler>(handler).AllowAutoRedirect);
         var options = provider.GetRequiredService<IOptions<ProviderProofOptions>>().Value;
         Assert.False(options.AllowPrivateNetworkHttp);
+        Assert.Empty(options.TrustedEmailProviderNamespaces);
         Assert.Equal(TimeSpan.FromSeconds(5), options.Timeout);
     }
 
@@ -41,6 +42,7 @@ public sealed class ProviderProofConfigurationTests
             ["ProviderProof:Endpoint"] = "https://provider.example.org/api/authenticate/login",
             ["ProviderProof:SharedSecret"] = "synthetic-proof-secret",
             ["ProviderProof:Timeout"] = "00:00:07",
+            ["ProviderProof:TrustedEmailProviderNamespaces:0"] = "example.provider",
             ["LegacyPasswordSync:Enabled"] = "false",
             ["LegacyPasswordSync:Endpoint"] = "https://provider.example.org/api/password-sync",
             ["LegacyPasswordSync:SharedSecret"] = "synthetic-sync-secret"
@@ -56,6 +58,7 @@ public sealed class ProviderProofConfigurationTests
         Assert.Equal("https://provider.example.org/api/authenticate/login", proof.Endpoint);
         Assert.Equal("synthetic-proof-secret", proof.SharedSecret);
         Assert.Equal(TimeSpan.FromSeconds(7), proof.Timeout);
+        Assert.Equal(new[] { "example.provider" }, proof.TrustedEmailProviderNamespaces);
         Assert.IsType<ProviderProofProvider>(provider.GetRequiredService<IProofProvider>());
 
         var sync = provider.GetRequiredService<IOptions<LegacyPasswordSyncOptions>>().Value;

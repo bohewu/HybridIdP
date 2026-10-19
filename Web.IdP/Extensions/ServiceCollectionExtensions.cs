@@ -264,6 +264,7 @@ public static class ServiceCollectionExtensions
         services.AddScoped<ProviderProfileService>();
         services.AddScoped<IProviderProfileService>(sp => sp.GetRequiredService<ProviderProfileService>());
         services.AddScoped<IProviderProfileSnapshotReader>(sp => sp.GetRequiredService<ProviderProfileService>());
+        services.AddScoped<IProviderProfilePreviewReader>(sp => sp.GetRequiredService<ProviderProfileService>());
         services.AddSingleton<IValidateOptions<ProviderMetadataRefreshOptions>, ProviderMetadataRefreshOptionsValidator>();
         services.AddSingleton<IValidateOptions<LegacyPasswordSyncOptions>, LegacyPasswordSyncOptionsValidator>();
         services.AddSingleton<IValidateOptions<RecoveryVerificationPolicyOptions>, RecoveryVerificationPolicyOptionsValidator>();
