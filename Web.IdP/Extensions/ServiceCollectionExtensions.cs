@@ -188,7 +188,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IIntrospectionService, IntrospectionService>();
         services.AddScoped<IRevocationService, RevocationService>();
         services.AddScoped<IDeviceFlowService, DeviceFlowService>();
-        services.AddScoped<IClaimsEnrichmentService, ClaimsEnrichmentService>();
+        services.AddScoped<ClaimsEnrichmentService>();
+        services.AddScoped<IClaimsEnrichmentService>(sp => sp.GetRequiredService<ClaimsEnrichmentService>());
+        services.AddScoped<IClaimsPreviewService, ClaimsPreviewService>();
 
         // Settings & Infrastructure
         services.AddScoped<ISettingsService, SettingsService>();
@@ -259,7 +261,9 @@ public static class ServiceCollectionExtensions
             .Bind(configuration.GetSection(ProviderProfileOptions.Section)).ValidateOnStart();
         services.AddHttpClient<ProviderProfileClient>()
             .ConfigurePrimaryHttpMessageHandler(ProviderProfileClient.CreatePrimaryHandler);
-        services.AddScoped<IProviderProfileService, ProviderProfileService>();
+        services.AddScoped<ProviderProfileService>();
+        services.AddScoped<IProviderProfileService>(sp => sp.GetRequiredService<ProviderProfileService>());
+        services.AddScoped<IProviderProfileSnapshotReader>(sp => sp.GetRequiredService<ProviderProfileService>());
         services.AddSingleton<IValidateOptions<ProviderMetadataRefreshOptions>, ProviderMetadataRefreshOptionsValidator>();
         services.AddSingleton<IValidateOptions<LegacyPasswordSyncOptions>, LegacyPasswordSyncOptionsValidator>();
         services.AddSingleton<IValidateOptions<RecoveryVerificationPolicyOptions>, RecoveryVerificationPolicyOptionsValidator>();

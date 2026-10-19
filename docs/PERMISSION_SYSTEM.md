@@ -78,6 +78,24 @@ also do not replace API resource usage approval. See
 [OAuth consent and upgrade guidance](OAUTH_FLOWS.md#requested-scopes-required-and-consent)
 for grant reuse, refresh, older registrations and revocation behavior.
 
+### Claims preview
+
+`Permissions.Claims.Preview` resolves to `claims.preview`. This dedicated
+permission protects both the application-cookie Razor page `/Admin/ClaimsPreview`
+and `/api/admin/claims-preview`, including its bounded client/account/scope
+lookups. The navigation entry uses the same permission. No unrelated client,
+account or claim-management permission is required for these preview lookups.
+The Admin permission registry includes it; ApplicationManager is not granted it
+automatically. Ordinary OAuth bearer tokens cannot authorize the preview.
+
+POST requires antiforgery and returns no-store typed JSON, never a token.
+The selected scopes are hypothetical and still subject to current client and
+resource usage checks. Preview does not create consent or authorization and
+does not authenticate the selected account. `ClaimsPreviewed` records the actor,
+target account, client ID, scope/source counts and hypothetical flag without
+claim values. Profile data comes only from eligible confirmed cached snapshots;
+no refresh or snapshot write is performed.
+
 ### Scopes
 - `Permissions.Scopes.Read` → `'scopes.read'`
 - `Permissions.Scopes.Create` → `'scopes.create'`

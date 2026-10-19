@@ -52,7 +52,19 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         return Task.CompletedTask;
     }
 
-    public async Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes, CancellationToken cancellationToken = default)
+    public Task AddScopeMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes, CancellationToken cancellationToken = default) =>
+        AddScopeMappedClaimsCoreAsync(identity, user, grantedScopes,
+            (source, token) => _profiles!.GetPropertiesAsync(user, source, token), _profiles is not null, null, cancellationToken);
+
+    internal Task AddPreviewMappedClaimsAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> scopes,
+        IReadOnlyDictionary<string, ProviderProfileSnapshotResult> snapshots, Action<string, string> explain,
+        CancellationToken cancellationToken) =>
+        AddScopeMappedClaimsCoreAsync(identity, user, scopes,
+            (source, _) => Task.FromResult(snapshots[source].Properties), true, explain, cancellationToken);
+
+    private async Task AddScopeMappedClaimsCoreAsync(ClaimsIdentity identity, ApplicationUser user, IEnumerable<string> grantedScopes,
+        Func<string, CancellationToken, Task<IReadOnlyDictionary<string, JsonElement>>> readProperties,
+        bool hasProfileReader, Action<string, string>? explain, CancellationToken cancellationToken)
     {
         // Private ticket metadata permits removal even after a mapping is deleted or renamed.
         foreach (var marker in identity.FindAll(ProfileClaimMarker).ToList())
@@ -76,7 +88,7 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         var scopeNames = requestedScopes.ToArray(); // Materialize once
         LogEnrichingClaims(user.Id, string.Join(", ", scopeNames));
         
-        var mappings = await _db.ScopeClaims
+        var mappings = await _db.ScopeClaims.AsNoTracking()
             .Include(sc => sc.ClaimDefinition)
             .Where(sc => scopeNames.Contains(sc.ScopeName))
             .ToListAsync(cancellationToken);
@@ -87,28 +99,33 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         {
             var def = map.ClaimDefinition;
             if (def == null) continue;
-            if (ClaimSourcePropertyPolicy.IsProtectedClaimType(def.ClaimType)) continue;
+            if (ClaimSourcePropertyPolicy.IsProtectedClaimType(def.ClaimType))
+            { explain?.Invoke(def.ClaimType, "protected_claim"); continue; }
             string? value;
             if (def.ProviderProfileSource is { } source)
             {
-                if (ClaimSourcePropertyPolicy.IsProtectedProviderClaimType(def.ClaimType)) continue;
-                if (_profiles is null || !_profileOptions.Enabled ||
-                    !_profileOptions.Sources.TryGetValue(source, out var configured)) continue;
-                var properties = await _profiles.GetPropertiesAsync(user, source, cancellationToken);
+                if (ClaimSourcePropertyPolicy.IsProtectedProviderClaimType(def.ClaimType))
+                { explain?.Invoke(def.ClaimType, "protected_claim"); continue; }
+                if (!hasProfileReader || !_profileOptions.Enabled ||
+                    !_profileOptions.Sources.TryGetValue(source, out var configured))
+                { explain?.Invoke(def.ClaimType, "source_unavailable"); continue; }
+                var properties = await readProperties(source, cancellationToken);
                 if (def.ConditionJson is { } rule)
                 {
                     ClaimCondition? condition;
                     try { condition = JsonSerializer.Deserialize<ClaimCondition>(rule); }
-                    catch (JsonException) { continue; }
+                    catch (JsonException) { explain?.Invoke(def.ClaimType, "invalid_condition"); continue; }
                     if (def.DataType != "Boolean" || condition is null ||
-                        ClaimConditionPolicy.Evaluate(condition, configured.AllowedProperties, properties) is not { } known) continue;
+                        ClaimConditionPolicy.Evaluate(condition, configured.AllowedProperties, properties) is not { } known)
+                    { explain?.Invoke(def.ClaimType, "condition_input_unknown"); continue; }
                     value = known ? "true" : "false";
                 }
                 else
                 {
                     if (!configured.AllowedProperties.TryGetValue(def.UserPropertyPath, out var type) ||
                         type != def.DataType || !properties.TryGetValue(def.UserPropertyPath, out var property) ||
-                        !ProviderProfileContract.IsValueOfType(property, type)) continue;
+                        !ProviderProfileContract.IsValueOfType(property, type))
+                    { explain?.Invoke(def.ClaimType, "source_property_unknown"); continue; }
                     value = type switch
                     {
                         "Boolean" => property.GetBoolean() ? "true" : "false",
@@ -122,6 +139,7 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
                 if (def.DataType == "StringArray" || def.ConditionJson is not null || !ClaimSourcePropertyPolicy.TryResolve(user, def.UserPropertyPath, out var resolvedValue))
                 {
                     LogRejectedClaimSource(def.ClaimType, def.UserPropertyPath);
+                    explain?.Invoke(def.ClaimType, "source_property_rejected");
                     continue;
                 }
                 value = def.ClaimType == OpenIddict.Abstractions.OpenIddictConstants.Claims.Name
@@ -134,6 +152,7 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
             if (string.IsNullOrEmpty(value) && !map.AlwaysInclude)
             {
                 LogSkippingEmptyClaim(def.ClaimType);
+                explain?.Invoke(def.ClaimType, "empty_value");
                 continue;
             }
 
@@ -167,7 +186,7 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
         if (string.IsNullOrEmpty(clientId)) return;
 
         // Query App-Specific Roles for this user and client
-        var appRoles = await _db.UserAppRoles
+        var appRoles = await _db.UserAppRoles.AsNoTracking()
             .Where((UserAppRoleEntity r) => r.UserId == user.Id && r.ClientId == clientId)
             .ToListAsync(cancellationToken);
 

@@ -49,7 +49,8 @@
       "read": "讀取聲明",
       "create": "建立聲明",
       "update": "更新聲明",
-      "delete": "刪除聲明"
+      "delete": "刪除聲明",
+      "preview": "預覽宣告"
     },
     "persons": {
       "read": "讀取人員",

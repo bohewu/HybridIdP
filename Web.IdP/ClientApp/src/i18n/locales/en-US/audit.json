@@ -108,7 +108,8 @@
     "AdminRecoveryAddressReplaced": "Recovery address replaced by administrator",
     "AdminMigrationOtpResent": "Migration code resent by administrator",
     "AdminResetApprovalIssued": "Reset approval issued",
-    "AdminResetApprovalConsumed": "Reset approval consumed"
+    "AdminResetApprovalConsumed": "Reset approval consumed",
+    "ClaimsPreviewed": "Claims previewed"
   },
   "recovery": {
     "recordedOutcome": "Recorded"

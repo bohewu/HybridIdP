@@ -6,6 +6,30 @@
 
 ---
 
+## Administrative claims preview
+
+Administrators with `claims.preview` can open `/Admin/ClaimsPreview`, select a
+native user-flow client and local account, choose hypothetical allowed scopes,
+then explicitly run Preview. Separate ID Token, Access Token and flat UserInfo
+JSON preserve boolean, string and string-array types and show inclusion,
+omission and unknown reasons. Changing an input clears the result and requires
+a new preview. Account search and client lists are paged.
+
+This operation does not authenticate, issue a token or reusable JWT, or modify
+Profile snapshots, sessions, consent, grants or authorization. Selected scopes
+are hypothetical and do not represent existing consent. Authentication evidence
+such as `amr` and `auth_time`, and issuance values such as `jti` and expiry,
+remain unknown. Account-based M2M preview, including mixed client-credentials
+clients, is unsupported. Current account eligibility, client scope permissions
+and resource usage approvals still apply.
+
+Only eligible, confirmed cached Profile snapshots supply values. Source status,
+confirmation time and expiry are shown; missing, stale, unconfirmed or unavailable
+inputs omit dependent claims. Preview never fetches or refreshes a Profile source.
+The `ClaimsPreviewed` audit records actor/target and bounded metadata, without
+claim values or payloads. Local test evidence does not establish production
+source freshness or deployment readiness.
+
 ## Recovery identity verification and custom-first email selection (default disabled)
 
 Native recovery can require an account identifier plus deployment-approved

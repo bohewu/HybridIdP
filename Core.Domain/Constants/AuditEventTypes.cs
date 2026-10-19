@@ -31,6 +31,7 @@ public static class AuditEventTypes
     public const string LoginSucceeded = "LoginSucceeded";
     
     // Admin operations
+    public const string ClaimsPreviewed = "ClaimsPreviewed";
     public const string AdminUserCreated = "AdminUserCreated";
     public const string AdminUserUpdated = "AdminUserUpdated";
     public const string AdminUserDeleted = "AdminUserDeleted";

@@ -1,0 +1,14 @@
+@page
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@model Web.IdP.Pages.Admin.ClaimsPreviewModel
+@{
+    ViewData["Title"] = Localizer["ClaimsPreview"].Value;
+    ViewData["Breadcrumb"] = Localizer["ClaimsPreview"].Value;
+    Layout = "_AdminLayout";
+}
+
+<div id="app" class="vue-app-container"></div>
+
+@section Scripts {
+    <script type="module" vite-src="~/src/admin/claims-preview/main.js"></script>
+}

@@ -12,7 +12,7 @@ namespace Infrastructure.Services;
 
 public sealed class ProviderProfileService(
     IApplicationDbContext db, ProviderProfileClient client, IOptions<ProviderProfileOptions> options,
-    TimeProvider? timeProvider = null) : IProviderProfileService
+    TimeProvider? timeProvider = null) : IProviderProfileService, IProviderProfileSnapshotReader
 {
     private readonly TimeProvider _clock = timeProvider ?? TimeProvider.System;
     private readonly Dictionary<(Guid User, string Source), IReadOnlyDictionary<string, JsonElement>> _requestValues = [];
@@ -35,16 +35,25 @@ public sealed class ProviderProfileService(
     {
         if (!options.Value.Enabled || !options.Value.Sources.TryGetValue(source, out var configured)) return Empty;
         // Scope enrichment may be called more than once in the same issuance request.
-        return await ResolveAsync(user, source, configured, false, null, cancellationToken);
+        return (await ResolveAsync(user, source, configured, false, null, cancellationToken)).Properties;
     }
 
-    private async Task<IReadOnlyDictionary<string, JsonElement>> ResolveAsync(ApplicationUser user, string sourceName,
-        ProviderProfileSourceOptions source, bool force, string? loginSubject, CancellationToken cancellationToken)
+    public Task<ProviderProfileSnapshotResult> ReadSnapshotAsync(ApplicationUser user, string source,
+        CancellationToken cancellationToken = default)
+    {
+        if (!options.Value.Enabled) return Task.FromResult(new ProviderProfileSnapshotResult("disabled", Empty));
+        if (!options.Value.Sources.TryGetValue(source, out var configured))
+            return Task.FromResult(new ProviderProfileSnapshotResult("unconfigured", Empty));
+        return ResolveAsync(user, source, configured, false, null, cancellationToken, readOnly: true);
+    }
+
+    private async Task<ProviderProfileSnapshotResult> ResolveAsync(ApplicationUser user, string sourceName,
+        ProviderProfileSourceOptions source, bool force, string? loginSubject, CancellationToken cancellationToken, bool readOnly = false)
     {
         var currentUser = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
-        if (currentUser is not { IsActive: true, IsDeleted: false, PersonId: { } personId }) return Empty;
-        var person = await db.Persons.SingleOrDefaultAsync(p => p.Id == personId, cancellationToken);
-        if (person is null || !person.CanAuthenticate()) return Empty;
+        if (currentUser is not { IsActive: true, IsDeleted: false, PersonId: { } personId }) return new("account_ineligible", Empty);
+        var person = await (readOnly ? db.Persons.AsNoTracking() : db.Persons).SingleOrDefaultAsync(p => p.Id == personId, cancellationToken);
+        if (person is null || !person.CanAuthenticate()) return new("person_ineligible", Empty);
 
         var links = await (from link in db.UserLogins.AsNoTracking()
                            join account in db.Users.AsNoTracking() on link.UserId equals account.Id
@@ -52,12 +61,12 @@ public sealed class ProviderProfileService(
                                link.LoginProvider == source.ProviderNamespace
                            select new { account.Id, link.LoginProvider, link.ProviderKey }).Take(2).ToListAsync(cancellationToken);
         if (links.Count != 1 || links[0].LoginProvider != source.ProviderNamespace || (loginSubject is not null &&
-            (links[0].Id != user.Id || links[0].ProviderKey != loginSubject))) return Empty;
+            (links[0].Id != user.Id || links[0].ProviderKey != loginSubject))) return new("link_missing_or_ambiguous", Empty);
 
         var linkIdentity = links[0];
         Dictionary<string, ProfileSnapshot> snapshots;
         try { snapshots = JsonSerializer.Deserialize<Dictionary<string, ProfileSnapshot>>(person.ProviderProfilesJson ?? "{}") ?? []; }
-        catch (JsonException) { return Empty; }
+        catch (JsonException) { return new("snapshot_invalid", Empty); }
         snapshots.TryGetValue(sourceName, out var snapshot);
         var now = _clock.GetUtcNow();
         var policyHash = ComputeHash(JsonSerializer.SerializeToElement(new
@@ -68,14 +77,20 @@ public sealed class ProviderProfileService(
         var matching = snapshot is not null && snapshot.AccountId == linkIdentity.Id &&
             snapshot.ProviderNamespace == source.ProviderNamespace && snapshot.StableSubject == linkIdentity.ProviderKey &&
             snapshot.PolicyHash == policyHash;
-        if (!force && matching && _requestValues.TryGetValue((user.Id, sourceName), out var requestValues))
-            return requestValues;
+        if (!readOnly && !force && matching && _requestValues.TryGetValue((user.Id, sourceName), out var requestValues))
+            return new("confirmed", requestValues, snapshot!.ConfirmedAt);
         if (!force && matching && snapshot!.ConfirmedAt is { } confirmed && confirmed <= now &&
             options.Value.MaximumAge > TimeSpan.Zero && now - confirmed < options.Value.MaximumAge)
         {
-            _requestValues[(user.Id, sourceName)] = snapshot.Properties;
-            return snapshot.Properties;
+            if (!readOnly) _requestValues[(user.Id, sourceName)] = snapshot.Properties;
+            return new("confirmed", snapshot.Properties, confirmed, confirmed + options.Value.MaximumAge);
         }
+
+        if (readOnly)
+            return new(snapshot is null ? "snapshot_missing" : !matching ? "configuration_changed" :
+                snapshot.ConfirmedAt is null ? "unconfirmed" : "expired", Empty,
+                matching ? snapshot!.ConfirmedAt : null,
+                matching && snapshot!.ConfirmedAt is { } at ? at + options.Value.MaximumAge : null);
 
         var result = await client.FetchAsync(new ProviderProfileRequest
         {
@@ -93,7 +108,7 @@ public sealed class ProviderProfileService(
         if (currentLinks.Count != 1 || currentLinks[0].Id != linkIdentity.Id ||
             currentLinks[0].LoginProvider != source.ProviderNamespace || currentLinks[0].ProviderKey != linkIdentity.ProviderKey ||
             requestingAccount is not { IsActive: true, IsDeleted: false } || requestingAccount.PersonId != personId ||
-            currentPerson is null || !currentPerson.CanAuthenticate()) return Empty;
+            currentPerson is null || !currentPerson.CanAuthenticate()) return new("account_ineligible", Empty);
         var properties = result?.ExtraProperties.Where(p => source.AllowedProperties.TryGetValue(p.Key, out var type) &&
             ProviderProfileContract.IsValueOfType(p.Value, type))
             .ToDictionary(p => p.Key, p => p.Value, StringComparer.Ordinal);
@@ -115,11 +130,11 @@ public sealed class ProviderProfileService(
         catch (DbUpdateConcurrencyException)
         {
             db.Detach(person);
-            return Empty;
+            return new("concurrent_change", Empty);
         }
         var accepted = properties is null ? Empty : snapshot.Properties;
         _requestValues[(user.Id, sourceName)] = accepted;
-        return accepted;
+        return new(properties is null ? "unconfirmed" : "confirmed", accepted, snapshot.ConfirmedAt);
     }
 
     public static string ComputePropertyHash(IReadOnlyDictionary<string, JsonElement> properties)
