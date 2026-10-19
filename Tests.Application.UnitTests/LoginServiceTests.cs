@@ -121,6 +121,41 @@ public class LoginServiceTests
         _mockJitProvisioningService.VerifyNoOtherCalls();
     }
 
+    [Theory]
+    [InlineData(true, "subject", true)]
+    [InlineData(false, "subject", false)]
+    [InlineData(true, "wrong-subject", false)]
+    public async Task AuthenticateAsync_ShouldRefreshOnlyExactExistingBindingDisplayAfterValidatedProof(
+        bool assured, string returnedSubject, bool expectedSuccess)
+    {
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "shadow", Email = "contact@example.test",
+            EmailConfirmed = false, SecurityStamp = "unchanged-stamp" };
+        var binding = new IdentityUserLogin<Guid> { UserId = user.Id, LoginProvider = "example.provider",
+            ProviderKey = "subject", ProviderDisplayName = "Old Name" };
+        var logins = CreateMockDbSet(new List<IdentityUserLogin<Guid>> { binding });
+        _mockDbContext.Setup(context => context.UserLogins).Returns(logins.Object);
+        _mockUserManager.Setup(manager => manager.FindByEmailAsync("shadow")).ReturnsAsync(user);
+        _mockUserManager.Setup(manager => manager.FindByLoginAsync("example.provider", "subject")).ReturnsAsync(user);
+        _mockUserManager.Setup(manager => manager.GetLoginsAsync(user)).ReturnsAsync(new List<UserLoginInfo>
+        { new("example.provider", "subject", "Old Name") });
+        _mockProofProvider.Setup(provider => provider.ProveAsync(It.IsAny<ProofRequest>(), "password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProofResult { Outcome = ProofOutcome.Authenticated, ProviderNamespace = "example.provider",
+                StableSubject = returnedSubject, CanonicalAccount = "shadow",
+                Assurance = new() { StableSubjectAssured = true, CanonicalAccountAssured = true },
+                Profile = new() { DisplayName = "New Assured Name", AssuredFields = assured ? [AssuredProfileField.DisplayName] : [] } });
+        _mockJitProvisioningService.Setup(service => service.ProvisionExternalUserAsync(It.IsAny<ExternalAuthResult>(), It.IsAny<CancellationToken>())).ReturnsAsync(user);
+        Assert.Equal(expectedSuccess, (await _loginService.AuthenticateAsync("shadow", "password")).IsSuccess);
+        Assert.Equal(expectedSuccess ? "New Assured Name" : "Old Name", binding.ProviderDisplayName);
+        Assert.Equal(user.Id, binding.UserId);
+        Assert.Equal("subject", binding.ProviderKey);
+        Assert.Equal("example.provider", binding.LoginProvider);
+        Assert.Equal("shadow", user.UserName);
+        Assert.Equal("unchanged-stamp", user.SecurityStamp);
+        Assert.Equal("contact@example.test", user.Email);
+        Assert.False(user.EmailConfirmed);
+        _mockDbContext.Verify(context => context.SaveChangesAsync(It.IsAny<CancellationToken>()), expectedSuccess ? Times.Once() : Times.Never());
+    }
+
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> data) where T : class
     {
         var queryable = data.AsQueryable();

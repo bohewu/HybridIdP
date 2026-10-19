@@ -20,6 +20,7 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
     private readonly IAuditService _auditService;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<MyUserClaimsPrincipalFactory> _logger;
+    private readonly string? _trustedProviderNamespace;
 
     public MyUserClaimsPrincipalFactory(
         UserManager<ApplicationUser> userManager,
@@ -28,12 +29,14 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
         IApplicationDbContext context,
         IAuditService auditService,
         IHttpContextAccessor httpContextAccessor,
-        ILogger<MyUserClaimsPrincipalFactory> logger) : base(userManager, roleManager, optionsAccessor)
+        ILogger<MyUserClaimsPrincipalFactory> logger,
+        IOptions<Infrastructure.Options.ProviderProofOptions>? providerProofOptions = null) : base(userManager, roleManager, optionsAccessor)
     {
         _context = context;
         _auditService = auditService;
         _httpContextAccessor = httpContextAccessor;
         _logger = logger;
+        _trustedProviderNamespace = providerProofOptions?.Value.TrustedProviderNamespace;
     }
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Orphan ApplicationUser detected: {UserId}, auto-creating Person")]
@@ -102,10 +105,11 @@ public partial class MyUserClaimsPrincipalFactory : UserClaimsPrincipalFactory<A
 
         var identity = await base.GenerateClaimsAsync(user);
 
-        var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
-            ?? user.UserName
-            ?? user.Email
-            ?? string.Empty;
+        var logins = string.IsNullOrWhiteSpace(_trustedProviderNamespace)
+            ? new List<UserLoginInfo>() : await UserManager.GetLoginsAsync(user);
+        var displayName = ManagedCredentialDisplay.GetDisplayName(user, user.Person,
+            ManagedCredentialDisplay.GetAssuredName(logins, _trustedProviderNamespace),
+            user.UserName ?? user.Email ?? string.Empty);
 
         if (!string.IsNullOrEmpty(displayName))
         {

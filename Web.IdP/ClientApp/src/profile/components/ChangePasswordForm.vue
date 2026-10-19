@@ -22,8 +22,13 @@
         </div>
       </div>
 
+      <div v-if="!props.hasLocalPassword && props.managedCredentials.length > 0" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded" data-testid="managed-password-guidance">
+        <p class="font-medium">{{ t('profile.managedCredentials.title') }}</p>
+        <p class="text-sm mt-1">{{ t('profile.managedCredentials.passwordGuidance') }}</p>
+      </div>
+
       <!-- External Login Info -->
-      <div v-if="!props.hasLocalPassword && props.externalLogins.length > 0" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
+      <div v-else-if="!props.hasLocalPassword && props.externalLogins.length > 0" class="bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded">
         <div class="flex gap-2">
           <i class="bi bi-info-circle-fill mt-0.5"></i>
           <div>
@@ -160,6 +165,10 @@ const props = defineProps({
     required: true
   },
   externalLogins: {
+    type: Array,
+    default: () => []
+  },
+  managedCredentials: {
     type: Array,
     default: () => []
   },

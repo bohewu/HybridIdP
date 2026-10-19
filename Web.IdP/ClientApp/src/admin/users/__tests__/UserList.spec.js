@@ -56,6 +56,30 @@ const createWrapper = (canManageRoles, canUpdate = true) => mount(UserList, {
 })
 
 describe('UserList role-management authorization', () => {
+  it('shows the projected human name above the unchanged username without inventing account name fields', async () => {
+    const wrapper = createWrapper(false)
+    const user = { id: 'managed-user', displayName: 'Alex Example', userName: 'opaque_abc123', firstName: null, lastName: null, roles: [], isActive: true }
+    await wrapper.setProps({ users: [user] })
+
+    const cells = wrapper.get('[data-test-id="user-row-managed-user"]').findAll('td')
+    expect(cells[0].findAll('div').map(element => element.text())).toEqual(['Alex Example', 'opaque_abc123'])
+    expect(cells[2].text()).toBe('Alex Example')
+    expect(user.firstName).toBeNull()
+    expect(user.lastName).toBeNull()
+    await wrapper.findAll('th')[0].trigger('click')
+    expect(wrapper.emitted('sort-change')[0]).toEqual(['userName:asc'])
+    wrapper.unmount()
+  })
+
+  it('uses the real username once when the server has no human-name metadata', async () => {
+    const wrapper = createWrapper(false)
+    await wrapper.setProps({ users: [{ id: 'fallback-user', userName: 'opaque_abc123', displayName: 'opaque_abc123', roles: [], isActive: true }] })
+    const cells = wrapper.get('[data-test-id="user-row-fallback-user"]').findAll('td')
+    expect(cells[0].findAll('div').map(element => element.text())).toEqual(['opaque_abc123'])
+    expect(cells[2].text()).toBe('users.details.noName')
+    wrapper.unmount()
+  })
+
   it('hides the role-management action without roles.update', () => {
     const wrapper = createWrapper(false)
 

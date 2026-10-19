@@ -31,6 +31,7 @@
           :allow-password-change="profile.allowPasswordChange"
           :has-local-password="profile.hasLocalPassword"
           :external-logins="profile.externalLogins"
+          :managed-credentials="profile.managedCredentials"
           :csrf-token="csrfToken"
         />
       </div>

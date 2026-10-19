@@ -40,7 +40,7 @@
                <i class="bi bi-type text-gray-400"></i>
                {{ t('profile.info.fullName') }}
              </dt>
-             <dd class="mt-1 text-sm text-gray-900 font-medium sm:mt-0 sm:col-span-2">{{ profile.personFullName }}</dd>
+             <dd class="mt-1 text-sm text-gray-900 font-medium sm:mt-0 sm:col-span-2">{{ profile.person.fullName?.trim() || t('profile.info.notProvided') }}</dd>
            </div>
 
           <!-- Identity Verification Status Check (Global) -->
@@ -98,13 +98,21 @@
               <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                 <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
               </svg>
-              {{ t('profile.security.noPassword') }}
+              {{ t(profile.managedCredentials?.length ? 'profile.security.passwordManaged' : 'profile.security.noPassword') }}
             </span>
           </div>
         </div>
       </div>
     </div>
   </div>
+
+  <!-- Organization credentials are classified by the server and are read-only. -->
+  <section v-if="profile.managedCredentials?.length" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="managed-credentials" aria-labelledby="managed-credentials-title">
+    <div class="px-4 py-5 sm:px-6">
+      <h3 id="managed-credentials-title" class="text-lg leading-6 font-medium text-gray-900">{{ t('profile.managedCredentials.title') }}</h3>
+      <p class="mt-2 text-sm text-gray-600">{{ t('profile.managedCredentials.description') }}</p>
+    </div>
+  </section>
 
   <!-- External Logins -->
   <div v-if="profile.externalLogins && profile.externalLogins.length > 0" class="bg-white shadow-sm rounded-lg border border-gray-200 mb-6" data-testid="external-logins">

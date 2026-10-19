@@ -148,6 +148,7 @@
     "unknownSaveFailed": "An unknown error occurred while saving the user."
   },
   "tableHeaders": {
+      "account": "Account",
       "username": "Username"
   },
   "mfa": {

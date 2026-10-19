@@ -99,6 +99,23 @@ public class UserManagementServiceTests : IDisposable
 
     #region GetUsersAsync Tests
 
+    [Fact]
+    public async Task GetUsersAsync_ShouldProjectManagedDisplayNameForPageWithoutChangingUsername()
+    {
+        var user = new ApplicationUser { UserName = "provider_subject", Email = "contact@example.test" };
+        Assert.True((await _userManager.CreateAsync(user)).Succeeded);
+        Assert.True((await _userManager.AddLoginAsync(user, new UserLoginInfo("example.organization", "subject", "Managed Name"))).Succeeded);
+        Assert.True((await _userManager.AddLoginAsync(user, new UserLoginInfo("Google", "social-subject", "Social Name"))).Succeeded);
+        var service = new UserManagementService(_userManager, _roleManager, _mockEventPublisher.Object,
+            _context, _mockApplicationManager.Object, providerProofOptions: Options.Create(
+                new Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
+        var summary = Assert.Single((await service.GetUsersAsync(take: 1)).Items);
+        Assert.Equal("Managed Name", summary.DisplayName);
+        Assert.Equal("provider_subject", summary.UserName);
+        Assert.Equal(user.Id, summary.Id);
+        Assert.Equal(2, await _context.UserLogins.CountAsync());
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

@@ -288,10 +288,28 @@ public class UsersController : ControllerBase
                 return NotFound(new { errors = new[] { "User not found" } });
             }
 
-            // Step 1: Soft delete - mark as deleted in database
+            // Ordinary eligible deletion can release external identities. Lifecycle
+            // and directory/migration denial bindings must remain terminal.
+            var releaseLogins = !user.IsDeleted && user.IsActive &&
+                !await _dbContext.ProviderSubjectDirectoryBindings.AnyAsync(binding => binding.LocalAccountId == id) &&
+                !await _dbContext.CredentialMigrationStateRecords.AnyAsync(record => record.LocalAccountId == id);
+            if (releaseLogins && user.PersonId.HasValue)
+            {
+                var person = await _dbContext.Persons.FindAsync(user.PersonId.Value);
+                releaseLogins = person is not null && person.CanAuthenticate();
+            }
+
+            // Persist terminal state and stamp before making a tuple available again.
             user.IsDeleted = true;
             user.IsActive = false;
             user.DeletedAt = DateTime.UtcNow;
+            user.SecurityStamp = Guid.NewGuid().ToString();
+            if (releaseLogins)
+            {
+                user.UserName = $"deleted_{user.Id:N}";
+                user.Email = null;
+                user.EmailConfirmed = false;
+            }
             
             var currentUserId = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
             if (currentUserId != null)
@@ -303,18 +321,24 @@ public class UsersController : ControllerBase
             var result = await _userManager.UpdateAsync(user);
             if (!result.Succeeded)
             {
+                _dbContext.Detach(user);
                 return BadRequest(new { errors = result.Errors.Select(e => e.Description) });
             }
 
             // Step 2: Remove external logins (allows JIT to create new user on next login)
-            var logins = await _userManager.GetLoginsAsync(user);
-            foreach (var login in logins)
+            if (releaseLogins)
             {
-                await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+                var logins = await _userManager.GetLoginsAsync(user);
+                foreach (var login in logins)
+                {
+                    var removed = await _userManager.RemoveLoginAsync(user, login.LoginProvider, login.ProviderKey);
+                    if (!removed.Succeeded)
+                    {
+                        _dbContext.Detach(user);
+                        return BadRequest(new { errors = removed.Errors.Select(error => error.Description) });
+                    }
+                }
             }
-
-            // Step 3: Update security stamp to invalidate existing sessions
-            await _userManager.UpdateSecurityStampAsync(user);
 
             return NoContent();
         }

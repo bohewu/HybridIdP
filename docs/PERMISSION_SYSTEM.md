@@ -63,6 +63,11 @@ When you write `Permissions.Clients.READ`, it evaluates to `undefined` which nev
 - `Permissions.Clients.Update` → `'clients.update'`
 - `Permissions.Clients.Delete` → `'clients.delete'`
 
+These permissions authorize the human/admin caller managing clients. They are
+separate from an OAuth application's endpoint, grant, response-type and scope
+permissions. See [client settings and protocol permissions](OAUTH_FLOWS.md#client-settings-and-protocol-permissions)
+for public/confidential, PKCE, Basic authentication and authorization-code setup.
+
 In the client editor, allowed scopes and Required are separate settings.
 Required means that users cannot deselect a scope **when the client actually
 requests it**; it does not add scopes to requests, grants or existing tokens.

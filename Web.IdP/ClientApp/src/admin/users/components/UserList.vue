@@ -154,7 +154,7 @@ const getSortIcon = (field) => {
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                 <div class="flex items-center space-x-1">
-                  <span>{{ $t('users.tableHeaders.username') }}</span>
+                  <span>{{ $t('users.tableHeaders.account') }}</span>
                   <span v-html="getSortIcon('userName')"></span>
                 </div>
               </th>
@@ -202,14 +202,18 @@ const getSortIcon = (field) => {
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50" :data-test-id="`user-row-${user.id}`">
               <td class="px-6 py-4 whitespace-nowrap" :data-test-id="`user-email-${user.id}`">
-                <div class="text-sm font-medium text-gray-900">{{ user.userName }}</div>
+                <div class="text-sm font-medium text-gray-900">{{ user.displayName || user.userName }}</div>
+                <div v-if="user.displayName && user.displayName !== user.userName" class="text-sm text-gray-500">{{ user.userName }}</div>
                 <div v-if="user.employeeId" class="text-sm text-gray-500">{{ t('users.details.id', { id: user.employeeId }) }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
                 <div class="text-sm text-gray-900">{{ user.email }}</div>
               </td>
               <td class="px-6 py-4 whitespace-nowrap">
-                <div v-if="user.firstName || user.lastName" class="text-sm text-gray-900">
+                <div v-if="user.displayName && user.displayName !== user.userName" class="text-sm text-gray-900">
+                  {{ user.displayName }}
+                </div>
+                <div v-else-if="user.firstName || user.lastName" class="text-sm text-gray-900">
                   {{ user.firstName }} {{ user.lastName }}
                 </div>
                 <div v-else class="text-sm text-gray-400 italic">{{ $t('users.details.noName') }}</div>

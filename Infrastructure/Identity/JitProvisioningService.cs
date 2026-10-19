@@ -127,6 +127,11 @@ public class JitProvisioningService : IJitProvisioningService
             return existingUser;
         }
 
+        if (externalAuth.AssuredCanonicalAccount is not null)
+        {
+            return await ProvisionCanonicalAccountAsync(externalAuth, cancellationToken);
+        }
+
         var username = hasVerifiedEmail
             ? externalAuth.Email!
             : null;
@@ -294,6 +299,63 @@ public class JitProvisioningService : IJitProvisioningService
         await _context.SaveChangesAsync(cancellationToken);
 
         return newUser;
+    }
+
+    private async Task<ApplicationUser> ProvisionCanonicalAccountAsync(
+        ExternalAuthResult externalAuth, CancellationToken cancellationToken)
+    {
+        var username = externalAuth.AssuredCanonicalAccount!;
+        var allowedCharacters = _userManager.Options.User.AllowedUserNameCharacters;
+        if (string.IsNullOrWhiteSpace(username) || username.Length > 256 ||
+            (!string.IsNullOrEmpty(allowedCharacters) && username.Any(c => !allowedCharacters.Contains(c))) ||
+            await _userManager.FindByNameAsync(username) is not null)
+        {
+            throw new InvalidOperationException("Provider account name is unavailable.");
+        }
+
+        // Proof naming never matches a Person or account by email/name. Persist the
+        // new Person, account, default role and exact login together on relational stores.
+        await using var transaction = _context is DbContext db && db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
+        var person = new Person
+        {
+            Id = Guid.NewGuid(), FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
+            Department = externalAuth.Department, JobTitle = externalAuth.JobTitle,
+            EmployeeId = externalAuth.EmployeeId, CreatedAt = DateTime.UtcNow
+        };
+        var user = new ApplicationUser
+        {
+            Id = Guid.NewGuid(), UserName = username, PersonId = person.Id,
+            FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
+            Department = externalAuth.Department, JobTitle = externalAuth.JobTitle,
+            EmployeeId = externalAuth.EmployeeId, IsActive = true, CreatedAt = DateTime.UtcNow
+        };
+        try
+        {
+            await _context.Persons.AddAsync(person, cancellationToken);
+            var created = await _userManager.CreateAsync(user);
+            if (!created.Succeeded) throw new InvalidOperationException("Provider account creation failed.");
+            await AssignDefaultRoleIfConfiguredAsync(user);
+            var linked = await _userManager.AddLoginAsync(user, new UserLoginInfo(
+                externalAuth.Provider, externalAuth.ProviderKey, externalAuth.DisplayName ?? username));
+            if (!linked.Succeeded) throw new InvalidOperationException("Provider account binding failed.");
+            await _context.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
+            return user;
+        }
+        catch
+        {
+            // A failed request must not flush its pending account/link on a later save.
+            if (_context is DbContext failedDb)
+            {
+                foreach (var entry in failedDb.ChangeTracker.Entries().Where(entry =>
+                    ReferenceEquals(entry.Entity, user) || ReferenceEquals(entry.Entity, person) ||
+                    entry.Entity is IdentityUserLogin<Guid> login && login.UserId == user.Id ||
+                    entry.Entity is IdentityUserRole<Guid> role && role.UserId == user.Id).ToList())
+                    entry.State = EntityState.Detached;
+            }
+            throw;
+        }
     }
 
     private async Task AssignDefaultRoleIfConfiguredAsync(ApplicationUser user)
