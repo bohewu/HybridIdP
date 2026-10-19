@@ -1,39 +1,109 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-19 for the planned 1.7.0 release. Publishing a release does not
+Updated on 2026-10-19 for the planned 1.7.1 release. Publishing a release does not
 establish production acceptance or deploy the image. The historical 1.6.0 upgrade
 requirements and evidence below remain applicable when upgrading from 1.5.x or
 1.4.x.
 
-## 1.7.0 preparation
+## 1.7.1 preparation
 
-Version metadata selects 1.7.0. This preparation does not create a release tag,
-publish an image or deploy a service. The release adds administrative Claims
-preview and includes the organization-account, provisioning, Profile and
-first-password-change fixes summarized in the [changelog](CHANGELOG.md).
+Version metadata selects 1.7.1. This preparation does not create a release tag,
+publish an image or deploy a service. It fixes Proof Email persistence and
+administrative Claims preview behavior as summarized in the
+[changelog](CHANGELOG.md).
+
+### Upgrade requirements
+
+No EF migrations or deployment-script changes were added after 1.7.0. Preserve
+the existing `.env`, certificates, Data Protection keys, accounts and identity
+bindings. No account deletion or automatic cleanup is required. Do not
+regenerate existing configuration with the fresh-install wizard.
+
+Claims preview requires `claims.preview`, available through the Admin permission
+registry and not automatically granted to ApplicationManager. It requests
+current approved upstream properties without target login or cached/fresh
+Profile snapshot. Upstream failure does not fall back to stale data. Preview
+does not write snapshots, sessions, consent, grants or tokens. Normal login
+Profile persistence and issuance cache/freshness behavior remain unchanged.
+
+Contract-valid Proof Email is saved for new canonical users and fills a missing
+Email on the original User/Person at the next valid login. It does not link
+identities or replace IDs, bindings, MFA, recovery, roles or grants. Email
+confirmation remains default-off unless the exact namespace is configured in
+`ProviderProof__TrustedEmailProviderNamespaces__0` and Proof carries explicit
+Email assurance. Without that trust opt-in, Email is saved without new
+confirmation; existing confirmations and enrolled Email OTP targets remain.
+For an already selected `ncut.authproxy` authority, the deployment may opt in
+with `ProviderProof__TrustedEmailProviderNamespaces__0=ncut.authproxy`; this is
+an exact, case-sensitive local trust choice. Other providers remain off.
+
+### Security and verification boundaries
+
+The independent full product review passed across 23 files. Focused verification
+covered 188 tests (71 Web, 41 Infrastructure, 67 Application and 9 frontend),
+backend build with zero warnings/errors, frontend build with existing annotation
+and chunk warnings, and 16 real-browser case assertions using isolated SQL
+Server 2022 and controlled upstream Proof/Profile. Chinese explained recordings
+were retained. This evidence does not establish live AuthProxy, AD, SMTP, full
+MFA, token issuance or production behavior. Failed fixture/observer attempts and
+the existing Profile child 401/403 outcomes remain retained and excluded.
+
+The product source commit `079a65c1a82d487912cf9736397efbe5bbc72abe` passed all
+four PR CodeQL jobs in [run 39255435912](https://github.com/bohewu/HybridIdP/actions/runs/39255435912).
+This is pre-merge evidence; require a fresh all-green CodeQL run on the final
+`main` merge commit. Previously documented dismissals, ExcelJS embedded UUID
+limits and deferred dependency upgrades remain applicable; no broad claim that
+all alerts were remediated is made.
+
+These metadata and source checks do not qualify a final image. Before
+publication, bind the official image workflow to the final `main` commit,
+verify OCI revision/version and record the immutable registry digest. Local
+image IDs are not registry digests. Release/image publication and production
+deployment remain separate approved operations.
+
+## Historical 1.7.0 preparation
+
+Version metadata selected 1.7.0. That preparation did not create a release tag,
+publish an image or deploy a service. Its original upgrade and verification
+evidence follows.
 
 ### Upgrade requirements
 
 No EF schema migrations or deployment-script changes were added after 1.6.2.
-A database already at the 1.6.x target needs no additional schema SQL solely
+A database already at the 1.6.x target needed no additional schema SQL solely
 for 1.7.0. Preserve the existing `.env`, certificates, Data Protection keys,
-accounts and identity bindings. Existing 1.6.2 deployments need no mandatory
+accounts and identity bindings. Existing 1.6.2 deployments needed no mandatory
 new setting; do not regenerate their configuration with the fresh-install wizard.
 
-Claims preview requires `claims.preview`, available through the Admin permission
-registry and not automatically granted to ApplicationManager. It uses confirmed
-cached Profile data and hypothetical allowed scopes; it neither issues tokens
-nor changes authentication, consent, grants or Profile snapshots. No external
-Profile source is called or refreshed by preview. Existing provider allowlists
-and optional feature switches remain deployment-controlled.
+Claims preview required `claims.preview`, available through the Admin permission
+registry and not automatically granted to ApplicationManager. Its 1.7.0 behavior
+used confirmed cached Profile data and hypothetical allowed scopes; it neither
+issued tokens nor changed authentication, consent, grants or Profile snapshots.
+No external Profile source was called or refreshed by preview.
 
-The account fixes preserve existing users and exact provider/subject bindings.
-Existing generated usernames are not bulk-renamed. Account deletion or physical
-cleanup is not required to upgrade. The operator-specific
+The 1.7.0 account fixes preserved existing users and exact provider/subject
+bindings. Existing generated usernames were not bulk-renamed. Account deletion
+or physical cleanup was not required to upgrade. The operator-specific
 [SQL Server cleanup procedure](../scripts/cleanup-provider-users-sqlserver.md)
-is a separate, destructive maintenance operation with backup, writer shutdown,
-preview and exact database/count confirmation. Deploy the corrected account
-flow before any separately approved cleanup; deployment never runs that SQL.
+remains a separate, destructive maintenance operation with backup, writer
+shutdown, preview and exact database/count confirmation. Deployment never runs
+that SQL.
+
+### Security and verification boundaries
+
+On 2026-10-19, GitHub reported zero open Dependabot, main CodeQL and Secret
+scanning alerts. Product main `b29190304d1e169afe1019fc79f07491c98298f0`
+passed Actions, C#, JavaScript/TypeScript and Python CodeQL in
+[run 39226795283](https://github.com/bohewu/HybridIdP/actions/runs/39226795283).
+These checks preceded the 1.7.0 release-metadata preparation. Previously
+documented dismissals, ExcelJS prebuilt-bundle limits and deferred dependency
+upgrades remained applicable.
+
+Independent scoped reviews and local API-backed browser checks covered the
+account and Profile changes. They were not final-image or production
+acceptance. Local fixtures did not establish live AuthProxy, social federation,
+AD or production interoperability. Final-image evidence and OCI digest
+verification remained separate publication gates.
 
 ### Security and verification boundaries
 
