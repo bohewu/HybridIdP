@@ -35,13 +35,13 @@ public class JitProvisioningService_LegacyTests : IDisposable
         _userManagerMock.Setup(um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        _service = new JitProvisioningService(
-            _userManagerMock.Object,
+        _service = new JitProvisioningService(_userManagerMock.Object,
             _context,
             Options.Create(new Core.Application.Options.ExternalLoginOptions
             {
                 AutoProvisionDefaultRole = Core.Domain.Constants.AuthConstants.Roles.User
-            }));
+            }),
+            CreateNativeFields(_context));
     }
 
     public void Dispose()
@@ -131,11 +131,16 @@ public class JitProvisioningService_LegacyTests : IDisposable
 
         // Assert
         // 1. Verify ApplicationUser updated
-        Assert.Equal("NewName", existingUser.FirstName);
+        Assert.Equal("OldName", existingUser.FirstName);
 
         // 2. Verify Person updated (This was the missing logic)
         var updatedPerson = await _context.Persons.FindAsync(personId);
-        Assert.Equal("NewName", updatedPerson.FirstName);
+        Assert.Equal("OldName", updatedPerson.FirstName);
         Assert.NotNull(updatedPerson.IdentityVerifiedAt); // Should be auto-verified because it's Legacy
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

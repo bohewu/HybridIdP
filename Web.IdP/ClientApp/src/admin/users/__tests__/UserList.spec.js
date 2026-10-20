@@ -71,6 +71,16 @@ describe('UserList role-management authorization', () => {
     wrapper.unmount()
   })
 
+  it('requests effective display-name sorting in both directions', async () => {
+    const wrapper = createWrapper(false)
+    await wrapper.findAll('th')[2].trigger('click')
+    expect(wrapper.emitted('sort-change')[0]).toEqual(['displayName:asc'])
+    await wrapper.setProps({ sort: 'displayName:asc' })
+    await wrapper.findAll('th')[2].trigger('click')
+    expect(wrapper.emitted('sort-change')[1]).toEqual(['displayName:desc'])
+    wrapper.unmount()
+  })
+
   it('uses the real username once when the server has no human-name metadata', async () => {
     const wrapper = createWrapper(false)
     await wrapper.setProps({ users: [{ id: 'fallback-user', userName: 'opaque_abc123', displayName: 'opaque_abc123', roles: [], isActive: true }] })

@@ -497,7 +497,8 @@ public class LoginServiceTests
             _mockExternalLoginOptions.Object,
             proofProvider: proof.Object,
             directoryIdentityLookup: lookup.Object,
-            stage1BindingRefreshService: new Stage1BindingRefreshService(context),
+            stage1BindingRefreshService: new Stage1BindingRefreshService(context,
+            CreateNativeFields(context)),
             directoryIntegrationOptions: Options.Create(new DirectoryIntegrationOptions { Enabled = true }),
             credentialMigrationStateStore: state.Object,
             providerMetadataRefreshService: metadata.Object);
@@ -1066,4 +1067,9 @@ public class LoginServiceTests
     }
 
     #endregion
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

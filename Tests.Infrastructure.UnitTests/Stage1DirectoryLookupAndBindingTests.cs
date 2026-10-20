@@ -15,6 +15,71 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class Stage1DirectoryLookupAndBindingTests
 {
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("untrusted")]
+    [InlineData("paused")]
+    public async Task BindAndRefreshAsync_ShouldPreserveNativeFieldsWithoutNativeAuthorityButRetainBindingAndContact(string mode)
+    {
+        await using var context = CreateContext();
+        var person = new Person { Id = Guid.NewGuid() };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "local", Person = person, PersonId = person.Id };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        var policy = new NativeFieldPolicyService(context,
+            Options.Create(new Core.Application.Options.NativeFieldPolicyOptions
+            {
+                Stage1Enabled = mode != "disabled",
+                TrustedStage1ProviderNamespaces = mode == "untrusted" ? [] : ["example.provider"]
+            }), Options.Create(new ProviderProofOptions()), Options.Create(new DirectoryIntegrationOptions { Enabled = true }));
+        if (mode == "paused") await policy.SetPausedAsync(NativeFieldSource.Stage1, new(true, Guid.Empty));
+        var result = await new Stage1BindingRefreshService(context, policy).BindAndRefreshAsync(new(
+            user.Id, "example.provider", "subject", ManagedIdentity("account", profile: new AssuredProfile
+            {
+                DisplayName = "source", Email = "contact@example.test",
+                AssuredFields = [AssuredProfileField.DisplayName, AssuredProfileField.Email]
+            })));
+        Assert.Equal(Stage1BindingRefreshOutcome.BoundAndRefreshed, result);
+        Assert.Single(context.ProviderSubjectDirectoryBindings);
+        Assert.Null(user.Nickname);
+        Assert.Null(person.Nickname);
+        Assert.Equal("contact@example.test", user.Email);
+        Assert.Equal("contact@example.test", person.Email);
+    }
+
+    [Fact]
+    public async Task BindAndRefreshAsync_ShouldKeepFixedBlanksAcrossRepeatRefreshAndApplyAfterUnlock()
+    {
+        await using var context = CreateContext();
+        var person = new Person { Id = Guid.NewGuid() };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "local", Person = person, PersonId = person.Id };
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        var policy = CreateNativeFields(context);
+        var service = new Stage1BindingRefreshService(context, policy);
+        var request = new Stage1BindingRefreshRequest(user.Id, "example.provider", "subject",
+            ManagedIdentity("account", profile: new AssuredProfile
+            { DisplayName = "source", AssuredFields = [AssuredProfileField.DisplayName] }));
+        Assert.Equal(Stage1BindingRefreshOutcome.BoundAndRefreshed, await service.BindAndRefreshAsync(request));
+        Assert.Equal("source", user.Nickname);
+        Assert.Equal("source", person.Nickname);
+        policy.ApplyManual(user, new Dictionary<NativeField, string?> { [NativeField.Nickname] = "" });
+        policy.ApplyManual(person, new Dictionary<NativeField, string?> { [NativeField.Nickname] = "" });
+        await context.SaveChangesAsync();
+        for (var i = 0; i < 2; i++)
+            Assert.Equal(Stage1BindingRefreshOutcome.ExistingBindingRefreshed, await service.BindAndRefreshAsync(request));
+        Assert.Equal("", user.Nickname);
+        Assert.Equal("", person.Nickname);
+        await policy.UpdateAsync(NativeFieldTarget.User, user.Id, NativeField.Nickname, new()
+        {
+            Operation = NativeFieldOperation.Unlock,
+            ExpectedRevision = (await policy.GetTargetAsync(NativeFieldTarget.User, user.Id)).Revision
+        });
+        await service.BindAndRefreshAsync(request);
+        Assert.Equal("source", user.Nickname);
+        Assert.Equal("", person.Nickname);
+    }
+
     [Fact]
     public async Task FindManagedIdentityAsync_ExactlyOneEligibleMatch_ReturnsFound()
     {
@@ -88,7 +153,8 @@ public sealed class Stage1DirectoryLookupAndBindingTests
                 AssuredProfileField.EmployeeId
             ]
         };
-        var service = new Stage1BindingRefreshService(context);
+        var service = new Stage1BindingRefreshService(context,
+            CreateNativeFields(context));
 
         var outcome = await service.BindAndRefreshAsync(new Stage1BindingRefreshRequest(
             user.Id,
@@ -107,7 +173,7 @@ public sealed class Stage1DirectoryLookupAndBindingTests
         var refreshedUser = await context.Users.SingleAsync();
         var refreshedPerson = await context.Persons.SingleAsync();
         Assert.Equal("Display Name", refreshedUser.Nickname);
-        Assert.Equal("Given", refreshedUser.FirstName);
+        Assert.Equal("Old", refreshedUser.FirstName); // Nonempty unattributed values are preserved.
         Assert.Equal("Surname", refreshedUser.LastName);
         Assert.Equal(emailMfaEnabled ? "old@example.test" : "new@example.test", refreshedUser.Email);
         Assert.Equal(emailMfaEnabled, refreshedUser.EmailMfaEnabled);
@@ -145,13 +211,15 @@ public sealed class Stage1DirectoryLookupAndBindingTests
             await enrollmentContext.SaveChangesAsync();
         }
 
-        var outcome = await new Stage1BindingRefreshService(context).BindAndRefreshAsync(new Stage1BindingRefreshRequest(
+        var outcome = await new Stage1BindingRefreshService(context,
+            CreateNativeFields(context)).BindAndRefreshAsync(new Stage1BindingRefreshRequest(
             user.Id, "example.provider", "subject", ManagedIdentity("account", profile: new AssuredProfile
             {
                 Email = "upstream@example.test", AssuredFields = [AssuredProfileField.Email]
             })));
 
         Assert.Equal(Stage1BindingRefreshOutcome.Conflict, outcome);
+        await context.SaveChangesAsync(); // Failed tracked writes must not leak through a later save.
         context.ChangeTracker.Clear();
         Assert.Empty(await context.ProviderSubjectDirectoryBindings.ToListAsync());
         Assert.Equal("contact@example.test", (await context.Persons.SingleAsync()).Email);
@@ -170,7 +238,8 @@ public sealed class Stage1DirectoryLookupAndBindingTests
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "local", Email = "old@example.test" };
         context.Users.Add(user);
         await context.SaveChangesAsync();
-        var service = new Stage1BindingRefreshService(context);
+        var service = new Stage1BindingRefreshService(context,
+            CreateNativeFields(context));
         var profile = new AssuredProfile { Email = "new@example.test" };
 
         var outcome = await service.BindAndRefreshAsync(new Stage1BindingRefreshRequest(
@@ -191,7 +260,8 @@ public sealed class Stage1DirectoryLookupAndBindingTests
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "local", FirstName = "Existing" };
         context.Users.Add(user);
         await context.SaveChangesAsync();
-        var service = new Stage1BindingRefreshService(context);
+        var service = new Stage1BindingRefreshService(context,
+            CreateNativeFields(context));
         var profile = new AssuredProfile
         {
             GivenName = " ",
@@ -227,7 +297,8 @@ public sealed class Stage1DirectoryLookupAndBindingTests
             DateTime.UtcNow,
             "canonical-account"));
         await context.SaveChangesAsync();
-        var service = new Stage1BindingRefreshService(context);
+        var service = new Stage1BindingRefreshService(context,
+            CreateNativeFields(context));
 
         var outcome = await service.BindAndRefreshAsync(new Stage1BindingRefreshRequest(
             secondUser.Id,
@@ -282,4 +353,9 @@ public sealed class Stage1DirectoryLookupAndBindingTests
             return Task.FromResult(_result);
         }
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions { Stage1Enabled = true, TrustedStage1ProviderNamespaces = ["example.provider"] }),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions { Enabled = true }));
 }

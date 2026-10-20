@@ -51,6 +51,7 @@
     <Content Update="Resources\**\*.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
+    <EmbeddedResource Include="..\VERSION" LogicalName="Web.IdP.ProductVersion" />
   </ItemGroup>
 
 </Project>

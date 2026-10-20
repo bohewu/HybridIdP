@@ -449,5 +449,9 @@
   "AccountRecoveryLostFactorGuidance": "Lost your passkey or verification device? Use a saved account backup code. OTP recovery codes also work while OTP is enabled. If you have neither, contact your administrator for account recovery.",
   "AccountRecoveryPurpose": "After using an account backup code",
   "AccountRecoveryReplaceVerificationMethod": "Sign in and add a replacement verification method",
-  "AccountRecoverySignInOnly": "Sign in only"
+  "AccountRecoverySignInOnly": "Sign in only",
+  "AdminSystemInfo.Title": "System information",
+  "AdminSystemInfo.BasedOn": "Based on HybridIdP",
+  "AdminSystemInfo.Version": "Version",
+  "AdminSystemInfo.VersionUnavailable": "Unavailable"
 }

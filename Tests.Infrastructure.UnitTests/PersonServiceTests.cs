@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.Options;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -31,6 +32,78 @@ namespace Tests.Infrastructure.UnitTests;
 /// </summary>
 public class PersonServiceTests : IDisposable
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeNameQueries_ShouldTranslateFilterOrderAndPageForBothProviders(bool postgres)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>();
+        if (postgres)
+            options.UseNpgsql("Host=localhost;Database=unused;Username=unused");
+        else
+            options.UseSqlServer("Server=localhost;Database=unused;Integrated Security=true;TrustServerCertificate=true");
+        using var context = new ApplicationDbContext(options.Options);
+        foreach (var direction in new[] { "asc", "desc" })
+        {
+            var peopleSql = PersonService.QueryNativeNames(context.Persons.Include(person => person.Accounts), "Whole Name", direction)
+                .Skip(2).Take(3).ToQueryString();
+            var usersSql = UserManagementService.QueryNativeNames(context.Users.Include(user => user.Person).Where(user => !user.IsDeleted),
+                    "Whole Name", true, "displayName", direction)
+                .Skip(2).Take(3).ToQueryString();
+            foreach (var sql in new[] { peopleSql, usersSql })
+            {
+                Assert.Contains("CASE", sql);
+                Assert.Contains("Nickname", sql);
+                Assert.Contains("ORDER BY", sql);
+                Assert.Contains("OFFSET", sql);
+                Assert.DoesNotContain("AspNetUserLogins", sql);
+                if (direction == "desc") Assert.Contains("DESC", sql);
+            }
+            Assert.Contains("IsActive", usersSql);
+            Assert.Contains("IsDeleted", usersSql);
+            Assert.Contains("EmployeeId", peopleSql);
+        }
+    }
+
+    [Fact]
+    public async Task NativeNames_ShouldSearchWholeNamesAndSortBeforePagingWithMatchingCount()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var first = new Person { Id = Guid.NewGuid(), FirstName = "Alpha Whole Name", Nickname = "Distinct Alias", EmployeeId = "employee-a" };
+        var second = new Person { Id = Guid.NewGuid(), FirstName = " ", Nickname = "Beta Whole Name" };
+        var third = new Person { Id = Guid.NewGuid(), FirstName = "Gamma", MiddleName = "Q", LastName = "Whole Name" };
+        context.Persons.AddRange(third, second, first, new Person { Id = Guid.NewGuid(), Nickname = "Other" });
+        await context.SaveChangesAsync();
+        var service = CreateService(context);
+        Assert.Equal(3, await service.GetPersonsCountAsync(searchTerm: "Whole Name"));
+        Assert.Equal(second.Id, Assert.Single(await service.SearchPersonsAsync("Whole Name", 1, 1)).Id);
+        Assert.Equal(third.Id, Assert.Single(await service.SearchPersonsAsync("Whole Name", 0, 1, sortDirection: "desc")).Id);
+        Assert.Equal(first.Id, Assert.Single(await service.SearchPersonsAsync("employee-a")).Id);
+        Assert.Equal(first.Id, Assert.Single(await service.SearchPersonsAsync("Distinct Alias")).Id);
+        Assert.Equal(first.Id, Assert.Single(await service.SearchPersonsAsync(" ", 0, 1)).Id);
+    }
+
+    [Fact]
+    public async Task UpdatePersonAsync_ShouldProtectExplicitClearsAndLeaveOmittedFieldsAndUserIndependent()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), Nickname = "before", FirstName = "retained", EmployeeId = "employee" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), PersonId = person.Id, Nickname = "user" };
+        context.Persons.Add(person);
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        await CreateService(context).UpdatePersonAsync(person.Id, new Person { Nickname = "", EmployeeId = "" });
+        context.ChangeTracker.Clear();
+        person = await context.Persons.SingleAsync();
+        Assert.Equal("", person.Nickname);
+        Assert.Null(person.EmployeeId);
+        Assert.Equal("retained", person.FirstName);
+        var state = await CreateNativeFields(context).GetTargetAsync(NativeFieldTarget.Person, person.Id);
+        Assert.All(state.Fields.Where(f => f.Field is NativeField.Nickname or NativeField.EmployeeId), f => Assert.True(f.ManualFixed));
+        Assert.All(state.Fields.Where(f => f.Field is not (NativeField.Nickname or NativeField.EmployeeId)), f => Assert.False(f.ManualFixed));
+        Assert.Null((await context.Users.SingleAsync()).NativeFieldStateJson);
+    }
+
     private readonly DbContextOptions<ApplicationDbContext> _options;
     private readonly Mock<ILogger<PersonService>> _loggerMock;
     private readonly Mock<IAuditService> _auditServiceMock;
@@ -67,7 +140,13 @@ public class PersonServiceTests : IDisposable
     {
         var authorization = new PersonOperationAuthorization(context, _boundary.Object, _authorization.Object,
             _applications.Object, _scopes.Object, Options.Create(_roleProtection));
-        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object, _auditOptions, authorization);
+        return new PersonService(context,
+            _loggerMock.Object,
+            _auditServiceMock.Object,
+            _userManagerMock.Object,
+            _auditOptions,
+            authorization,
+            CreateNativeFields(context));
     }
 
     private void SetActor(Guid actorId, bool admin, params string[] permissions)
@@ -2046,4 +2125,9 @@ public class PersonServiceTests : IDisposable
             }
         }
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

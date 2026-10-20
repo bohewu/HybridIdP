@@ -5,6 +5,7 @@ import PersonForm from './components/PersonForm.vue'
 import LinkedAccountsDialog from './components/LinkedAccountsDialog.vue'
 import TransferAssetsDialog from './components/TransferAssetsDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import NativeFieldPolicyDialog from '@/components/NativeFieldPolicyDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
@@ -13,6 +14,7 @@ const { t } = useI18n()
 const persons = ref([])
 const loading = ref(true)
 const error = ref(null)
+const policyTarget = ref(null)
 const selectedPerson = ref(null)
 const showForm = ref(false)
 const showLinkedAccountsDialog = ref(false)
@@ -51,7 +53,15 @@ const pageSize = ref(10)
 const page = ref(1)
 const totalCount = ref(0)
 const search = ref('')
-const sort = ref('lastName:asc')
+const sort = ref('displayName:asc')
+const toggleNameSort = () => {
+  sort.value = sort.value === 'displayName:asc' ? 'displayName:desc' : 'displayName:asc'
+  page.value = 1
+}
+
+const structuredName = person => [person.firstName, person.middleName, person.lastName]
+  .map(value => value?.trim()).filter(Boolean).join(' ')
+const personDisplayName = person => structuredName(person) || person.nickname?.trim() || t('persons.notProvided')
 
 const fetchPersons = async () => {
   loading.value = true
@@ -59,13 +69,15 @@ const fetchPersons = async () => {
   try {
     const params = new URLSearchParams({
       skip: String((page.value - 1) * pageSize.value),
-      take: String(pageSize.value)
+      take: String(pageSize.value),
+      sortDirection: sort.value.split(':')[1]
     })
     
     let url = '/api/admin/people'
-    if (search.value) {
+    const term = search.value.trim()
+    if (term) {
       url = '/api/admin/people/search'
-      params.append('term', search.value)
+      params.append('term', term)
     }
     
     const response = await fetch(`${url}?${params.toString()}`)
@@ -125,7 +137,7 @@ const handleDelete = async (person) => {
     return
   }
   
-  if (!confirm(t('persons.confirmations.delete', { name: `${person.firstName} ${person.lastName}` }))) {
+  if (!confirm(t('persons.confirmations.delete', { name: personDisplayName(person) }))) {
     return
   }
   
@@ -164,7 +176,7 @@ const handleVerifyIdentity = async (person) => {
     return
   }
 
-  if (!confirm(t('persons.confirmations.verifyIdentity', { name: `${person.firstName} ${person.lastName}` }))) {
+  if (!confirm(t('persons.confirmations.verifyIdentity', { name: personDisplayName(person) }))) {
     return
   }
 
@@ -233,7 +245,7 @@ const handlePageSizeChange = (newSize) => {
 }
 
 // Watchers
-watch([page, pageSize, search], () => {
+watch([page, pageSize, search, sort], () => {
   fetchPersons()
 })
 </script>
@@ -327,8 +339,16 @@ watch([page, pageSize, search], () => {
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('persons.table.name') }}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    :aria-sort="sort.endsWith(':asc') ? 'ascending' : 'descending'">
+                  <button type="button" @click="toggleNameSort" data-test-id="person-name-sort"
+                    class="inline-flex items-center gap-1 uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-google-500">
+                    {{ t('persons.table.name') }}
+                    <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        :d="sort.endsWith(':asc') ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'" />
+                    </svg>
+                  </button>
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ t('persons.table.employeeId') }}
@@ -360,15 +380,15 @@ watch([page, pageSize, search], () => {
                     <div class="shrink-0 h-10 w-10">
                       <div class="h-10 w-10 rounded-full bg-google-100 flex items-center justify-center">
                         <span class="text-google-500 font-medium text-sm">
-                          {{ person.firstName?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
+                          {{ person.firstName?.charAt(0) || person.nickname?.trim()?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
                         </span>
                       </div>
                     </div>
                     <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">
-                        {{ person.firstName }} {{ person.middleName ? person.middleName + ' ' : '' }}{{ person.lastName }}
+                      <div data-test-id="person-name" class="text-sm font-medium text-gray-900">
+                        {{ personDisplayName(person) }}
                       </div>
-                      <div v-if="person.nickname" class="text-sm text-gray-500">{{ person.nickname }}</div>
+                      <div v-if="structuredName(person) && person.nickname?.trim() && person.nickname.trim() !== structuredName(person)" class="text-sm text-gray-500">{{ person.nickname }}</div>
                     </div>
                   </div>
                 </td>
@@ -429,6 +449,7 @@ watch([page, pageSize, search], () => {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end space-x-2">
+                    <button v-if="canRead" type="button" class="text-google-600 hover:text-google-800 text-sm" @click="policyTarget = person">{{ t('native-fields.title') }}</button>
                     <button
                       v-if="canRead"
                       @click="handleManageAccounts(person)"
@@ -556,6 +577,8 @@ watch([page, pageSize, search], () => {
       </div>
 
       <!-- Dialogs -->
+      <NativeFieldPolicyDialog v-if="policyTarget" target="Person" :target-id="policyTarget.id" :target-label="personDisplayName(policyTarget)" :can-update="canUpdate" @close="policyTarget = null" @changed="fetchPersons" />
+
       <PersonForm
         v-if="showForm"
         :person="selectedPerson"

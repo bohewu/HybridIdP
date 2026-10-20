@@ -24,6 +24,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     DbSet<ClaimDefinition> IApplicationDbContext.ClaimDefinitions => Set<ClaimDefinition>();
     public DbSet<ScopeClaim> ScopeClaims => Set<ScopeClaim>();
     public DbSet<Setting> Settings => Set<Setting>();
+    public DbSet<NativeFieldSourcePolicy> NativeFieldSourcePolicies => Set<NativeFieldSourcePolicy>();
     public DbSet<SecurityPolicy> SecurityPolicies => Set<SecurityPolicy>();
     public DbSet<LoginHistory> LoginHistories => Set<LoginHistory>();
     public DbSet<ScopeExtension> ScopeExtensions => Set<ScopeExtension>();
@@ -71,6 +72,16 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+
+        builder.Entity<ApplicationUser>().Property(x => x.NativeFieldStateJson).IsConcurrencyToken();
+        builder.Entity<Person>().Property(x => x.NativeFieldStateJson).IsConcurrencyToken();
+        builder.Entity<NativeFieldSourcePolicy>(entity =>
+        {
+            entity.HasKey(x => x.Source);
+            entity.Property(x => x.Source).HasMaxLength(16);
+            entity.Property(x => x.Revision).IsConcurrencyToken();
+            entity.Property(x => x.FirstNameFallbackProviderNamespace).HasMaxLength(200);
+        });
 
         builder.Entity<ApplicationUser>(entity =>
         {

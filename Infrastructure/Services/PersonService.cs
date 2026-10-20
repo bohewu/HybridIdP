@@ -2,6 +2,7 @@ using System.Data;
 using System.Text.Json;
 using Core.Application;
 using Core.Application.Options;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
@@ -33,6 +34,7 @@ public partial class PersonService : IPersonService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly PiiMaskingLevel _piiMaskingLevel;
     private readonly PersonOperationAuthorization _operationAuthorization;
+    private readonly INativeFieldPolicyService _nativeFields;
 
     public PersonService(
         ApplicationDbContext context,
@@ -40,7 +42,8 @@ public partial class PersonService : IPersonService
         IAuditService auditService,
         UserManager<ApplicationUser> userManager,
         IOptions<AuditOptions> auditOptions,
-        PersonOperationAuthorization operationAuthorization)
+        PersonOperationAuthorization operationAuthorization,
+        INativeFieldPolicyService nativeFields)
     {
         _context = context;
         _logger = logger;
@@ -48,6 +51,7 @@ public partial class PersonService : IPersonService
         _userManager = userManager;
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
         _operationAuthorization = operationAuthorization;
+        _nativeFields = nativeFields;
     }
 
     public async Task<Person?> GetPersonByIdAsync(Guid personId, CancellationToken cancellationToken = default)
@@ -67,15 +71,38 @@ public partial class PersonService : IPersonService
             .FirstOrDefaultAsync(p => p.EmployeeId == employeeId, cancellationToken);
     }
 
-    public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50, CancellationToken cancellationToken = default)
+    public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50,
+        CancellationToken cancellationToken = default, string? sortDirection = "asc")
     {
-        return await _context.Persons
-            .Include(p => p.Accounts)
-            .OrderBy(p => p.LastName)
-            .ThenBy(p => p.FirstName)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return await QueryNativeNames(_context.Persons.Include(person => person.Accounts), null, sortDirection)
+            .Skip(skip).Take(take).ToListAsync(cancellationToken);
+    }
+
+    internal static IQueryable<Person> QueryNativeNames(IQueryable<Person> persons, string? searchTerm, string? sortDirection)
+    {
+        var query = persons.Select(person => new
+        {
+            Person = person,
+            StructuredName = ((person.FirstName ?? "").Trim()
+                + (person.MiddleName == null || person.MiddleName.Trim() == "" ? "" : " " + person.MiddleName.Trim())
+                + (person.LastName == null || person.LastName.Trim() == "" ? "" : " " + person.LastName.Trim())).Trim()
+        }).Select(row => new
+        {
+            row.Person,
+            Name = row.StructuredName != "" ? row.StructuredName : (row.Person.Nickname ?? "").Trim()
+        });
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            query = query.Where(row => row.Name.Contains(term)
+                || (row.Person.FirstName != null && row.Person.FirstName.Contains(term))
+                || (row.Person.LastName != null && row.Person.LastName.Contains(term))
+                || (row.Person.Nickname != null && row.Person.Nickname.Contains(term))
+                || (row.Person.EmployeeId != null && row.Person.EmployeeId.Contains(term)));
+        }
+        var ordered = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+            ? query.OrderByDescending(row => row.Name) : query.OrderBy(row => row.Name);
+        return ordered.ThenBy(row => row.Person.Id).Select(row => row.Person);
     }
 
     public async Task<Person> CreatePersonAsync(Person person, Guid? createdBy = null, CancellationToken cancellationToken = default)
@@ -197,6 +224,20 @@ public partial class PersonService : IPersonService
                 "Authentication eligibility cannot be restored while scheduled token revocation is pending.");
         }
 
+        // Capture explicit native clears before EmployeeId normalization loses intent.
+        var manualFields = new Dictionary<NativeField, string?>();
+        void AddEdit(NativeField field, string? incoming, string? current)
+        {
+            if (incoming is not null && (incoming.Length == 0 || incoming != current))
+                manualFields[field] = incoming;
+        }
+        AddEdit(NativeField.FirstName, person.FirstName, existingPerson.FirstName);
+        AddEdit(NativeField.LastName, person.LastName, existingPerson.LastName);
+        AddEdit(NativeField.Nickname, person.Nickname, existingPerson.Nickname);
+        AddEdit(NativeField.Department, person.Department, existingPerson.Department);
+        AddEdit(NativeField.JobTitle, person.JobTitle, existingPerson.JobTitle);
+        AddEdit(NativeField.EmployeeId, person.EmployeeId, existingPerson.EmployeeId);
+
         // Normalize empty strings to null (prevents unique index violations and improves data consistency)
         person.Email = string.IsNullOrWhiteSpace(person.Email) ? null : person.Email;
         person.PhoneNumber = string.IsNullOrWhiteSpace(person.PhoneNumber) ? null : person.PhoneNumber;
@@ -273,19 +314,15 @@ public partial class PersonService : IPersonService
             (newPassportHash != null && newPassportHash != existingPerson.PassportNumber) ||
             (newResidentCertHash != null && newResidentCertHash != existingPerson.ResidentCertificateNumber);
 
+        _nativeFields.ApplyManual(existingPerson, manualFields);
+
         // Update fields
         // Contact Information
         existingPerson.Email = person.Email;
         existingPerson.PhoneNumber = person.PhoneNumber;
         // Name Information
-        existingPerson.FirstName = person.FirstName;
         existingPerson.MiddleName = person.MiddleName;
-        existingPerson.LastName = person.LastName;
-        existingPerson.Nickname = person.Nickname;
         // Employment Information
-        existingPerson.EmployeeId = person.EmployeeId;
-        existingPerson.Department = person.Department;
-        existingPerson.JobTitle = person.JobTitle;
         // Profile Information
         existingPerson.ProfileUrl = person.ProfileUrl;
         existingPerson.PictureUrl = person.PictureUrl;
@@ -333,7 +370,16 @@ public partial class PersonService : IPersonService
             }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            foreach (var account in existingPerson.Accounts ?? []) _context.Detach(account);
+            _context.Detach(existingPerson);
+            throw;
+        }
 
         LogPersonUpdated(personId, existingPerson.EmployeeId ?? "N/A");
 
@@ -597,30 +643,16 @@ public partial class PersonService : IPersonService
         return true;
     }
 
-    public async Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50, CancellationToken cancellationToken = default)
+    public async Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50,
+        CancellationToken cancellationToken = default, string? sortDirection = "asc")
     {
-        if (string.IsNullOrWhiteSpace(searchTerm))
-            return await GetAllPersonsAsync(skip, take, cancellationToken);
-
-        var term = searchTerm.ToLower();
-
-        return await _context.Persons
-            .Include(p => p.Accounts)
-            .Where(p => 
-                (p.FirstName != null && p.FirstName.Contains(searchTerm)) ||
-                (p.LastName != null && p.LastName.Contains(searchTerm)) ||
-                (p.EmployeeId != null && p.EmployeeId.Contains(searchTerm)) ||
-                (p.Nickname != null && p.Nickname.Contains(searchTerm)))
-            .OrderBy(p => p.LastName)
-            .ThenBy(p => p.FirstName)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return await QueryNativeNames(_context.Persons.Include(person => person.Accounts), searchTerm, sortDirection)
+            .Skip(skip).Take(take).ToListAsync(cancellationToken);
     }
 
-    public async Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default)
+    public async Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default, string? searchTerm = null)
     {
-        return await _context.Persons.CountAsync(cancellationToken);
+        return await QueryNativeNames(_context.Persons, searchTerm, "asc").CountAsync(cancellationToken);
     }
 
     /// <inheritdoc />

@@ -24,6 +24,71 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class UserManagementTransactionTests
 {
+    [Fact]
+    public async Task UpdateUserAsync_ShouldPersistManualClearsOnBothTargetsWithoutLockingUnchangedOrOmittedValues()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options);
+        await context.Database.EnsureCreatedAsync();
+        using var users = CreateManager(context);
+        using var roles = CreateRoleManager(context);
+        var person = new Person { Id = Guid.NewGuid(), Nickname = "person", FirstName = "retained", Department = "same", EmployeeId = "employee" };
+        var user = new ApplicationUser { UserName = "manual", Person = person, PersonId = person.Id, Nickname = "user", FirstName = "retained", Department = "same", EmployeeId = "employee" };
+        Assert.True((await users.CreateAsync(user)).Succeeded);
+        var policy = CreateNativeFields(context);
+        var service = new UserManagementService(users, roles, Mock.Of<IDomainEventPublisher>(), context,
+            Mock.Of<IOpenIddictApplicationManager>(), policy);
+        Assert.True((await service.UpdateUserAsync(user.Id,
+            new UpdateUserDto { IsActive = true, Nickname = "", EmployeeId = "", Department = "same", Roles = [] })).Success);
+        context.ChangeTracker.Clear();
+        foreach (var target in new[] { (NativeFieldTarget.User, user.Id), (NativeFieldTarget.Person, person.Id) })
+        {
+            var state = await policy.GetTargetAsync(target.Item1, target.Id);
+            Assert.Equal("", state.Fields.Single(f => f.Field == NativeField.Nickname).Value);
+            Assert.Null(state.Fields.Single(f => f.Field == NativeField.EmployeeId).Value);
+            Assert.All(state.Fields.Where(f => f.Field is NativeField.Nickname or NativeField.EmployeeId), f => Assert.True(f.ManualFixed));
+            Assert.All(state.Fields.Where(f => f.Field is not (NativeField.Nickname or NativeField.EmployeeId)), f => Assert.False(f.ManualFixed));
+            Assert.Equal("retained", state.Fields.Single(f => f.Field == NativeField.FirstName).Value);
+        }
+    }
+
+    [Fact]
+    public async Task JitAsync_ShouldDiscardBothTargetsAfterConcurrentManualClearAndKeepIdentityFailure()
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options;
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+        using var users = CreateManager(context);
+        var person = new Person { Id = Guid.NewGuid(), Email = "original@example.test" };
+        var user = new ApplicationUser { UserName = "bound", Person = person, PersonId = person.Id, Email = "original@example.test" };
+        Assert.True((await users.CreateAsync(user)).Succeeded);
+        Assert.True((await users.AddLoginAsync(user, new UserLoginInfo("example.provider", "subject", "display"))).Succeeded);
+        await using (var concurrent = new ApplicationDbContext(options))
+        {
+            var current = await concurrent.Persons.SingleAsync();
+            CreateNativeFields(concurrent).ApplyManual(current, new Dictionary<NativeField, string?> { [NativeField.Nickname] = "" });
+            await concurrent.SaveChangesAsync();
+        }
+        var policy = new NativeFieldPolicyService(context, Options.Create(new NativeFieldPolicyOptions()),
+            Options.Create(new global::Infrastructure.Options.ProviderProofOptions { Enabled = true, TrustedProviderNamespace = "example.provider" }),
+            Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
+        var jit = new JitProvisioningService(users, context, Options.Create(new ExternalLoginOptions()), policy);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => jit.ProvisionExternalUserAsync(new ExternalAuthResult
+        {
+            Provider = "example.provider", ProviderKey = "subject", AssuredCanonicalAccount = "bound",
+            DisplayName = "stale source", Email = "changed@example.test", EmailVerified = true
+        }));
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+        Assert.Equal("", (await context.Persons.SingleAsync()).Nickname);
+        Assert.Null((await context.Users.SingleAsync()).Nickname);
+        Assert.Equal("original@example.test", (await context.Users.SingleAsync()).Email);
+        Assert.Equal("original@example.test", (await context.Persons.SingleAsync()).Email);
+    }
+
     [Theory]
     [InlineData("generic", "b@example.test")]
     [InlineData("without-roles", "b@example.test")]
@@ -80,8 +145,12 @@ public sealed class UserManagementTransactionTests
 
         if (writer is "generic" or "without-roles")
         {
-            var service = new UserManagementService(manager, roleManager, Mock.Of<IDomainEventPublisher>(),
-                context, Mock.Of<IOpenIddictApplicationManager>());
+            var service = new UserManagementService(manager,
+            roleManager,
+            Mock.Of<IDomainEventPublisher>(),
+            context,
+            Mock.Of<IOpenIddictApplicationManager>(),
+            CreateNativeFields(context));
             var request = new UpdateUserDto
             {
                 Email = destination, EmailConfirmed = true, IsActive = true, FirstName = "Updated", Roles = []
@@ -93,7 +162,10 @@ public sealed class UserManagementTransactionTests
         }
         else if (writer == "jit")
         {
-            var service = new JitProvisioningService(manager, context, Options.Create(new ExternalLoginOptions()));
+            var service = new JitProvisioningService(manager,
+            context,
+            Options.Create(new ExternalLoginOptions()),
+            CreateNativeFields(context));
             await service.ProvisionExternalUserAsync(new ExternalAuthResult
             {
                 Provider = "Legacy", ProviderKey = "subject", Email = destination,
@@ -102,7 +174,8 @@ public sealed class UserManagementTransactionTests
         }
         else
         {
-            var outcome = await new Stage1BindingRefreshService(context).BindAndRefreshAsync(new Stage1BindingRefreshRequest(
+            var outcome = await new Stage1BindingRefreshService(context,
+            CreateNativeFields(context)).BindAndRefreshAsync(new Stage1BindingRefreshRequest(
                 user.Id, "provider", "subject", new ManagedDirectoryIdentity(Guid.NewGuid(), "account", true, true, false,
                     new AssuredProfile
                     {
@@ -118,8 +191,8 @@ public sealed class UserManagementTransactionTests
         Assert.Equal(originalStamp, user.SecurityStamp);
         Assert.True(user.EmailConfirmed);
         Assert.False(user.EmailMfaEnabled);
-        Assert.Equal("Updated", user.FirstName);
-        Assert.Equal("Updated", user.Person!.FirstName);
+        Assert.Equal(writer == "stage1" ? null : "Updated", user.FirstName);
+        Assert.Equal(writer is "generic" or "without-roles" ? "Updated" : "Original", user.Person!.FirstName);
         if (destination != originalDelivery.Destination)
         {
             Assert.False(await mfa.VerifyAndEnableEmailMfaAsync(user, originalDelivery.Code));
@@ -191,8 +264,12 @@ public sealed class UserManagementTransactionTests
             Assert.True((await manager.CreateAsync(new ApplicationUser { UserName = "taken" })).Succeeded);
         }
         var events = new Mock<IDomainEventPublisher>();
-        var service = new UserManagementService(manager, roleManager, events.Object,
-            context, Mock.Of<IOpenIddictApplicationManager>());
+        var service = new UserManagementService(manager,
+            roleManager,
+            events.Object,
+            context,
+            Mock.Of<IOpenIddictApplicationManager>(),
+            CreateNativeFields(context));
         var request = new UpdateUserDto
         {
             UserName = concurrentEnrollment ? "original" : "taken", Email = "replacement@example.test",
@@ -254,8 +331,12 @@ public sealed class UserManagementTransactionTests
                 ? IdentityResult.Failed(new IdentityError { Code = "ConcurrencyFailure", Description = "Role write conflict" })
                 : IdentityResult.Success);
         var events = new Mock<IDomainEventPublisher>();
-        var service = new UserManagementService(managerMock.Object, roleManager, events.Object,
-            context, Mock.Of<IOpenIddictApplicationManager>());
+        var service = new UserManagementService(managerMock.Object,
+            roleManager,
+            events.Object,
+            context,
+            Mock.Of<IOpenIddictApplicationManager>(),
+            CreateNativeFields(context));
 
         var result = await service.UpdateUserAsync(user.Id, new UpdateUserDto
         {
@@ -287,4 +368,9 @@ public sealed class UserManagementTransactionTests
         new RoleStore<ApplicationRole, ApplicationDbContext, Guid>(context), [],
         new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(),
         Mock.Of<ILogger<RoleManager<ApplicationRole>>>());
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

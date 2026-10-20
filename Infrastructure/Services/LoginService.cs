@@ -332,6 +332,7 @@ public partial class LoginService : ILoginService
         if (existingUser is not null && provisioned.Id != existingUser.Id) return LoginResult.InvalidCredentials();
         var result = await ValidateExternalUserSignInAsync(provisioned, cancellationToken);
         if (!result.IsSuccess) return result;
+        var displayChanged = false;
         // Only validated Proof may refresh this display-only field on an existing exact binding.
         // Do not remove/re-add the login or change account identifiers or mailbox ownership.
         if (linked is not null && !string.IsNullOrWhiteSpace(profile?.DisplayName))
@@ -342,9 +343,10 @@ public partial class LoginService : ILoginService
             if (binding is not null && binding.ProviderDisplayName != profile.DisplayName)
             {
                 binding.ProviderDisplayName = profile.DisplayName;
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                displayChanged = true;
             }
         }
+        if (displayChanged) await _dbContext.SaveChangesAsync(cancellationToken);
         await RefreshProviderProfileAsync(provisioned, proof.ProviderNamespace!, proof.StableSubject!, cancellationToken);
         return LoginResult.LegacySuccess(provisioned);
     }

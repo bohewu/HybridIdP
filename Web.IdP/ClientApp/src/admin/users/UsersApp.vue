@@ -8,6 +8,7 @@ import UserSessions from './components/UserSessions.vue'
 import LoginHistoryDialog from './components/LoginHistoryDialog.vue'
 import RecoveryAssistanceDialog from './components/RecoveryAssistanceDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import NativeFieldPolicyDialog from '@/components/NativeFieldPolicyDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 import { useCsrfToken } from '@/composables/useCsrfToken'
@@ -18,6 +19,7 @@ const { fetchWithCsrf } = useCsrfToken('admin-users-app')
 const users = ref([])
 const loading = ref(true)
 const error = ref(null)
+const policyTarget = ref(null)
 const selectedUser = ref(null)
 const showForm = ref(false)
 const showRoleDialog = ref(false)
@@ -539,6 +541,7 @@ const handleImpersonate = async (user) => {
         :current-user-id="currentUserId"
         v-model:search="search"
         v-model:is-active-filter="isActiveFilter"
+        @field-policies="policyTarget = $event"
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
         @manage-sessions="handleManageSessions"
@@ -554,6 +557,8 @@ const handleImpersonate = async (user) => {
         @page-size-change="handlePageSizeChange"
         @sort-change="handleSortChange"
       />
+
+      <NativeFieldPolicyDialog v-if="policyTarget" target="User" :target-id="policyTarget.id" :target-label="policyTarget.userName" :can-update="canUpdate" @close="policyTarget = null" @changed="fetchUsers" />
 
       <UserForm
         v-if="showForm"

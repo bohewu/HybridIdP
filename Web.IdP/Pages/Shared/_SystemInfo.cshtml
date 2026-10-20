@@ -1,0 +1,22 @@
+@using Core.Domain.Constants
+@using Web.IdP.Helpers
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+
+@if (User?.IsInRole(AuthConstants.Roles.Admin) == true)
+{
+    <details class="static md:relative" data-test-id="system-info">
+        <summary class="inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-google-500 focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden"
+                 aria-label="@Localizer["AdminSystemInfo.Title"]">
+            <i class="bi bi-info-circle text-base leading-none" aria-hidden="true"></i>
+            <span>@Localizer["AdminSystemInfo.Title"]</span>
+        </summary>
+        <div class="absolute bottom-full left-1/2 z-50 mb-3 w-60 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-4 text-left text-sm text-gray-700 shadow-lg md:left-auto md:right-0 md:translate-x-0">
+            <p class="mb-2 font-semibold">@Localizer["AdminSystemInfo.Title"]</p>
+            <p class="mb-2">@Localizer["AdminSystemInfo.BasedOn"]</p>
+            <dl class="flex items-baseline justify-between gap-4">
+                <dt class="text-gray-500">@Localizer["AdminSystemInfo.Version"]</dt>
+                <dd class="m-0 font-mono" data-test-id="system-version">@(ProductVersionInfo.Version ?? Localizer["AdminSystemInfo.VersionUnavailable"].Value)</dd>
+            </dl>
+        </div>
+    </details>
+}

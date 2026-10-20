@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Options;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -15,15 +16,18 @@ public class JitProvisioningService : IJitProvisioningService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IApplicationDbContext _context;
     private readonly ExternalLoginOptions _externalLoginOptions;
+    private readonly INativeFieldPolicyService _nativeFields;
 
     public JitProvisioningService(
         UserManager<ApplicationUser> userManager,
         IApplicationDbContext context,
-        IOptions<ExternalLoginOptions> externalLoginOptions)
+        IOptions<ExternalLoginOptions> externalLoginOptions,
+        INativeFieldPolicyService nativeFields)
     {
         _userManager = userManager;
         _context = context;
         _externalLoginOptions = externalLoginOptions.Value;
+        _nativeFields = nativeFields;
     }
 
     public async Task<ApplicationUser> ProvisionExternalUserAsync(
@@ -71,62 +75,57 @@ public class JitProvisioningService : IJitProvisioningService
                 existingUser.Email = externalAuth.Email;
                 existingUser.EmailConfirmed = hasVerifiedEmail;
             }
-            existingUser.FirstName = externalAuth.FirstName ?? existingUser.FirstName;
-            existingUser.LastName = externalAuth.LastName ?? existingUser.LastName;
             existingUser.MiddleName = externalAuth.MiddleName ?? existingUser.MiddleName;
             existingUser.PhoneNumber = externalAuth.PhoneNumber ?? existingUser.PhoneNumber;
-            existingUser.Department = externalAuth.Department ?? existingUser.Department;
-            existingUser.JobTitle = externalAuth.JobTitle ?? existingUser.JobTitle;
-            existingUser.EmployeeId = externalAuth.EmployeeId ?? existingUser.EmployeeId;
             existingUser.ModifiedAt = DateTime.UtcNow;
-            
-            var updateResult = await _userManager.UpdateAsync(existingUser);
-            if (!updateResult.Succeeded)
+            Person? existingPerson = null;
+            try
             {
-                // A stale profile must not be returned as current authentication state,
-                // or flushed by the later Person save after an enrollment conflict.
-                _context.Detach(existingUser);
-                throw new InvalidOperationException("Failed to update external user profile.");
-            }
-            
-            // Also update linked Person if exists
-            if (existingUser.PersonId.HasValue)
-            {
-                var existingPerson = await _context.Persons.FindAsync([existingUser.PersonId.Value], cancellationToken);
-                if (existingPerson != null)
+                // Also update linked Person if exists
+                if (existingUser.PersonId.HasValue)
                 {
-                    // Update Person fields
-                    if (hasVerifiedEmail || hasAssuredContactEmail && string.IsNullOrWhiteSpace(existingPerson.Email))
+                    existingPerson = await _context.Persons.FindAsync([existingUser.PersonId.Value], cancellationToken);
+                    if (existingPerson != null)
                     {
-                        existingPerson.Email = externalAuth.Email;
-                    }
-                    existingPerson.PhoneNumber = externalAuth.PhoneNumber ?? existingPerson.PhoneNumber;
-                    existingPerson.FirstName = externalAuth.FirstName ?? existingPerson.FirstName;
-                    existingPerson.LastName = externalAuth.LastName ?? existingPerson.LastName;
-                    existingPerson.MiddleName = externalAuth.MiddleName ?? existingPerson.MiddleName;
-                    existingPerson.EmployeeId = externalAuth.EmployeeId ?? existingPerson.EmployeeId;
-                    existingPerson.Department = externalAuth.Department ?? existingPerson.Department;
-                    existingPerson.JobTitle = externalAuth.JobTitle ?? existingPerson.JobTitle;
-                    
-                    // Update PID fields only if newly provided and currently empty
-                    if (!string.IsNullOrWhiteSpace(externalAuth.NationalId) && string.IsNullOrWhiteSpace(existingPerson.NationalId))
-                    {
-                        existingPerson.NationalId = PidHasher.Hash(externalAuth.NationalId);
-                    }
-                    
-                    // Auto-verify Legacy users if not already verified
-                    if (externalAuth.Provider == Core.Domain.Constants.AuthConstants.Providers.Legacy && existingPerson.IdentityVerifiedAt == null)
-                    {
-                        existingPerson.IdentityVerifiedAt = DateTime.UtcNow;
-                        if (string.IsNullOrWhiteSpace(existingPerson.IdentityDocumentType) && !string.IsNullOrWhiteSpace(existingPerson.NationalId))
+                        // Update Person fields
+                        if (hasVerifiedEmail || hasAssuredContactEmail && string.IsNullOrWhiteSpace(existingPerson.Email))
                         {
-                            existingPerson.IdentityDocumentType = "NationalId";
+                            existingPerson.Email = externalAuth.Email;
                         }
-                    }
+                        existingPerson.PhoneNumber = externalAuth.PhoneNumber ?? existingPerson.PhoneNumber;
+                        existingPerson.MiddleName = externalAuth.MiddleName ?? existingPerson.MiddleName;
                     
-                    existingPerson.ModifiedAt = DateTime.UtcNow;
-                    await _context.SaveChangesAsync(cancellationToken);
+                        // Update PID fields only if newly provided and currently empty
+                        if (!string.IsNullOrWhiteSpace(externalAuth.NationalId) && string.IsNullOrWhiteSpace(existingPerson.NationalId))
+                        {
+                            existingPerson.NationalId = PidHasher.Hash(externalAuth.NationalId);
+                        }
+                    
+                        // Auto-verify Legacy users if not already verified
+                        if (externalAuth.Provider == Core.Domain.Constants.AuthConstants.Providers.Legacy && existingPerson.IdentityVerifiedAt == null)
+                        {
+                            existingPerson.IdentityVerifiedAt = DateTime.UtcNow;
+                            if (string.IsNullOrWhiteSpace(existingPerson.IdentityDocumentType) && !string.IsNullOrWhiteSpace(existingPerson.NationalId))
+                            {
+                                existingPerson.IdentityDocumentType = "NationalId";
+                            }
+                        }
+                    
+                        existingPerson.ModifiedAt = DateTime.UtcNow;
+                    }
                 }
+                await ApplyNativeFieldsAsync(existingUser, existingPerson, externalAuth, cancellationToken);
+                // Identity saves both tracked targets and their policy state atomically.
+                var updateResult = await _userManager.UpdateAsync(existingUser);
+                if (!updateResult.Succeeded)
+                    throw new InvalidOperationException("Failed to update external user profile.");
+                await _context.SaveChangesAsync(cancellationToken);
+            }
+            catch
+            {
+                _context.Detach(existingUser);
+                if (existingPerson is not null) _context.Detach(existingPerson);
+                throw;
             }
             
             return existingUser;
@@ -192,12 +191,7 @@ public class JitProvisioningService : IJitProvisioningService
                 person.Email = externalAuth.Email;
             }
             person.PhoneNumber = externalAuth.PhoneNumber ?? person.PhoneNumber;
-            person.FirstName = externalAuth.FirstName ?? person.FirstName;
-            person.LastName = externalAuth.LastName ?? person.LastName;
             person.MiddleName = externalAuth.MiddleName ?? person.MiddleName;
-            person.EmployeeId = externalAuth.EmployeeId ?? person.EmployeeId;
-            person.Department = externalAuth.Department ?? person.Department;
-            person.JobTitle = externalAuth.JobTitle ?? person.JobTitle;
             
             // Only update PID fields if newly provided and currently empty
             if (!string.IsNullOrWhiteSpace(externalAuth.NationalId) && string.IsNullOrWhiteSpace(person.NationalId))
@@ -248,12 +242,7 @@ public class JitProvisioningService : IJitProvisioningService
                 Email = externalAuth.Email,
                 EmailConfirmed = hasVerifiedEmail,
                 PersonId = person.Id,
-                FirstName = externalAuth.FirstName,
-                LastName = externalAuth.LastName,
                 MiddleName = externalAuth.MiddleName,
-                Department = externalAuth.Department,
-                JobTitle = externalAuth.JobTitle,
-                EmployeeId = externalAuth.EmployeeId,
                 PhoneNumber = externalAuth.PhoneNumber,
                 IsActive = true,
                 CreatedAt = DateTime.UtcNow
@@ -275,7 +264,13 @@ public class JitProvisioningService : IJitProvisioningService
             if (newUser.PersonId == null)
             {
                 newUser.PersonId = person.Id;
-                await _userManager.UpdateAsync(newUser);
+                var linkPersonResult = await _userManager.UpdateAsync(newUser);
+                if (!linkPersonResult.Succeeded)
+                {
+                    _context.Detach(newUser);
+                    _context.Detach(person);
+                    throw new InvalidOperationException("Failed to link external user profile.");
+                }
             }
         }
 
@@ -300,8 +295,19 @@ public class JitProvisioningService : IJitProvisioningService
             );
         }
 
-        // Step 6: Save Person changes
+        // Persist the exact login before evaluating native source eligibility.
         await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await ApplyNativeFieldsAsync(newUser, person, externalAuth, cancellationToken);
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch
+        {
+            _context.Detach(newUser);
+            _context.Detach(person);
+            throw;
+        }
 
         return newUser;
     }
@@ -325,17 +331,13 @@ public class JitProvisioningService : IJitProvisioningService
             ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
         var person = new Person
         {
-            Id = Guid.NewGuid(), Email = contactEmail, FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
-            Department = externalAuth.Department, JobTitle = externalAuth.JobTitle,
-            EmployeeId = externalAuth.EmployeeId, CreatedAt = DateTime.UtcNow
+            Id = Guid.NewGuid(), Email = contactEmail, CreatedAt = DateTime.UtcNow
         };
         var user = new ApplicationUser
         {
             Id = Guid.NewGuid(), UserName = username, Email = contactEmail,
             EmailConfirmed = externalAuth.EmailVerified && contactEmail is not null, PersonId = person.Id,
-            FirstName = externalAuth.FirstName, LastName = externalAuth.LastName,
-            Department = externalAuth.Department, JobTitle = externalAuth.JobTitle,
-            EmployeeId = externalAuth.EmployeeId, IsActive = true, CreatedAt = DateTime.UtcNow
+            IsActive = true, CreatedAt = DateTime.UtcNow
         };
         try
         {
@@ -346,6 +348,8 @@ public class JitProvisioningService : IJitProvisioningService
             var linked = await _userManager.AddLoginAsync(user, new UserLoginInfo(
                 externalAuth.Provider, externalAuth.ProviderKey, externalAuth.DisplayName ?? username));
             if (!linked.Succeeded) throw new InvalidOperationException("Provider account binding failed.");
+            await _context.SaveChangesAsync(cancellationToken);
+            await ApplyNativeFieldsAsync(user, person, externalAuth, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
             if (transaction is not null) await transaction.CommitAsync(cancellationToken);
             return user;
@@ -362,6 +366,27 @@ public class JitProvisioningService : IJitProvisioningService
                     entry.State = EntityState.Detached;
             }
             throw;
+        }
+    }
+
+    private async Task ApplyNativeFieldsAsync(ApplicationUser user, Person? person,
+        ExternalAuthResult auth, CancellationToken cancellationToken)
+    {
+        var values = new Dictionary<NativeField, string?>
+        {
+            [NativeField.FirstName] = auth.FirstName, [NativeField.LastName] = auth.LastName,
+            [NativeField.Department] = auth.Department, [NativeField.JobTitle] = auth.JobTitle,
+            [NativeField.EmployeeId] = auth.EmployeeId
+        };
+        if (auth.AssuredCanonicalAccount is not null)
+        {
+            values[NativeField.Nickname] = auth.DisplayName;
+            await _nativeFields.ApplySourceAsync(user, person,
+                new(NativeFieldSource.Proof, user.Id, auth.Provider, auth.ProviderKey), values, cancellationToken);
+        }
+        else
+        {
+            _nativeFields.ApplyUnattributed(user, person, values);
         }
     }
 

@@ -126,6 +126,16 @@ HybridIdP/
 
 ### Docker Compose 設定
 
+The Docker example below uses SQL Server 2022 for development. Choose an
+engine version that matches the deployment when validating operator SQL;
+a successful run on 2022 does not establish SQL Server 2019 compatibility.
+For SQL Server 2019, JSON object checks must use syntax supported by that
+engine: the second `ISJSON` type-constraint argument (for example,
+`ISJSON(value, OBJECT)`) requires SQL Server 2022. A one-argument `ISJSON`
+check alone also accepts arrays and is insufficient when an object is required.
+Validate the object shape separately and reject invalid or non-object input.
+This guidance is not certification of the entire application on SQL Server 2019.
+
 ```yaml
 # docker-compose.yml
 services:
@@ -1178,6 +1188,31 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 **最後更新:** 2025-12-11  
 **維護者:** HybridIdP Team  
 **版本:** 1.3
+
+## Native-field authority storage
+
+SQL Server migration `20261020030913_AddNativeFieldAuthority` and PostgreSQL
+migration `20261020030931_AddNativeFieldAuthority` add nullable
+`AspNetUsers.NativeFieldStateJson` and `Persons.NativeFieldStateJson`, plus
+`NativeFieldSourcePolicies` (`Source`, `Paused`, `Revision`). User and Person
+field ownership/protection are independent. State JSON is a concurrency token;
+native values and protection state are saved together. These migrations contain
+no historical data rewrite or inferred source attribution/binding.
+
+`AddFirstNameDisplayNameFallback` adds `FirstNameDisplayNameFallback` (false
+for existing rows) and nullable `FirstNameFallbackProviderNamespace` (maximum
+200 characters) to that source policy table. SQL Server migration
+`20261020091155_AddFirstNameDisplayNameFallback` and PostgreSQL migration
+`20261020091320_AddFirstNameDisplayNameFallback` preserve existing pause/revision
+state and all native values. Apply the additive schema before activating the
+new application; do not drop these columns while the new binary is running.
+The Down migration removes only the strategy settings, not names already filled.
+
+Apply the selected provider's migration before activating the updated app using
+the existing operator-controlled tools above. Preserve the original environment
+and verified backup; application rollback and database rollback remain separate.
+See the [configuration and upgrade notes](DEPLOYMENT_GUIDE.md#native-field-policy-configuration-and-upgrade)
+for the explicit Stage 1 native opt-in and namespace allowlist requirement.
 
 ## Provider Profile and conditional claim storage
 

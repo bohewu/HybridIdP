@@ -12,6 +12,7 @@ public interface IApplicationDbContext
     DbSet<ClaimDefinition> ClaimDefinitions { get; }
     DbSet<ScopeClaim> ScopeClaims { get; }
     DbSet<Setting> Settings { get; }
+    DbSet<NativeFieldSourcePolicy> NativeFieldSourcePolicies { get; }
     DbSet<SecurityPolicy> SecurityPolicies { get; }
     DbSet<ScopeExtension> ScopeExtensions { get; }
     DbSet<Resource> Resources { get; }

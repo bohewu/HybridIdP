@@ -522,7 +522,10 @@ public sealed class ProviderAccountLifecycleTests
             _scope = _provider.CreateAsyncScope();
             Db = _scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             Users = _scope.ServiceProvider.GetRequiredService<UserManager<ApplicationUser>>();
-            Jit = new JitProvisioningService(Users, Db, Microsoft.Extensions.Options.Options.Create(new ExternalLoginOptions { AutoProvisionDefaultRole = null }));
+            Jit = new JitProvisioningService(Users,
+            Db,
+            Microsoft.Extensions.Options.Options.Create(new ExternalLoginOptions { AutoProvisionDefaultRole = null }),
+            CreateNativeFields(Db));
             Controller = new UsersController(Mock.Of<ICurrentUserLifecycleEligibility>(), Mock.Of<IUserManagementService>(),
                 Users, _scope.ServiceProvider.GetRequiredService<RoleManager<ApplicationRole>>(), Mock.Of<ISessionService>(),
                 Mock.Of<ILoginHistoryService>(), Db, Mock.Of<IStringLocalizer<SharedResource>>(), Mock.Of<IImpersonationService>(),
@@ -549,5 +552,10 @@ public sealed class ProviderAccountLifecycleTests
             await _connection.DisposeAsync();
         }
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }
 

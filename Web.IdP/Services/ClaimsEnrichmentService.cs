@@ -143,7 +143,7 @@ public partial class ClaimsEnrichmentService : IClaimsEnrichmentService
                     continue;
                 }
                 value = def.ClaimType == OpenIddict.Abstractions.OpenIddictConstants.Claims.Name
-                    ? NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName
+                    ? NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname) ?? user.UserName
                     : resolvedValue;
             }
             // Log only which claim is being resolved, not the value

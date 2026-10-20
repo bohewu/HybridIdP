@@ -211,28 +211,28 @@
     @* Main Content Area *@
     <div class="main-content flex flex-col min-h-screen transition-all duration-300">
         @* Header *@
-        <header class="top-header sticky top-0 z-30 bg-white border-b border-gray-200 px-6 py-3">
-            <div class="flex items-center justify-between h-full">
+        <header class="top-header sticky top-0 z-30 bg-white border-b border-gray-200 px-3 py-3 sm:px-6">
+            <div class="flex h-full items-center justify-between gap-3">
                 @* Mobile Menu Toggle *@
-                <button class="md:hidden p-1 text-gray-600 hover:text-gray-900 focus:outline-none" id="sidebar-toggle">
+                <button class="md:hidden shrink-0 p-1 text-gray-600 hover:text-gray-900 focus:outline-none" id="sidebar-toggle">
                     <i class="bi bi-list text-2xl"></i>
                 </button>
                 
                 @* Breadcrumbs *@
-                <nav aria-label="breadcrumb" class="flex items-center">
-                    <ol class="flex items-center space-x-2 text-sm text-gray-500">
+                <nav aria-label="breadcrumb" class="flex min-w-0 flex-1 items-center">
+                    <ol class="flex min-w-0 items-center space-x-2 whitespace-nowrap text-sm text-gray-500">
                         <li><a href="/Admin" class="text-gray-500 hover:text-google-500 no-underline">@Localizer["Admin"]</a></li>
                         @if (!string.IsNullOrEmpty(ViewData["Breadcrumb"]?.ToString()))
                         {
                             <li><span class="text-gray-300">/</span></li>
-                            <li class="font-medium text-gray-900" aria-current="page">@ViewData["Breadcrumb"]</li>
+                            <li class="truncate font-medium text-gray-900" aria-current="page">@ViewData["Breadcrumb"]</li>
                         }
                     </ol>
                 </nav>
                 
                 @* Right Side *@
-                <div class="flex items-center gap-4">
-                    <a href="/" class="inline-flex items-center gap-1 px-3 py-1.5 border border-google-500 text-google-500 rounded-md text-sm font-medium hover:bg-google-100 transition-colors no-underline" title="@Localizer["BackToHome"]">
+                <div class="flex shrink-0 items-center gap-3 sm:gap-4">
+                    <a href="/" class="hidden sm:inline-flex! items-center gap-1 px-3 py-1.5 border border-google-500 text-google-500 rounded-md text-sm font-medium hover:bg-google-100 transition-colors no-underline" title="@Localizer["BackToHome"]">
                       <svg class="icon icon-tabler icon-tabler-home" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                         <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
@@ -249,7 +249,7 @@
                             <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path>
                         </svg>
                     </a>
-                    <div class="w-32">
+                    <div class="w-28 sm:w-32">
                         <partial name="_LanguageSelector" />
                     </div>
                 </div>
@@ -278,7 +278,8 @@
                             <span class="ml-2 text-gray-400">@footerPoweredBy</span>
                         }
                     </p>
-                    <div class="flex gap-4">
+                    <div class="relative flex items-center gap-3">
+                        <partial name="_SystemInfo" />
                         <a href="/Privacy" class="text-gray-500 hover:text-gray-700 no-underline">@Localizer["Privacy"]</a>
                         <a asp-area="" asp-page="/Docs" target="_blank" class="text-gray-500 hover:text-gray-700 no-underline">@Localizer["Documentation"]</a>
                     </div>

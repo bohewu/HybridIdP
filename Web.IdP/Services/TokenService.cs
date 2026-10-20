@@ -313,7 +313,7 @@ namespace Web.IdP.Services
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
-            var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+            var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname)
                 ?? await _userManager.GetUserNameAsync(user);
 
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))
@@ -521,7 +521,7 @@ namespace Web.IdP.Services
                 nameType: Claims.Name,
                 roleType: Claims.Role);
 
-            var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+            var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname)
                 ?? await _userManager.GetUserNameAsync(user);
 
             identity.SetClaim(Claims.Subject, await _userManager.GetUserIdAsync(user))

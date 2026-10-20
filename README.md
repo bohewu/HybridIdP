@@ -12,6 +12,7 @@ A robust, enterprise-ready Identity Provider (IdP) built on .NET 10+ and OpenIdd
 - [Getting Started](docs/DEVELOPMENT_GUIDE.md)
 - [Architecture Guide](docs/ARCHITECTURE.md)
 - [Authentication Integration Boundary](docs/AUTHENTICATION_INTEGRATION.md)
+- [Identity Source and Field Mapping](docs/IDENTITY_FIELD_MAPPING.md)
 - [Provider Proof Contract 1.0](docs/PROVIDER_PROOF_CONTRACT.md)
 - [Provider API Capability Inventory](docs/PROVIDER_API_CAPABILITIES.md)
 - [Provider Lifecycle Status 1.0 Review Draft](docs/PROVIDER_LIFECYCLE_CONTRACT.md)

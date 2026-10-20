@@ -29,6 +29,8 @@ public static class ManagedCredentialDisplay
         string fallback) =>
         NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
         ?? NameFormatter.BuildDisplayName(person?.FirstName, person?.MiddleName, person?.LastName)
+        ?? (string.IsNullOrWhiteSpace(user.Nickname) ? null : user.Nickname.Trim())
+        ?? (string.IsNullOrWhiteSpace(person?.Nickname) ? null : person.Nickname.Trim())
         ?? (string.IsNullOrWhiteSpace(assuredName) ? null : assuredName.Trim())
         ?? fallback;
 }

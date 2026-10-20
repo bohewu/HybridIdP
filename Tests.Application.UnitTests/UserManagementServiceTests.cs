@@ -81,12 +81,12 @@ public class UserManagementServiceTests : IDisposable
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
 
-        _service = new UserManagementService(
-            _userManager,
+        _service = new UserManagementService(_userManager,
             _roleManager,
             _mockEventPublisher.Object,
             _context,
-            _mockApplicationManager.Object);
+            _mockApplicationManager.Object,
+            CreateNativeFields(_context));
     }
 
     public void Dispose()
@@ -100,15 +100,45 @@ public class UserManagementServiceTests : IDisposable
     #region GetUsersAsync Tests
 
     [Fact]
+    public async Task GetUsersAsync_ShouldSearchAndSortEffectiveNativeNamesBeforePagingAndPreserveFilters()
+    {
+        var people = new[] { new Person { Id = Guid.NewGuid(), FirstName = "Beta Whole Name" },
+            new Person { Id = Guid.NewGuid(), Nickname = "Delta Whole Name" } };
+        _context.Persons.AddRange(people);
+        var users = new[]
+        {
+            new ApplicationUser { UserName = "native-alpha", FirstName = "Alpha Whole Name", Nickname = "Distinct Alias", IsActive = true },
+            new ApplicationUser { UserName = "native-beta", Person = people[0], Nickname = "Lower Priority", IsActive = true },
+            new ApplicationUser { UserName = "native-charlie", FirstName = " ", Nickname = "Charlie Whole Name", IsActive = true },
+            new ApplicationUser { UserName = "native-delta", Person = people[1], IsActive = true },
+            new ApplicationUser { UserName = "inactive", Nickname = "Whole Name", IsActive = false },
+            new ApplicationUser { UserName = "deleted", Nickname = "Whole Name", IsActive = true, IsDeleted = true }
+        };
+        foreach (var user in users) Assert.True((await _userManager.CreateAsync(user)).Succeeded);
+        var page = await _service.GetUsersAsync(skip: 1, take: 2, search: "Whole Name", isActive: true, sortBy: "displayName", sortDirection: "asc");
+        Assert.Equal(4, page.TotalCount);
+        Assert.Equal(new[] { "Beta Whole Name", "Charlie Whole Name" }, page.Items.Select(user => user.DisplayName));
+        var descending = await _service.GetUsersAsync(take: 1, search: "Whole Name", isActive: true, sortBy: "firstName", sortDirection: "desc");
+        Assert.Equal("Delta Whole Name", Assert.Single(descending.Items).DisplayName);
+        Assert.Equal("Alpha Whole Name", Assert.Single((await _service.GetUsersAsync(search: "Distinct Alias")).Items).DisplayName);
+        Assert.Equal(5, (await _service.GetUsersAsync(search: " ")).TotalCount);
+    }
+
+    [Fact]
     public async Task GetUsersAsync_ShouldProjectManagedDisplayNameForPageWithoutChangingUsername()
     {
         var user = new ApplicationUser { UserName = "provider_subject", Email = "contact@example.test" };
         Assert.True((await _userManager.CreateAsync(user)).Succeeded);
         Assert.True((await _userManager.AddLoginAsync(user, new UserLoginInfo("example.organization", "subject", "Managed Name"))).Succeeded);
         Assert.True((await _userManager.AddLoginAsync(user, new UserLoginInfo("Google", "social-subject", "Social Name"))).Succeeded);
-        var service = new UserManagementService(_userManager, _roleManager, _mockEventPublisher.Object,
-            _context, _mockApplicationManager.Object, providerProofOptions: Options.Create(
-                new Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
+        var service = new UserManagementService(_userManager,
+            _roleManager,
+            _mockEventPublisher.Object,
+            _context,
+            _mockApplicationManager.Object,
+            CreateNativeFields(_context),
+            providerProofOptions: Options.Create(
+                new global::Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
         var summary = Assert.Single((await service.GetUsersAsync(take: 1)).Items);
         Assert.Equal("Managed Name", summary.DisplayName);
         Assert.Equal("provider_subject", summary.UserName);
@@ -1181,7 +1211,7 @@ public class UserManagementServiceTests : IDisposable
 
     private UserManagementService CreateRoleProtectedService(bool requireTargetMfa = true, bool countPasskey = true) =>
         new(_userManager, _roleManager, _mockEventPublisher.Object, _context, _mockApplicationManager.Object,
-            Options.Create(new PrivilegedRoleProtectionOptions
+            CreateNativeFields(_context), Options.Create(new PrivilegedRoleProtectionOptions
             {
                 RequireTargetMfaForPrivilegedRoleAssignment = requireTargetMfa,
                 CountPasskeyAsMfa = countPasskey
@@ -1473,4 +1503,9 @@ public class UserManagementServiceTests : IDisposable
     }
 
     #endregion
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

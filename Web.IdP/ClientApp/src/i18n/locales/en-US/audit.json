@@ -25,6 +25,8 @@
     "clear": "Clear Filters"
   },
   "eventTypes": {
+    "NativeFieldSourcePauseChanged": "Native field source pause changed",
+    "NativeFieldPolicyChanged": "Native field policy changed",
     "RequiredPasswordChange": "Required password change",
     "AuthorizationGrantedFull": "All requested permissions granted",
     "AuthorizationGrantedPartial": "Some requested permissions granted",

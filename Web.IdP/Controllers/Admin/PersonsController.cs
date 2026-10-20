@@ -45,11 +45,11 @@ public partial class PersonsController : ControllerBase
     /// </summary>
     [HttpGet]
     [HasPermission(Permissions.Persons.Read)]
-    public async Task<ActionResult<PersonListResponseDto>> GetPersons([FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<PersonListResponseDto>> GetPersons([FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken cancellationToken = default, [FromQuery] string? sortDirection = "asc")
     {
         try
         {
-            var persons = await _personService.GetAllPersonsAsync(skip, take, cancellationToken);
+            var persons = await _personService.GetAllPersonsAsync(skip, take, cancellationToken, sortDirection);
             var totalCount = await _personService.GetPersonsCountAsync(cancellationToken);
 
             var response = new PersonListResponseDto
@@ -97,15 +97,20 @@ public partial class PersonsController : ControllerBase
     [HttpGet("search")]
     [HasPermission(Permissions.Persons.Read)]
     public async Task<ActionResult<PersonListResponseDto>> SearchPersons(
-        [FromQuery] string term, 
+        [FromQuery] string? term = null,
         [FromQuery] int skip = 0, 
         [FromQuery] int take = 50,
-        CancellationToken cancellationToken = default)
+        CancellationToken cancellationToken = default,
+        [FromQuery] string? sortDirection = "asc")
     {
+        if (string.IsNullOrWhiteSpace(term))
+            return await GetPersons(skip, take, cancellationToken, sortDirection);
+
+        term = term.Trim();
         try
         {
-            var persons = await _personService.SearchPersonsAsync(term, skip, take, cancellationToken);
-            var totalCount = await _personService.GetPersonsCountAsync(cancellationToken); // Note: This is total, not search result count
+            var persons = await _personService.SearchPersonsAsync(term, skip, take, cancellationToken, sortDirection);
+            var totalCount = await _personService.GetPersonsCountAsync(cancellationToken, term);
 
             var response = new PersonListResponseDto
             {

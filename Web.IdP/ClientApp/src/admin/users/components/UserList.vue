@@ -28,6 +28,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'field-policies',
   'edit',
   'manage-roles',
   'manage-sessions',
@@ -168,12 +169,12 @@ const getSortIcon = (field) => {
                 </div>
               </th>
               <th
-                 @click="handleSort('firstName')"
+                 @click="handleSort('displayName')"
                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                  <div class="flex items-center space-x-1">
                   <span>{{ $t('users.name') }}</span>
-                  <span v-html="getSortIcon('firstName')"></span>
+                  <span v-html="getSortIcon('displayName')"></span>
                 </div>
               </th>
               <th
@@ -270,6 +271,7 @@ const getSortIcon = (field) => {
                     </button>
                   </template>
                   <template #content="{ close }">
+                    <button v-if="canRead" type="button" class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @click="emit('field-policies', user); close()">{{ t('native-fields.title') }}</button>
                     <button
                       v-if="canUpdate"
                       @click="emit('edit', user); close()"

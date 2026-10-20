@@ -7,6 +7,7 @@ using Core.Application.Utilities;
 using Infrastructure.Authorization;
 using Microsoft.EntityFrameworkCore;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
 using Web.IdP.Helpers;
 using static OpenIddict.Abstractions.OpenIddictConstants;
 
@@ -52,7 +53,7 @@ public sealed class ClaimsPreviewService(
         var identity = new ClaimsIdentity();
         identity.SetClaim(Claims.Subject, user.Id.ToString())
             .SetClaim(Claims.Email, user.Email)
-            .SetClaim(Claims.Name, NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName)
+            .SetClaim(Claims.Name, NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname) ?? user.UserName)
             .SetClaim(Claims.PreferredUsername, user.UserName);
         var omissions = new Dictionary<string, string>(StringComparer.Ordinal);
         await enrichment.AddAppSpecificRolesAsync(identity, user, request.ClientId, cancellationToken);
@@ -102,15 +103,22 @@ public sealed class ClaimsPreviewService(
             snapshots.Select(s => new ClaimsPreviewSourceDto(s.Key, s.Value.Status, s.Value.ConfirmedAt, s.Value.ExpiresAt)).ToArray());
     }
 
-    public async Task<IReadOnlyList<ClaimsPreviewClientDto>> GetClientsAsync(int skip, int take, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ClaimsPreviewClientDto>> GetClientsAsync(string? search, int skip, int take, CancellationToken cancellationToken = default)
     {
+        if (search?.Length > 200) throw new ClaimsPreviewException("invalid_request");
+        var term = search?.Trim();
         var result = new List<ClaimsPreviewClientDto>();
-        await foreach (var application in applications.ListAsync(Math.Clamp(take, 1, 100), Math.Max(skip, 0), cancellationToken))
+        await foreach (var application in applications.ListAsync(query =>
         {
-            var id = await applications.GetClientIdAsync(application, cancellationToken);
-            if (id is null) continue;
-            result.Add(new(id, await applications.GetDisplayNameAsync(application, cancellationToken) ?? id,
-                SupportsUserFlow(await applications.GetPermissionsAsync(application, cancellationToken))));
+            var clients = query.Cast<OpenIddictEntityFrameworkCoreApplication<Guid>>().Where(a => a.ClientId != null);
+            if (!string.IsNullOrEmpty(term))
+                clients = clients.Where(a => a.ClientId!.Contains(term) || (a.DisplayName != null && a.DisplayName.Contains(term)));
+            return clients.OrderBy(a => a.ClientId).ThenBy(a => a.Id).Skip(Math.Max(skip, 0)).Take(Math.Clamp(take, 1, 100))
+                .Select(a => new { a.ClientId, a.DisplayName, a.Permissions });
+        }, cancellationToken))
+        {
+            result.Add(new(application.ClientId!, application.DisplayName ?? application.ClientId!,
+                SupportsUserFlow(JsonSerializer.Deserialize<string[]>(application.Permissions ?? "[]") ?? [])));
         }
         return result;
     }
@@ -119,7 +127,8 @@ public sealed class ClaimsPreviewService(
     {
         if (search?.Length > 200) throw new ClaimsPreviewException("invalid_request");
         var query = db.Users.AsNoTracking().Where(u => !u.IsDeleted);
-        if (!string.IsNullOrWhiteSpace(search)) query = query.Where(u => u.UserName != null && u.UserName.Contains(search));
+        var term = search?.Trim();
+        if (!string.IsNullOrEmpty(term)) query = query.Where(u => u.UserName != null && u.UserName.Contains(term));
         return await query.OrderBy(u => u.UserName).ThenBy(u => u.Id).Skip(Math.Max(skip, 0)).Take(Math.Clamp(take, 1, 100))
             .Select(u => new ClaimsPreviewAccountDto(u.Id, u.UserName ?? u.Id.ToString())).ToListAsync(cancellationToken);
     }

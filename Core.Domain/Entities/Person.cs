@@ -10,6 +10,8 @@ namespace Core.Domain.Entities;
 /// </summary>
 public class Person
 {
+    // Independent from each linked account's field authority.
+    public string? NativeFieldStateJson { get; set; }
     /// <summary>
     /// Unique identifier for the person
     /// </summary>

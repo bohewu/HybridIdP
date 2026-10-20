@@ -31,6 +31,41 @@ namespace Tests.Application.UnitTests
 {
     public class AuthorizationServiceTests
     {
+        [Theory]
+        [InlineData(false, null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+        [InlineData(true, null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+        [InlineData(false, "Existing", "Source name", "Existing")]
+        [InlineData(true, "Existing", "Source name", "Existing")]
+        [InlineData(false, null, "", "account")]
+        [InlineData(true, null, "", "account")]
+        public async Task Authorization_ShouldUseEffectiveNativeName_InBothIssuancePaths(
+            bool submit, string? firstName, string? nickname, string expectedName)
+        {
+            var (principal, _) = SetupConsentScopes(false, false);
+            var user = _mockDb.Object.Users.Single();
+            user.FirstName = firstName;
+            user.Nickname = nickname;
+            user.UserName = "account";
+            _mockUserManager.Setup(manager => manager.GetUserNameAsync(user)).ReturnsAsync(user.UserName);
+            var grant = new object();
+            _mockAuthorizationManager.Setup(manager => manager.FindAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<string>(), It.IsAny<ImmutableArray<string>>(), It.IsAny<CancellationToken>()))
+                .Returns(ToAsyncEnumerable(grant));
+            _mockAuthorizationManager.Setup(manager => manager.GetScopesAsync(grant, It.IsAny<CancellationToken>()))
+                .ReturnsAsync(["openid", "profile"]);
+            _mockAuthorizationManager.Setup(manager => manager.GetIdAsync(grant, It.IsAny<CancellationToken>()))
+                .ReturnsAsync("historical-grant");
+            using var sessionDb = SetupSessionPersistence();
+            var request = new OpenIddictRequest { ClientId = "client", ResponseType = "code", Scope = "openid profile" };
+
+            var result = submit
+                ? await _authorizationService.HandleAuthorizeSubmitAsync(principal, request, "allow", ["openid", "profile"])
+                : await _authorizationService.HandleAuthorizeRequestAsync(principal, request, null);
+
+            Assert.Equal(expectedName, Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result)
+                .Principal.GetClaim(OpenIddictConstants.Claims.Name));
+        }
+
         [Fact]
         public async Task RequiredMfa_ShouldChallengeRemainingAccountCodeInsteadOfInitialEnrollment()
         {

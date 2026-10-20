@@ -11,7 +11,7 @@ async function read(response) {
 }
 
 export const claimsPreviewApi = {
-  clients: (skip = 0) => adminApi.get(`${base}/clients?${new URLSearchParams({ skip, take: 50 })}`, { cache: 'no-store' }).then(read),
+  clients: (search = '', skip = 0) => adminApi.get(`${base}/clients?${new URLSearchParams({ search, skip, take: 50 })}`, { cache: 'no-store' }).then(read),
   accounts: (search = '', skip = 0) => adminApi.get(`${base}/accounts?${new URLSearchParams({ search, skip, take: 50 })}`, { cache: 'no-store' }).then(read),
   scopes: clientId => adminApi.get(`${base}/scopes?${new URLSearchParams({ clientId })}`, { cache: 'no-store' }).then(read),
   preview: request => adminApi.post(base, request, { cache: 'no-store' }).then(read)

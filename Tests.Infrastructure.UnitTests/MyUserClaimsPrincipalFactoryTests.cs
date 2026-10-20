@@ -56,6 +56,32 @@ public class MyUserClaimsPrincipalFactoryTests : IDisposable
 
     private readonly Mock<IHttpContextAccessor> _httpContextAccessorMock;
 
+    [Theory]
+    [InlineData("\u6e2c\u8a66\u59d3\u540d", "Person name", "\u6e2c\u8a66\u59d3\u540d")]
+    [InlineData(null, "Person name", "Person name")]
+    public async Task CreateAsync_ShouldUseNativeNicknameBeforeBindingDisplay_WithoutChangingIdentity(
+        string? nickname, string personNickname, string expected)
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), Nickname = personNickname };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "historical@example.org",
+            Nickname = nickname, PersonId = person.Id, Person = person };
+        SetupPrincipalGeneration(user);
+        _userManagerMock.Setup(m => m.GetLoginsAsync(user)).ReturnsAsync(new List<UserLoginInfo>
+        { new("example.organization", "opaque-subject", "Raw upstream display") });
+        var factory = new MyUserClaimsPrincipalFactory(_userManagerMock.Object, _roleManagerMock.Object,
+            _optionsAccessorMock.Object, context, _auditServiceMock.Object, _httpContextAccessorMock.Object,
+            _loggerMock.Object, Options.Create(new global::Infrastructure.Options.ProviderProofOptions
+            { TrustedProviderNamespace = "example.organization" }));
+
+        var principal = await factory.CreateAsync(user);
+
+        Assert.Equal(expected, principal.Identity!.Name);
+        Assert.Equal(user.Id.ToString(), principal.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)!.Value);
+        Assert.Equal("historical@example.org", user.UserName);
+        _userManagerMock.Verify(m => m.UpdateAsync(user), Times.Never);
+    }
+
     public void Dispose()
     {
         using var context = new ApplicationDbContext(_options);
