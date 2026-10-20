@@ -1,7 +1,7 @@
 # Identity source and field mapping
 
-This inventory records the implemented mappings at 1.7.1 and the decisions
-still required for a unified synchronization policy. It does not enable an
+This inventory records the implemented mappings and bounded native-field
+policies for Proof and Stage 1. It does not enable an
 integration, change existing identifiers, rename accounts or authorize data
 cleanup. Examples must use generic values such as `example.provider` and
 `source-account`; deployment identifiers and account data belong in private
@@ -17,10 +17,9 @@ configuration only.
 | `ProviderSubjectDirectoryBinding` | Existing staged integration's durable local account/provider subject/directory object relationship and account alias | Alias refresh does not replace the directory object or local account. |
 | `Person.ProviderProfilesJson` | Source-scoped, approved extra properties and confirmation metadata | This is claims input, not account-linking, role, credential or recovery authority. |
 
-Profile fields currently exist on both `ApplicationUser` and `Person`. This
-does not imply that every writer or every display surface uses the same
-priority. The sections below identify the actual writers instead of treating
-these copies as an already unified synchronization mechanism.
+Profile fields exist on both `ApplicationUser` and `Person`. Native-field
+policy state and ownership are independent for each record and field; display
+projection does not merge their authority.
 
 ## Which source and API supplies which data
 
@@ -32,7 +31,7 @@ these copies as an already unified synchronization mechanism.
 | Provider Metadata 1.0 | Its independent metadata/evidence flow | Supply the documented metadata contract; it is not an alternative general person-profile synchronizer. |
 | Provider Lifecycle Status 1.0 | Its separately enabled lifecycle flow | Supply lifecycle evidence under the lifecycle contract; display/profile JSON must not be interpreted as eligibility. |
 | Protected directory lookup | Existing staged integration; exact-one eligible managed-directory result after the configured Proof path | Establish/check the durable directory binding and refresh the fields listed below. This is not generic browser external login. |
-| Local operator edit | Protected administrative APIs under their existing permissions | Explicit local maintenance. A general field-level upstream/operator ownership policy is not yet implemented. |
+| Local operator edit | Protected administrative APIs under their existing permissions | Explicit local maintenance; edits to supported native fields can fix values, including intentional blanks, against later source updates. |
 
 The endpoints, secrets and enablement flags remain separate. Selecting a
 namespace does not make every API or its fields trusted for every purpose.
@@ -52,12 +51,12 @@ and profile assurance before passing an `ExternalAuthResult` to JIT provisioning
 | `canonicalAccount` | New `ApplicationUser.UserName` | Used only at initial canonical-account creation, subject to local validation and uniqueness. Repeat login does not rename the account. Older Email-form usernames remain valid stored names. |
 | `profile.email` | `ApplicationUser.Email`, `Person.Email` | With local Email trust off, fill missing values without newly confirming them. With trust on, existing verified-source update rules apply. An enrolled account Email OTP target is not replaced. |
 | Explicit Email assurance + exact local Email trust entry | `ApplicationUser.EmailConfirmed` | Both are required for new confirmation. Saving Email alone does not confirm it. This does not grant recovery-address trust or enroll MFA. |
-| `profile.givenName` | `ApplicationUser.FirstName`, `Person.FirstName` | Existing JIT uses a supplied value, otherwise retains the old value via null coalescing. |
-| `profile.surname` | `ApplicationUser.LastName`, `Person.LastName` | Same null-coalescing behavior as given name. |
-| `profile.displayName` | `AspNetUserLogins.ProviderDisplayName`, `ApplicationUser.Nickname`, `Person.Nickname` | Refreshes the display value on the existing exact binding. On new and repeat login, independently fills each null, empty or whitespace-only Nickname; existing nonblank values are preserved. Person fill requires at most 100 characters. No name splitting or username change. |
-| `profile.department` | `ApplicationUser.Department`, `Person.Department` | Supplied values refresh the copies through JIT. |
-| `profile.title` | `ApplicationUser.JobTitle`, `Person.JobTitle` | Supplied values refresh the copies through JIT. |
-| `profile.employeeId` | `ApplicationUser.EmployeeId`, `Person.EmployeeId` | Contact/profile attribute; not the provider subject or an automatic account-linking key. |
+| `profile.givenName` | `ApplicationUser.FirstName`, `Person.FirstName` | Subject to the native-field policy below. |
+| `profile.surname` | `ApplicationUser.LastName`, `Person.LastName` | Subject to the native-field policy below. |
+| `profile.displayName` | `AspNetUserLogins.ProviderDisplayName`, `ApplicationUser.Nickname`, `Person.Nickname` | Login-binding display metadata refresh remains independent. Native Nickname follows field policy. User permits 256 characters; Person permits 100. A source value over 100 is skipped for Person without truncation or login failure. No name splitting or username change. |
+| `profile.department` | `ApplicationUser.Department`, `Person.Department` | Subject to the native-field policy below. |
+| `profile.title` | `ApplicationUser.JobTitle`, `Person.JobTitle` | Subject to the native-field policy below. |
+| `profile.employeeId` | `ApplicationUser.EmployeeId`, `Person.EmployeeId` | Subject to field policy; not the provider subject or an automatic account-linking key. |
 
 Every nonblank Proof profile field must have its matching `assuredFields`
 entry. A valid contact Email can be stored independently of the additional
@@ -69,6 +68,17 @@ Consumers must use the documented stable subject, not assume that a username
 is always an Email address. Internal display projection and issued claims also
 have their own scope/mapping rules; `UserName`, `name`, `preferred_username`
 and `sub` must not be treated as interchangeable fields.
+
+For issued user claims and read-only Claims Preview, `name` uses the existing
+structured First/Middle/LastName when present, then the effective native User
+`Nickname`, then the existing username fallback. It never reads a raw login
+binding display name to bypass native-field policy. The `profile` scope is
+still required; `preferred_username` and `sub` retain their existing mappings.
+Profile's `Person.FullName` uses that Person's structured name or native
+`Nickname`; it does not substitute the account username or another account's
+name. A custom claim mapped to `Person.EmployeeId` reads the persisted value
+unchanged. If Proof omits `profile.employeeId`, neither `canonicalAccount`,
+the opaque subject nor an Email-form username supplies a substitute.
 
 Implementation: [LoginService](../Infrastructure/Services/LoginService.cs),
 [JitProvisioningService](../Infrastructure/Identity/JitProvisioningService.cs)
@@ -94,8 +104,9 @@ authorize deriving a Proof subject from a directory attribute.
 | `employeeID` | `Profile.EmployeeId` | User/Person `EmployeeId`; not identity matching. |
 | `userAccountControl`, `lockoutTime` and the managed-directory gates | Eligibility/enabled/locked result | Sign-in and binding eligibility checks, not a general overwrite of local Person lifecycle fields. |
 
-Directory refresh ignores null, empty and whitespace-only values. It updates
-an already selected local account and its existing Person. Initial local
+Directory native refresh follows the policy below, including the explicit
+Stage 1 deployment ceiling and exact namespace allowlist. It updates only
+an already bound local account and its linked Person. Initial local
 account selection/provisioning in the staged path is distinct from independent
 Proof canonical-account naming; do not assume those creation rules are equal.
 Directory profile refresh does not rename the local account or assign roles.
@@ -103,6 +114,77 @@ Directory profile refresh does not rename the local account or assign roles.
 Implementation: [LDAP transport](../Infrastructure/Directory/LdapProtectedDirectoryTransport.cs),
 [protected lookup](../Infrastructure/Directory/ProtectedDirectoryIdentityLookup.cs)
 and [binding refresh](../Infrastructure/Services/Stage1BindingRefreshService.cs).
+
+## Native-field policy and operator workflow
+
+Only `Nickname`, `FirstName`, `LastName`, `Department`, `JobTitle` and
+`EmployeeId` are supported, using the existing Proof and Stage 1 mappings above.
+There is no automatic source fallback or source-priority engine. Browser
+providers and Provider Profile extra properties are not selectable native sources.
+
+Deployment configuration remains authoritative:
+
+| Option | Default | Effective native-write boundary |
+| --- | --- | --- |
+| `NativeFieldPolicy:ProofEnabled` | `true` | Also requires `ProviderProof:Enabled` (default `false`) and the exact configured `ProviderProof:TrustedProviderNamespace`. The compatibility default retains already explicitly enabled Proof behavior; existing deployments need no new mandatory Proof flag. Setting it to `false` stops native writes, not login or Profile refresh. |
+| `NativeFieldPolicy:Stage1Enabled` | `false` | Also requires `DirectoryIntegration:Enabled` and exact membership in `NativeFieldPolicy:TrustedStage1ProviderNamespaces` (default empty). Existing directory configuration alone no longer permits these six native writes. |
+
+Namespaces compare exactly and case-sensitively. Configure the deployment's
+verified namespace, not an example or a derived account name. See the
+[upgrade/configuration procedure](DEPLOYMENT_GUIDE.md#native-field-policy-configuration-and-upgrade).
+UI pause/resume cannot enable or trust a deployment-disabled source. Pausing
+retains configuration, bindings, values and ownership, and stops only native
+synchronization. A temporary source outage preserves current native values.
+Source status describes configuration and pause state, not connectivity health.
+
+Every source write requires the exact persisted identity: Proof uses local account,
+provider namespace and opaque subject in `AspNetUserLogins`; Stage 1 additionally
+requires the persisted directory object in `ProviderSubjectDirectoryBinding`.
+Enablement or assignment never creates that binding. User and Person field
+owners are separate. A shared Person with multiple accounts requires explicit
+source assignment before its first source claim; another account's later login
+cannot take ownership. Assignment may select a supported source of the same
+owner account, but cannot transfer ownership to another account.
+
+Defaults preserve nonempty native values, including historical values without
+source attribution. Overwrite is an explicit per-field opt-in and still requires
+the binding and owner checks. Missing, null, empty and whitespace-only source
+values are no-ops. Neither current source contract supplies authoritative clear
+intent: source clear is disabled in the UI and rejected by the API.
+
+An operator can explicitly save and fix a value, including an empty input to
+clear it. It remains fixed until explicit Unlock. Assigning a source does not
+unlock it. Unlock retains the selected owner and overwrite choice; a subsequent
+write must still satisfy all policy checks. Ordinary User/Person edits protect
+deliberately changed supported values or explicit empty clears; omitted/null
+fields and unchanged nonempty values do not acquire protection. Use the policy
+dialog to fix a value even when it has not changed.
+
+| UI entry | Read / update permissions | Operation |
+| --- | --- | --- |
+| `/Admin/Settings`, Native field policies section before Branding | `settings.read` / `settings.update` | Inspect supported fields and deployment/pause status; pause or resume an enabled source. |
+| `/Admin/Users`, row action menu, Native field policies | `users.read` / `users.update` | Select a User field, save and fix a value, Unlock, or assign an exact existing binding with optional overwrite. |
+| `/Admin/People`, row Native field policies button | `persons.read` / `persons.update` | Manage the Person's independent field state. |
+
+UI assignment also needs `settings.read` to load source availability; target manual
+protection remains available with the target permission. Policy changes apply
+on the next eligible normal synchronization, with no immediate upstream fetch.
+On a concurrent-change conflict, reload current policy before submitting again.
+The protected API is `/api/admin/native-field-policies`: `GET sources`,
+`PUT sources/{source}`, and target `GET users/{id}` / `persons/{id}` plus
+`PUT users/{id}/{field}` / `persons/{id}/{field}`. Mutations require the current
+revision and existing administrative authorization/cookie CSRF checks.
+
+These policies do not control Email trust or confirmation, enrolled Email MFA
+targets, recovery, IID, roles, lifecycle, credentials, usernames, IDs or bindings.
+Claims Preview remains read-only. Successful normal login independently
+refreshes Provider Profile snapshots. Profile uses complete source-scoped
+snapshots and its existing missing/stale/failure omission rules for claims;
+native missing-value preservation must not be applied to those snapshots.
+
+Implementation: [policy options](../Core.Application/Options/NativeFieldPolicyOptions.cs),
+[policy service](../Infrastructure/Services/NativeFieldPolicyService.cs) and
+[admin API](../Web.IdP/Controllers/Admin/NativeFieldPoliciesController.cs).
 
 ## Identity-document identifiers (IID): implemented storage and boundaries
 
@@ -162,33 +244,9 @@ Implementation: [PidHasher](../Core.Application/Utilities/PidHasher.cs),
 [JIT](../Infrastructure/Identity/JitProvisioningService.cs) and
 [Person response mapping](../Web.IdP/Controllers/Admin/PersonsController.cs).
 
-## Known gaps and decisions before unified synchronization
+## Boundaries for future mappings
 
-- Independent Proof fills blank User/Person `Nickname` values from assured
-  `displayName` only during successful login. It preserves each nonblank local
-  value independently. Values longer than Person's 100-character limit remain
-  available on the User and login binding without filling Person.Nickname or
-  failing login. Claims preview remains read-only, and the normal login Profile
-  snapshot refresh remains independent. Given/family names are not derived from
-  display text.
-- JIT's null-coalescing updates and directory refresh's whitespace filtering are
-  different. A unified policy must explicitly distinguish absent, blank, clear
-  and authoritative replacement values. No bulk clear or new normalization
-  policy is introduced by this inventory.
-- Any broader display-name ownership policy remains a separate decision. Do not
-  infer name parts by splitting display text, or substitute an account identifier
-  for a person's legal name.
-- Define field-level ownership for multiple source accounts linked to one
-  Person, manual edits, source priority and conflicts. Current JIT/refresh writes
-  are not evidence of a configurable general source-priority engine.
-- Keep contact Email, local Email confirmation, enrolled Email OTP and recovery
-  address authority separate. Define each source's replacement rules before
-  enabling it; a profile mapping must not silently redirect a factor.
-- Any future change must separately cover new account creation, repeat login,
-  existing missing-value repair, no-login preview, multiple-account Persons and
-  already stored usernames. Historical account cleanup is an independent,
-  explicitly scoped maintenance decision.
-
-This inventory includes the bounded Proof Nickname fill described above. A
-broader mapping decision must state the source, target, assurance, missing-value
-behavior, overwrite rule, timing and compatibility tests before implementation.
+Broader source capabilities, source clear intent, automatic fallback and IID
+synchronization remain separate decisions. A future mapping must define source,
+target, assurance, ownership, missing/clear semantics, timing and compatibility
+tests. Historical account cleanup remains an independently scoped operation.

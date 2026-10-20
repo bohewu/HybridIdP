@@ -29,6 +29,37 @@ namespace Tests.Application.UnitTests
 {
     public class TokenServiceTests
     {
+        [Theory]
+        [InlineData(GrantTypes.Password, null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+        [InlineData(GrantTypes.RefreshToken, null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+        [InlineData(GrantTypes.Password, "Given", "Source full name", "Given")]
+        [InlineData(GrantTypes.RefreshToken, "Given", "Source full name", "Given")]
+        [InlineData(GrantTypes.Password, null, "", "historical@example.org")]
+        [InlineData(GrantTypes.RefreshToken, null, "", "historical@example.org")]
+        public async Task UserGrant_ShouldUseNativeNicknameAfterStructuredName_WithoutChangingAccountClaims(
+            string grant, string? firstName, string nickname, string expected)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "historical@example.org",
+                IsActive = true, FirstName = firstName, Nickname = nickname };
+            ClaimsPrincipal? original = null;
+            if (grant == GrantTypes.Password) SetupPasswordGrant(user);
+            else original = SetupRefreshGrant(user);
+            original?.SetScopes("openid", "profile");
+            _mockApplicationManager.Setup(m => m.GetPermissionsAsync(It.IsAny<object>(), It.IsAny<CancellationToken>()))
+                .ReturnsAsync(ImmutableArray.Create(OidcPermissions.Prefixes.GrantType + grant,
+                    OidcPermissions.Prefixes.Scope + "openid", OidcPermissions.Prefixes.Scope + "profile"));
+
+            var result = await _service.HandleTokenRequestAsync(CreateRequest(grant, username: user.UserName,
+                password: "${TEST_FIXTURE_001}", scope: "openid profile"), original);
+
+            var issued = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
+            Assert.Equal(expected, issued.GetClaim(Claims.Name));
+            Assert.Equal(user.UserName, issued.GetClaim(Claims.PreferredUsername));
+            Assert.Equal(user.Id.ToString(), issued.GetClaim(Claims.Subject));
+            Assert.Contains(Destinations.AccessToken, issued.FindFirst(Claims.Name)!.GetDestinations());
+            Assert.Contains(Destinations.IdentityToken, issued.FindFirst(Claims.Name)!.GetDestinations());
+        }
+
         private readonly Mock<IAccountRecoveryCodeService> _accountCodes = new();
         [Theory]
         [InlineData("amr", "pwd", false)]
@@ -339,12 +370,12 @@ namespace Tests.Application.UnitTests
         [InlineData("openid email", false, true)]
         public async Task Password_ShouldIssueOnlyScopeAuthorizedProfileClaims(string scopes, bool profile, bool email)
         {
-            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "profile-user", Email = "user@example.test", IsActive = true };
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "profile-user", Nickname = "Native full name", Email = "user@example.test", IsActive = true };
             SetupPasswordGrant(user);
             var result = await _service.HandleTokenRequestAsync(CreateRequest(GrantTypes.Password,
                 username: user.UserName, password: "${TEST_FIXTURE_001}", scope: scopes), null);
             var principal = Assert.IsType<Microsoft.AspNetCore.Mvc.SignInResult>(result).Principal!;
-            Assert.Equal(profile ? user.UserName : null, principal.GetClaim(Claims.Name));
+            Assert.Equal(profile ? user.Nickname : null, principal.GetClaim(Claims.Name));
             Assert.Equal(profile ? user.UserName : null, principal.GetClaim(Claims.PreferredUsername));
             Assert.Equal(email ? user.Email : null, principal.GetClaim(Claims.Email));
             Assert.Equal(user.Id.ToString(), principal.GetClaim(Claims.Subject));

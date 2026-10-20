@@ -5,6 +5,7 @@ import PersonForm from './components/PersonForm.vue'
 import LinkedAccountsDialog from './components/LinkedAccountsDialog.vue'
 import TransferAssetsDialog from './components/TransferAssetsDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import NativeFieldPolicyDialog from '@/components/NativeFieldPolicyDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
 
@@ -13,6 +14,7 @@ const { t } = useI18n()
 const persons = ref([])
 const loading = ref(true)
 const error = ref(null)
+const policyTarget = ref(null)
 const selectedPerson = ref(null)
 const showForm = ref(false)
 const showLinkedAccountsDialog = ref(false)
@@ -52,6 +54,10 @@ const page = ref(1)
 const totalCount = ref(0)
 const search = ref('')
 const sort = ref('lastName:asc')
+
+const structuredName = person => [person.firstName, person.middleName, person.lastName]
+  .map(value => value?.trim()).filter(Boolean).join(' ')
+const personDisplayName = person => structuredName(person) || person.nickname?.trim() || t('persons.notProvided')
 
 const fetchPersons = async () => {
   loading.value = true
@@ -126,7 +132,7 @@ const handleDelete = async (person) => {
     return
   }
   
-  if (!confirm(t('persons.confirmations.delete', { name: `${person.firstName} ${person.lastName}` }))) {
+  if (!confirm(t('persons.confirmations.delete', { name: personDisplayName(person) }))) {
     return
   }
   
@@ -165,7 +171,7 @@ const handleVerifyIdentity = async (person) => {
     return
   }
 
-  if (!confirm(t('persons.confirmations.verifyIdentity', { name: `${person.firstName} ${person.lastName}` }))) {
+  if (!confirm(t('persons.confirmations.verifyIdentity', { name: personDisplayName(person) }))) {
     return
   }
 
@@ -361,15 +367,15 @@ watch([page, pageSize, search], () => {
                     <div class="shrink-0 h-10 w-10">
                       <div class="h-10 w-10 rounded-full bg-google-100 flex items-center justify-center">
                         <span class="text-google-500 font-medium text-sm">
-                          {{ person.firstName?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
+                          {{ person.firstName?.charAt(0) || person.nickname?.trim()?.charAt(0) || '' }}{{ person.lastName?.charAt(0) || '' }}
                         </span>
                       </div>
                     </div>
                     <div class="ml-4">
-                      <div class="text-sm font-medium text-gray-900">
-                        {{ person.firstName }} {{ person.middleName ? person.middleName + ' ' : '' }}{{ person.lastName }}
+                      <div data-test-id="person-name" class="text-sm font-medium text-gray-900">
+                        {{ personDisplayName(person) }}
                       </div>
-                      <div v-if="person.nickname" class="text-sm text-gray-500">{{ person.nickname }}</div>
+                      <div v-if="structuredName(person) && person.nickname" class="text-sm text-gray-500">{{ person.nickname }}</div>
                     </div>
                   </div>
                 </td>
@@ -430,6 +436,7 @@ watch([page, pageSize, search], () => {
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                   <div class="flex items-center justify-end space-x-2">
+                    <button v-if="canRead" type="button" class="text-google-600 hover:text-google-800 text-sm" @click="policyTarget = person">{{ t('native-fields.title') }}</button>
                     <button
                       v-if="canRead"
                       @click="handleManageAccounts(person)"
@@ -557,6 +564,8 @@ watch([page, pageSize, search], () => {
       </div>
 
       <!-- Dialogs -->
+      <NativeFieldPolicyDialog v-if="policyTarget" target="Person" :target-id="policyTarget.id" :target-label="personDisplayName(policyTarget)" :can-update="canUpdate" @close="policyTarget = null" @changed="fetchPersons" />
+
       <PersonForm
         v-if="showForm"
         :person="selectedPerson"

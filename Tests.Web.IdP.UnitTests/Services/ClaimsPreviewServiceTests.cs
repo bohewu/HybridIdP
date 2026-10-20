@@ -24,6 +24,43 @@ namespace Tests.Web.IdP.UnitTests.Services;
 public sealed class ClaimsPreviewServiceTests
 {
     [Theory]
+    [InlineData(null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+    [InlineData("Given", "Source full name", "Given")]
+    [InlineData(null, "", "fixture-user")]
+    public async Task Preview_ShouldProjectEffectiveNativeNameAndPersonEmployeeId_WithoutWriting(
+        string? firstName, string nickname, string expected)
+    {
+        await using var fixture = new Fixture();
+        await fixture.SeedAsync();
+        var user = await fixture.Db.Users.SingleAsync();
+        user.FirstName = firstName;
+        user.Nickname = nickname;
+        (await fixture.Db.Persons.SingleAsync()).EmployeeId = "ORG-104";
+        fixture.Db.ScopeClaims.Add(new ScopeClaim { ScopeId = "academic", ScopeName = "academic",
+            ClaimDefinition = new ClaimDefinition { Name = "employee_id", DisplayName = "Organization ID",
+                ClaimType = "employee_id", DataType = "String", UserPropertyPath = "Person.EmployeeId" } });
+        fixture.Db.ScopeClaims.Add(new ScopeClaim { ScopeId = "profile", ScopeName = "profile",
+            ClaimDefinition = new ClaimDefinition { Name = "preferred_username", DisplayName = "Account",
+                ClaimType = "preferred_username", DataType = "String", UserPropertyPath = "UserName" } });
+        await fixture.Db.SaveChangesAsync();
+        fixture.Db.ChangeTracker.Clear();
+        var saves = fixture.Db.Saves;
+
+        var result = await fixture.Service.PreviewAsync(fixture.Request("openid", "profile", "academic"));
+
+        foreach (var payload in new[] { result.IdToken, result.AccessToken, result.UserInfo })
+        {
+            Assert.Equal(expected, payload["name"].GetString());
+            Assert.Equal("ORG-104", payload["employee_id"].GetString());
+            Assert.Equal(fixture.User.Id.ToString(), payload["sub"].GetString());
+            Assert.Equal("fixture-user", payload["preferred_username"].GetString());
+        }
+        Assert.Equal(saves, fixture.Db.Saves);
+        Assert.Empty(fixture.Db.ChangeTracker.Entries());
+        fixture.WritingProfiles.VerifyNoOtherCalls();
+    }
+
+    [Theory]
     [InlineData("[]", 0)]
     [InlineData("[\"one\"]", 1)]
     [InlineData("[\"two\",\"one\",\"one\"]", 2)]

@@ -913,6 +913,59 @@ schema columns in place; do not automatically delete links or run EF `Down`.
 A database restore is a separate, explicitly approved recovery operation and
 can discard writes made after the backup.
 
+### Native-field policy configuration and upgrade
+
+Before activating an application build containing native-field policies, apply
+`AddNativeFieldAuthority` for the selected database with the existing
+[operator-controlled schema migration](#operator-controlled-schema-migration)
+procedure and approved artifact. SQL Server uses
+`20261020030913_AddNativeFieldAuthority`; PostgreSQL uses
+`20261020030931_AddNativeFieldAuthority`. These add nullable
+`NativeFieldStateJson` to `AspNetUsers` and `Persons`, plus the small
+`NativeFieldSourcePolicies` pause/revision table. No historical values, ownership
+or identity bindings are backfilled. Existing nonempty unattributed native values
+are preserved by default. This is a schema/configuration requirement for a future
+activation, not a release announcement or evidence of an applied migration.
+
+Keep the original `.env`, endpoints, secrets, account links and existing trust
+settings. Do not rerun the setup wizard. The new native settings are:
+
+```dotenv
+# Default true preserves existing explicitly enabled/trusted Proof deployments.
+NativeFieldPolicy__ProofEnabled=true
+# Default false; existing Stage 1 configuration alone is insufficient.
+NativeFieldPolicy__Stage1Enabled=false
+# Example only: replace with the exact verified provider namespace before opting in.
+# NativeFieldPolicy__TrustedStage1ProviderNamespaces__0=org-directory
+```
+
+Proof native writes also require `ProviderProof__Enabled=true` and its exact
+`ProviderProof__TrustedProviderNamespace`. That existing enablement defaults to
+`false`; the new Proof ceiling does not activate a source or add Email trust.
+Already enabled deployments do not need to add a mandatory Proof flag. Set
+`NativeFieldPolicy__ProofEnabled=false` to block native writes while preserving
+login and independent Profile refresh.
+
+For an approved Stage 1 native rollout, explicitly set
+`NativeFieldPolicy__Stage1Enabled=true` and at least one exact indexed trusted
+namespace, alongside existing `DirectoryIntegration__Enabled=true` and its
+validated configuration. Matching is case-sensitive, with no wildcard or inferred
+namespace. Leaving either new setting at its default stops the six native-field
+writes; directory binding and independent contact/Email behavior remain under
+their existing rules. Stage 2 credential/authentication flags do not substitute
+for these native settings.
+
+All five production Compose modes load the existing application `env_file`,
+including indexed entries; no new Compose override is needed. Recreate/restart
+the application through the existing selected deployment procedure after an
+approved configuration change. UI source status/pause is configuration state,
+not a remote connectivity check. Pause/resume cannot create source trust.
+Only the six documented non-security fields are supported; no automatic source
+fallback or source-driven clear is available. See
+[field policies and operator workflow](IDENTITY_FIELD_MAPPING.md#native-field-policy-and-operator-workflow)
+for manual fixed blanks, explicit unlock/overwrite, exact binding, independent
+User/Person ownership and the next eligible normal-sync timing.
+
 ### Optional Profile Activation
 
 Apply the selected provider's `AddProviderProfilesAndClaimConditions` migration

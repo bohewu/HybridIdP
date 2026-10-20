@@ -163,7 +163,7 @@ public class ProfileManagementController : ControllerBase
             dto.Person = new PersonProfileDto
             {
                 PersonId = person.Id,
-                FullName = NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName)
+                FullName = NameFormatter.BuildDisplayName(person.FirstName, person.MiddleName, person.LastName, person.Nickname)
                     ?? string.Empty,
                 EmployeeId = person.EmployeeId,
                 Department = person.Department,

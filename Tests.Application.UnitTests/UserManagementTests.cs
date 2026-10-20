@@ -167,7 +167,12 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(It.IsAny<ApplicationUser>(), It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
         var adminId = Guid.NewGuid();
 
         // Act
@@ -211,7 +216,12 @@ public class UserManagementTests
                 Description = "Email already exists"
             }));
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var result = await sut.CreateUserAsync(createDto);
@@ -257,7 +267,12 @@ public class UserManagementTests
             EmailConfirmed = true
         };
 
-        var sut = new UserManagementService(userManager, roleManager, _mockEventPublisher.Object, context, _mockApplicationManager.Object);
+        var sut = new UserManagementService(userManager,
+            roleManager,
+            _mockEventPublisher.Object,
+            context,
+            _mockApplicationManager.Object,
+            CreateNativeFields(context));
 
         // Act
         var (success, errors) = await sut.UpdateUserAsync(existingUser.Id, updateDto);
@@ -289,7 +304,12 @@ public class UserManagementTests
             Roles = new List<string>()
         };
 
-        var sut = new UserManagementService(userManager, roleManager, _mockEventPublisher.Object, context, _mockApplicationManager.Object);
+        var sut = new UserManagementService(userManager,
+            roleManager,
+            _mockEventPublisher.Object,
+            context,
+            _mockApplicationManager.Object,
+            CreateNativeFields(context));
 
         // Act
         var (success, errors) = await sut.UpdateUserAsync(nonExistentUserId, updateDto);
@@ -321,7 +341,12 @@ public class UserManagementTests
         await roleManager.CreateAsync(new ApplicationRole { Name = "User" });
         await userManager.AddToRoleAsync(user, "User");
 
-        var sut = new UserManagementService(userManager, roleManager, _mockEventPublisher.Object, context, _mockApplicationManager.Object);
+        var sut = new UserManagementService(userManager,
+            roleManager,
+            _mockEventPublisher.Object,
+            context,
+            _mockApplicationManager.Object,
+            CreateNativeFields(context));
 
         // Act
         var detail = await sut.GetUserByIdAsync(user.Id);
@@ -373,7 +398,12 @@ public class UserManagementTests
             .Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(new List<string> { "User" });
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var page = await sut.GetUsersAsync(skip: 1, take: 1, sortBy: "email", sortDirection: "asc");
@@ -396,7 +426,12 @@ public class UserManagementTests
         _mockUserManager.Setup(x => x.GetRolesAsync(u1)).ReturnsAsync(new List<string> { role });
         _mockUserManager.Setup(x => x.GetRolesAsync(u2)).ReturnsAsync(new List<string> { "User" });
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var page = await sut.GetUsersAsync(role: role, take: 10);
@@ -417,7 +452,12 @@ public class UserManagementTests
     _mockUserManager.SetupGet(x => x.Users).Returns(new List<ApplicationUser> { u1, u2 }.AsQueryable());
         _mockUserManager.Setup(x => x.GetRolesAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(new List<string>());
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var page = await sut.GetUsersAsync(search: searchTerm, take: 10);
@@ -449,7 +489,12 @@ public class UserManagementTests
             .Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.DeactivateUserAsync(userId);
@@ -482,12 +527,12 @@ public class UserManagementTests
             {
                 Description = "Persistence failed"
             }));
-        var sut = new UserManagementService(
-            _mockUserManager.Object,
+        var sut = new UserManagementService(_mockUserManager.Object,
             _mockRoleManager.Object,
             _mockEventPublisher.Object,
             CreateInMemoryContext(),
-            _mockApplicationManager.Object);
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         var (success, errors) = await sut.DeactivateUserAsync(userId);
 
@@ -529,7 +574,12 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, roles);
@@ -552,7 +602,12 @@ public class UserManagementTests
             .Setup(x => x.FindByIdAsync(userId.ToString()))
             .ReturnsAsync((ApplicationUser?)null);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "Admin" });
@@ -589,7 +644,12 @@ public class UserManagementTests
             .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, Array.Empty<string>());
@@ -632,7 +692,12 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "InvalidRole", Description = "Role 'InvalidRole' does not exist." }));
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "InvalidRole" });
@@ -669,7 +734,12 @@ public class UserManagementTests
             .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "RemoveError", Description = "Failed to remove role." }));
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "NewRole" });
@@ -703,7 +773,12 @@ public class UserManagementTests
             .Setup(x => x.GetRolesAsync(user))
             .ReturnsAsync(roles);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, roles);
@@ -746,7 +821,12 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "NewRole1", "NewRole2" });
@@ -798,7 +878,12 @@ public class UserManagementTests
             .Setup(x => x.RemoveFromRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act - Keep only "User" role, remove "Admin" and "Manager"
         var (success, errors) = await sut.AssignRolesAsync(userId, new[] { "User" });
@@ -861,7 +946,12 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { roleId1, roleId2 });
@@ -902,7 +992,12 @@ public class UserManagementTests
             .Setup(x => x.FindByIdAsync(invalidRoleId.ToString()))
             .ReturnsAsync((ApplicationRole?)null);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { validRoleId, invalidRoleId });
@@ -937,7 +1032,12 @@ public class UserManagementTests
             .Setup(x => x.FindByIdAsync(It.IsAny<string>()))
             .ReturnsAsync((ApplicationRole?)null);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { invalidRoleId1, invalidRoleId2 });
@@ -988,7 +1088,12 @@ public class UserManagementTests
             .Setup(x => x.AddToRolesAsync(user, It.IsAny<IEnumerable<string>>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.AssignRolesByIdAsync(userId, new[] { roleId });
@@ -1025,7 +1130,12 @@ public class UserManagementTests
             .Setup(x => x.CreateAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(IdentityResult.Failed(new IdentityError { Code = "PasswordTooShort", Description = "Password too short" }));
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var result = await sut.CreateUserAsync(createDto);
@@ -1055,7 +1165,12 @@ public class UserManagementTests
             .Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         await sut.UpdateLastLoginAsync(userId);
@@ -1084,7 +1199,12 @@ public class UserManagementTests
             .Callback<ApplicationUser, string>((u, p) => createdUser = u)
             .ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var result = await sut.CreateUserAsync(createDto, adminUserId);
@@ -1105,7 +1225,12 @@ public class UserManagementTests
         _mockUserManager.Setup(x => x.FindByIdAsync(userId.ToString())).ReturnsAsync(user);
         _mockUserManager.Setup(x => x.UpdateAsync(It.IsAny<ApplicationUser>())).ReturnsAsync(IdentityResult.Success);
 
-        var sut = new UserManagementService(_mockUserManager.Object, _mockRoleManager.Object, _mockEventPublisher.Object, CreateInMemoryContext(), _mockApplicationManager.Object);
+        var sut = new UserManagementService(_mockUserManager.Object,
+            _mockRoleManager.Object,
+            _mockEventPublisher.Object,
+            CreateInMemoryContext(),
+            _mockApplicationManager.Object,
+            CreateNativeFields(CreateInMemoryContext()));
 
         // Act
         var (success, errors) = await sut.ReactivateUserAsync(userId);
@@ -1143,5 +1268,10 @@ public class UserManagementTests
 
         return (userManager, roleManager);
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }
 

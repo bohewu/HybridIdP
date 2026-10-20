@@ -368,7 +368,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 // Add custom claims (email, roles, etc.)
                 if (user != null)
                 {
-                    var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+                    var displayName = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname)
                         ?? await _userManager.GetUserNameAsync(user);
 
                     identity.SetClaim(Claims.AuthenticationTime, AuthorizationAuthenticationSession.GetAuthenticationTime(userPrincipal))
@@ -544,7 +544,7 @@ namespace Web.IdP.Services // Keep consistent namespace case
                 authenticationType: OpenIddictServerAspNetCoreDefaults.AuthenticationScheme);
 
             // Add custom claims
-            var displayNameSubmit = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName)
+            var displayNameSubmit = NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname)
                 ?? await _userManager.GetUserNameAsync(user);
 
             identity.SetClaim(Claims.AuthenticationTime, AuthorizationAuthenticationSession.GetAuthenticationTime(userPrincipal))

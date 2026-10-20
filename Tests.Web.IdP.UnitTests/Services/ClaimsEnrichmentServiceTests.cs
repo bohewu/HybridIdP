@@ -20,6 +20,31 @@ namespace Tests.Web.IdP.UnitTests.Services;
 
 public class ClaimsEnrichmentServiceTests
 {
+    [Theory]
+    [InlineData(null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+    [InlineData("Given", "Source full name", "Given")]
+    [InlineData(null, "", "historical@example.org")]
+    public async Task AddScopeMappedClaimsAsync_ShouldUseNativeNameAndExactPersonOrganizationId(
+        string? firstName, string nickname, string expected)
+    {
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var user = new ApplicationUser { UserName = "historical@example.org", FirstName = firstName, Nickname = nickname,
+            Person = new Person { Id = Guid.NewGuid(), EmployeeId = "ORG-104" } };
+        foreach (var (claim, property) in new[] { ("name", "FirstName"), ("employee_id", "Person.EmployeeId") })
+            db.ScopeClaims.Add(new ScopeClaim { ScopeId = "profile", ScopeName = "profile",
+                ClaimDefinition = new ClaimDefinition { Name = claim, DisplayName = claim, ClaimType = claim,
+                    DataType = "String", UserPropertyPath = property } });
+        await db.SaveChangesAsync();
+        var service = new ClaimsEnrichmentService(_mockUserManager.Object, _mockRoleManager.Object, db, _mockLogger.Object);
+        var identity = new ClaimsIdentity();
+
+        await service.AddScopeMappedClaimsAsync(identity, user, ["profile"]);
+
+        Assert.Equal(expected, identity.FindFirst("name")?.Value);
+        Assert.Equal("ORG-104", identity.FindFirst("employee_id")?.Value);
+    }
+
     private readonly Mock<UserManager<ApplicationUser>> _mockUserManager;
     private readonly Mock<RoleManager<ApplicationRole>> _mockRoleManager;
     private readonly Mock<IApplicationDbContext> _mockDbContext;

@@ -5,6 +5,17 @@ namespace Tests.Application.UnitTests;
 
 public class NameFormatterTests
 {
+    [Theory]
+    [InlineData(null, null, null, " \u6e2c\u8a66\u59d3\u540d ", "\u6e2c\u8a66\u59d3\u540d")]
+    [InlineData(" Given ", "Middle", "Family", "Source full name", "Given Middle Family")]
+    [InlineData(" ", null, "\t", "", null)]
+    [InlineData(null, null, null, " \t ", null)]
+    public void BuildDisplayName_ShouldUseNativeNicknameOnlyWhenStructuredNameIsMissing(
+        string? first, string? middle, string? last, string nickname, string? expected)
+    {
+        Assert.Equal(expected, NameFormatter.BuildDisplayName(first, middle, last, nickname));
+    }
+
     [Fact]
     public void BuildDisplayName_WithFirstNameOnly_ReturnsFirstName()
     {

@@ -81,12 +81,12 @@ public class UserManagementServiceTests : IDisposable
         _mockEventPublisher = new Mock<IDomainEventPublisher>();
         _mockApplicationManager = new Mock<IOpenIddictApplicationManager>();
 
-        _service = new UserManagementService(
-            _userManager,
+        _service = new UserManagementService(_userManager,
             _roleManager,
             _mockEventPublisher.Object,
             _context,
-            _mockApplicationManager.Object);
+            _mockApplicationManager.Object,
+            CreateNativeFields(_context));
     }
 
     public void Dispose()
@@ -106,9 +106,14 @@ public class UserManagementServiceTests : IDisposable
         Assert.True((await _userManager.CreateAsync(user)).Succeeded);
         Assert.True((await _userManager.AddLoginAsync(user, new UserLoginInfo("example.organization", "subject", "Managed Name"))).Succeeded);
         Assert.True((await _userManager.AddLoginAsync(user, new UserLoginInfo("Google", "social-subject", "Social Name"))).Succeeded);
-        var service = new UserManagementService(_userManager, _roleManager, _mockEventPublisher.Object,
-            _context, _mockApplicationManager.Object, providerProofOptions: Options.Create(
-                new Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
+        var service = new UserManagementService(_userManager,
+            _roleManager,
+            _mockEventPublisher.Object,
+            _context,
+            _mockApplicationManager.Object,
+            CreateNativeFields(_context),
+            providerProofOptions: Options.Create(
+                new global::Infrastructure.Options.ProviderProofOptions { TrustedProviderNamespace = "example.organization" }));
         var summary = Assert.Single((await service.GetUsersAsync(take: 1)).Items);
         Assert.Equal("Managed Name", summary.DisplayName);
         Assert.Equal("provider_subject", summary.UserName);
@@ -1181,7 +1186,7 @@ public class UserManagementServiceTests : IDisposable
 
     private UserManagementService CreateRoleProtectedService(bool requireTargetMfa = true, bool countPasskey = true) =>
         new(_userManager, _roleManager, _mockEventPublisher.Object, _context, _mockApplicationManager.Object,
-            Options.Create(new PrivilegedRoleProtectionOptions
+            CreateNativeFields(_context), Options.Create(new PrivilegedRoleProtectionOptions
             {
                 RequireTargetMfaForPrivilegedRoleAssignment = requireTargetMfa,
                 CountPasskeyAsMfa = countPasskey
@@ -1473,4 +1478,9 @@ public class UserManagementServiceTests : IDisposable
     }
 
     #endregion
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

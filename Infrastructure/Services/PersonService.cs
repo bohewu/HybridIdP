@@ -2,6 +2,7 @@ using System.Data;
 using System.Text.Json;
 using Core.Application;
 using Core.Application.Options;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Constants;
@@ -33,6 +34,7 @@ public partial class PersonService : IPersonService
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly PiiMaskingLevel _piiMaskingLevel;
     private readonly PersonOperationAuthorization _operationAuthorization;
+    private readonly INativeFieldPolicyService _nativeFields;
 
     public PersonService(
         ApplicationDbContext context,
@@ -40,7 +42,8 @@ public partial class PersonService : IPersonService
         IAuditService auditService,
         UserManager<ApplicationUser> userManager,
         IOptions<AuditOptions> auditOptions,
-        PersonOperationAuthorization operationAuthorization)
+        PersonOperationAuthorization operationAuthorization,
+        INativeFieldPolicyService nativeFields)
     {
         _context = context;
         _logger = logger;
@@ -48,6 +51,7 @@ public partial class PersonService : IPersonService
         _userManager = userManager;
         _piiMaskingLevel = auditOptions.Value.PiiMaskingLevel;
         _operationAuthorization = operationAuthorization;
+        _nativeFields = nativeFields;
     }
 
     public async Task<Person?> GetPersonByIdAsync(Guid personId, CancellationToken cancellationToken = default)
@@ -197,6 +201,20 @@ public partial class PersonService : IPersonService
                 "Authentication eligibility cannot be restored while scheduled token revocation is pending.");
         }
 
+        // Capture explicit native clears before EmployeeId normalization loses intent.
+        var manualFields = new Dictionary<NativeField, string?>();
+        void AddEdit(NativeField field, string? incoming, string? current)
+        {
+            if (incoming is not null && (incoming.Length == 0 || incoming != current))
+                manualFields[field] = incoming;
+        }
+        AddEdit(NativeField.FirstName, person.FirstName, existingPerson.FirstName);
+        AddEdit(NativeField.LastName, person.LastName, existingPerson.LastName);
+        AddEdit(NativeField.Nickname, person.Nickname, existingPerson.Nickname);
+        AddEdit(NativeField.Department, person.Department, existingPerson.Department);
+        AddEdit(NativeField.JobTitle, person.JobTitle, existingPerson.JobTitle);
+        AddEdit(NativeField.EmployeeId, person.EmployeeId, existingPerson.EmployeeId);
+
         // Normalize empty strings to null (prevents unique index violations and improves data consistency)
         person.Email = string.IsNullOrWhiteSpace(person.Email) ? null : person.Email;
         person.PhoneNumber = string.IsNullOrWhiteSpace(person.PhoneNumber) ? null : person.PhoneNumber;
@@ -273,19 +291,15 @@ public partial class PersonService : IPersonService
             (newPassportHash != null && newPassportHash != existingPerson.PassportNumber) ||
             (newResidentCertHash != null && newResidentCertHash != existingPerson.ResidentCertificateNumber);
 
+        _nativeFields.ApplyManual(existingPerson, manualFields);
+
         // Update fields
         // Contact Information
         existingPerson.Email = person.Email;
         existingPerson.PhoneNumber = person.PhoneNumber;
         // Name Information
-        existingPerson.FirstName = person.FirstName;
         existingPerson.MiddleName = person.MiddleName;
-        existingPerson.LastName = person.LastName;
-        existingPerson.Nickname = person.Nickname;
         // Employment Information
-        existingPerson.EmployeeId = person.EmployeeId;
-        existingPerson.Department = person.Department;
-        existingPerson.JobTitle = person.JobTitle;
         // Profile Information
         existingPerson.ProfileUrl = person.ProfileUrl;
         existingPerson.PictureUrl = person.PictureUrl;
@@ -333,7 +347,16 @@ public partial class PersonService : IPersonService
             }
         }
 
-        await _context.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _context.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            foreach (var account in existingPerson.Accounts ?? []) _context.Detach(account);
+            _context.Detach(existingPerson);
+            throw;
+        }
 
         LogPersonUpdated(personId, existingPerson.EmployeeId ?? "N/A");
 

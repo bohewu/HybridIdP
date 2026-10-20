@@ -25,6 +25,8 @@
     "clear": "清除篩選器"
   },
   "eventTypes": {
+    "NativeFieldSourcePauseChanged": "原生欄位來源暫停狀態已變更",
+    "NativeFieldPolicyChanged": "原生欄位政策已變更",
     "RequiredPasswordChange": "要求變更密碼",
     "AuthorizationGrantedFull": "已授予全部請求權限",
     "AuthorizationGrantedPartial": "已授予部分請求權限",

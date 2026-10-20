@@ -1,5 +1,6 @@
 using Core.Application;
 using Core.Application.Options;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
@@ -31,6 +32,27 @@ namespace Tests.Infrastructure.UnitTests;
 /// </summary>
 public class PersonServiceTests : IDisposable
 {
+    [Fact]
+    public async Task UpdatePersonAsync_ShouldProtectExplicitClearsAndLeaveOmittedFieldsAndUserIndependent()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var person = new Person { Id = Guid.NewGuid(), Nickname = "before", FirstName = "retained", EmployeeId = "employee" };
+        var user = new ApplicationUser { Id = Guid.NewGuid(), PersonId = person.Id, Nickname = "user" };
+        context.Persons.Add(person);
+        context.Users.Add(user);
+        await context.SaveChangesAsync();
+        await CreateService(context).UpdatePersonAsync(person.Id, new Person { Nickname = "", EmployeeId = "" });
+        context.ChangeTracker.Clear();
+        person = await context.Persons.SingleAsync();
+        Assert.Equal("", person.Nickname);
+        Assert.Null(person.EmployeeId);
+        Assert.Equal("retained", person.FirstName);
+        var state = await CreateNativeFields(context).GetTargetAsync(NativeFieldTarget.Person, person.Id);
+        Assert.All(state.Fields.Where(f => f.Field is NativeField.Nickname or NativeField.EmployeeId), f => Assert.True(f.ManualFixed));
+        Assert.All(state.Fields.Where(f => f.Field is not (NativeField.Nickname or NativeField.EmployeeId)), f => Assert.False(f.ManualFixed));
+        Assert.Null((await context.Users.SingleAsync()).NativeFieldStateJson);
+    }
+
     private readonly DbContextOptions<ApplicationDbContext> _options;
     private readonly Mock<ILogger<PersonService>> _loggerMock;
     private readonly Mock<IAuditService> _auditServiceMock;
@@ -67,7 +89,13 @@ public class PersonServiceTests : IDisposable
     {
         var authorization = new PersonOperationAuthorization(context, _boundary.Object, _authorization.Object,
             _applications.Object, _scopes.Object, Options.Create(_roleProtection));
-        return new PersonService(context, _loggerMock.Object, _auditServiceMock.Object, _userManagerMock.Object, _auditOptions, authorization);
+        return new PersonService(context,
+            _loggerMock.Object,
+            _auditServiceMock.Object,
+            _userManagerMock.Object,
+            _auditOptions,
+            authorization,
+            CreateNativeFields(context));
     }
 
     private void SetActor(Guid actorId, bool admin, params string[] permissions)
@@ -2046,4 +2074,9 @@ public class PersonServiceTests : IDisposable
             }
         }
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

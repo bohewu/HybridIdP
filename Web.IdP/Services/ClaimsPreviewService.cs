@@ -53,7 +53,7 @@ public sealed class ClaimsPreviewService(
         var identity = new ClaimsIdentity();
         identity.SetClaim(Claims.Subject, user.Id.ToString())
             .SetClaim(Claims.Email, user.Email)
-            .SetClaim(Claims.Name, NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName) ?? user.UserName)
+            .SetClaim(Claims.Name, NameFormatter.BuildDisplayName(user.FirstName, user.MiddleName, user.LastName, user.Nickname) ?? user.UserName)
             .SetClaim(Claims.PreferredUsername, user.UserName);
         var omissions = new Dictionary<string, string>(StringComparer.Ordinal);
         await enrichment.AddAppSpecificRolesAsync(identity, user, request.ClientId, cancellationToken);

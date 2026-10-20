@@ -1,6 +1,7 @@
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Options;
+using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Entities;
 using Core.Domain.Events;
@@ -25,6 +26,7 @@ public class UserManagementService : IUserManagementService
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly PrivilegedRoleProtectionOptions _roleProtection;
     private readonly string? _trustedProviderNamespace;
+    private readonly INativeFieldPolicyService _nativeFields;
 
     public UserManagementService(
         UserManager<ApplicationUser> userManager,
@@ -32,6 +34,7 @@ public class UserManagementService : IUserManagementService
         IDomainEventPublisher eventPublisher,
         IApplicationDbContext context,
         IOpenIddictApplicationManager applicationManager,
+        INativeFieldPolicyService nativeFields,
         IOptions<PrivilegedRoleProtectionOptions>? roleProtection = null,
         IOptions<ProviderProofOptions>? providerProofOptions = null)
     {
@@ -40,6 +43,7 @@ public class UserManagementService : IUserManagementService
         _eventPublisher = eventPublisher;
         _context = context;
         _applicationManager = applicationManager;
+        _nativeFields = nativeFields;
         _roleProtection = roleProtection?.Value ?? new PrivilegedRoleProtectionOptions();
         _trustedProviderNamespace = providerProofOptions?.Value.TrustedProviderNamespace;
     }
@@ -349,15 +353,27 @@ public class UserManagementService : IUserManagementService
         {
             var isActiveChanged = user.IsActive != updateDto.IsActive;
 
+            // Legacy full-profile DTOs have no field-presence flags. Compare with the
+            // displayed Person-preferred value; null is omission, empty is explicit clear.
+            var manualFields = new Dictionary<NativeField, string?>();
+            void AddEdit(NativeField field, string? incoming, string? current)
+            {
+                if (incoming is not null && (incoming.Length == 0 || incoming != current))
+                    manualFields[field] = incoming;
+            }
+            AddEdit(NativeField.FirstName, updateDto.FirstName, user.Person?.FirstName ?? user.FirstName);
+            AddEdit(NativeField.LastName, updateDto.LastName, user.Person?.LastName ?? user.LastName);
+            AddEdit(NativeField.Nickname, updateDto.Nickname, user.Person?.Nickname ?? user.Nickname);
+            AddEdit(NativeField.Department, updateDto.Department, user.Person?.Department ?? user.Department);
+            AddEdit(NativeField.JobTitle, updateDto.JobTitle, user.Person?.JobTitle ?? user.JobTitle);
+            AddEdit(NativeField.EmployeeId, updateDto.EmployeeId, user.Person?.EmployeeId ?? user.EmployeeId);
+            _nativeFields.ApplyManual(user, manualFields);
+            if (user.Person is not null) _nativeFields.ApplyManual(user.Person, manualFields);
+
             // Phase 10.4: Update Person first (if exists), then ApplicationUser
             if (user.Person != null)
             {
-                user.Person.FirstName = updateDto.FirstName;
-                user.Person.LastName = updateDto.LastName;
                 user.Person.MiddleName = updateDto.MiddleName;
-                user.Person.Nickname = updateDto.Nickname;
-                user.Person.Department = updateDto.Department;
-                user.Person.JobTitle = updateDto.JobTitle;
                 user.Person.ProfileUrl = updateDto.ProfileUrl;
                 user.Person.PictureUrl = updateDto.PictureUrl;
                 user.Person.Website = updateDto.Website;
@@ -366,7 +382,6 @@ public class UserManagementService : IUserManagementService
                 user.Person.Gender = updateDto.Gender;
                 user.Person.TimeZone = updateDto.TimeZone;
                 user.Person.Locale = updateDto.Locale;
-                user.Person.EmployeeId = updateDto.EmployeeId;
                 user.Person.ModifiedBy = modifiedBy;
                 user.Person.ModifiedAt = DateTime.UtcNow;
 
@@ -386,13 +401,8 @@ public class UserManagementService : IUserManagementService
             {
                 user.UserName = updateDto.UserName;
             }
-            user.FirstName = updateDto.FirstName;
-            user.LastName = updateDto.LastName;
             user.MiddleName = updateDto.MiddleName;
-            user.Nickname = updateDto.Nickname;
             user.PhoneNumber = updateDto.PhoneNumber;
-            user.Department = updateDto.Department;
-            user.JobTitle = updateDto.JobTitle;
             user.ProfileUrl = updateDto.ProfileUrl;
             user.PictureUrl = updateDto.PictureUrl;
             user.Website = updateDto.Website;
@@ -401,7 +411,6 @@ public class UserManagementService : IUserManagementService
             user.Gender = updateDto.Gender;
             user.TimeZone = updateDto.TimeZone;
             user.Locale = updateDto.Locale;
-            user.EmployeeId = updateDto.EmployeeId;
             user.IsActive = updateDto.IsActive;
             user.EmailConfirmed = updateDto.EmailConfirmed;
             user.PhoneNumberConfirmed = updateDto.PhoneNumberConfirmed;

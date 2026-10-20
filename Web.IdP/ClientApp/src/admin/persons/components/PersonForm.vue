@@ -118,16 +118,6 @@ watch(() => formData.value.residentCertificateNumber, (newValue) => {
 const handleSubmit = async () => {
 	error.value = null
 
-	// Basic validation
-	if (!formData.value.firstName?.trim()) {
-		error.value = t('persons.errors.firstNameRequired')
-		return
-	}
-	if (!formData.value.lastName?.trim()) {
-		error.value = t('persons.errors.lastNameRequired')
-		return
-	}
-
 	// Email format validation
 	if (formData.value.email?.trim()) {
 		const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
@@ -253,13 +243,14 @@ const handleClose = () => {
 				<div class="max-h-[65vh] overflow-y-auto px-1">
 					<div class="space-y-4">
 						<!-- Name Section -->
+						<p id="person-name-help" class="text-sm text-gray-500">{{ t('persons.form.nameHelp') }}</p>
 						<div class="grid grid-cols-1 gap-4 sm:grid-cols-3">
 							<div>
 								<label for="firstName" class="block text-sm font-medium text-gray-700">
-									{{ t('persons.form.firstName') }} <span class="text-red-500">*</span>
+									{{ t('persons.form.firstName') }}
 								</label>
-								<input id="firstName" v-model="formData.firstName" type="text" required
-									:placeholder="t('persons.form.firstName')"
+								<input id="firstName" v-model="formData.firstName" type="text" aria-describedby="person-name-help"
+									:placeholder="t('persons.form.firstNamePlaceholder')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
@@ -268,16 +259,16 @@ const handleClose = () => {
 									{{ t('persons.form.middleName') }}
 								</label>
 								<input id="middleName" v-model="formData.middleName" type="text"
-									:placeholder="t('persons.form.middleName')"
+									:placeholder="t('persons.form.middleNamePlaceholder')" aria-describedby="person-name-help"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 
 							<div>
 								<label for="lastName" class="block text-sm font-medium text-gray-700">
-									{{ t('persons.form.lastName') }} <span class="text-red-500">*</span>
+									{{ t('persons.form.lastName') }}
 								</label>
-								<input id="lastName" v-model="formData.lastName" type="text" required
-									:placeholder="t('persons.form.lastName')"
+								<input id="lastName" v-model="formData.lastName" type="text" aria-describedby="person-name-help"
+									:placeholder="t('persons.form.lastNamePlaceholder')"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 							</div>
 						</div>
@@ -288,7 +279,7 @@ const handleClose = () => {
 								{{ t('persons.form.nickname') }}
 							</label>
 							<input id="nickname" v-model="formData.nickname" type="text"
-								:placeholder="t('persons.form.nickname')"
+								:placeholder="t('persons.form.nicknamePlaceholder')" aria-describedby="person-name-help"
 								class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
 						</div>
 
@@ -320,8 +311,9 @@ const handleClose = () => {
 									{{ t('persons.form.employeeId') }}
 								</label>
 								<input id="employeeId" v-model="formData.employeeId" type="text"
-									:placeholder="t('persons.form.employeeId')"
+									:placeholder="t('persons.form.employeeIdPlaceholder')" aria-describedby="person-employee-id-help"
 									class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-google-500 focus:border-google-500 sm:text-sm" />
+								<p id="person-employee-id-help" class="mt-1 text-xs text-gray-500">{{ t('persons.form.employeeIdHelp') }}</p>
 							</div>
 
 							<div>

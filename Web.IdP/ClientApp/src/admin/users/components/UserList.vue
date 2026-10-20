@@ -28,6 +28,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'field-policies',
   'edit',
   'manage-roles',
   'manage-sessions',
@@ -270,6 +271,7 @@ const getSortIcon = (field) => {
                     </button>
                   </template>
                   <template #content="{ close }">
+                    <button v-if="canRead" type="button" class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @click="emit('field-policies', user); close()">{{ t('native-fields.title') }}</button>
                     <button
                       v-if="canUpdate"
                       @click="emit('edit', user); close()"

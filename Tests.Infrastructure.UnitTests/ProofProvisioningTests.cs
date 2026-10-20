@@ -27,7 +27,210 @@ public sealed class ProofProvisioningTests : IDisposable
     private readonly JitProvisioningService _jit;
     private readonly Mock<IProofProvider> _proof = new();
     private readonly Mock<IProviderProfileService> _profile = new();
+    private readonly NativeFieldPolicyOptions _nativeFieldOptions = new();
     private readonly LoginService _login;
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AuthenticateAsync_ShouldPersistFullNameAndOrganizationId_ForNewAndExistingBlankAccounts(bool existing)
+    {
+        var original = existing ? await CreateExistingAccountAsync(null, null) : null;
+        if (original is not null)
+        {
+            original.FirstName = original.LastName = null;
+            var originalPerson = Assert.Single(_db.Persons);
+            originalPerson.FirstName = originalPerson.LastName = null;
+            original.UserName = "historical@example.org";
+            Assert.True((await _users.UpdateAsync(original)).Succeeded);
+        }
+        const string fullName = "\u6e2c\u8a66\u59d3\u540d";
+        SetProof(AuthenticatedProof(fullName) with
+        {
+            Profile = new AssuredProfile { DisplayName = fullName, EmployeeId = "ORG-104",
+                AssuredFields = [AssuredProfileField.DisplayName, AssuredProfileField.EmployeeId] }
+        });
+
+        Assert.True((await _login.AuthenticateAsync(original?.UserName ?? "submitted-alias", "password")).IsSuccess);
+
+        _db.ChangeTracker.Clear();
+        var user = Assert.Single(_db.Users);
+        var person = Assert.Single(_db.Persons);
+        Assert.Equal(fullName, user.Nickname);
+        Assert.Equal(fullName, person.Nickname);
+        Assert.Equal("ORG-104", user.EmployeeId);
+        Assert.Equal("ORG-104", person.EmployeeId);
+        Assert.Equal(original?.Id ?? user.Id, user.Id);
+        Assert.Equal(existing ? "historical@example.org" : "source-account", user.UserName);
+        Assert.Equal(person.Id, user.PersonId);
+        Assert.Null(user.FirstName);
+        Assert.Null(user.LastName);
+        Assert.Null(person.FirstName);
+        Assert.Null(person.LastName);
+        Assert.Equal("opaque-subject", Assert.Single(_db.UserLogins).ProviderKey);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AuthenticateAsync_ShouldPreserveNativeOrganizationIdsAndNames_WhenPopulatedOrManuallyCleared(bool clear)
+    {
+        var user = await CreateExistingAccountAsync("Account name", "Person name");
+        var person = Assert.Single(_db.Persons);
+        var policy = CreateNativeFields(_db);
+        policy.ApplyManual(user, new Dictionary<NativeField, string?>
+        { [NativeField.Nickname] = clear ? "" : "Account name", [NativeField.EmployeeId] = clear ? "" : "LOCAL-104" });
+        policy.ApplyManual(person, new Dictionary<NativeField, string?>
+        { [NativeField.Nickname] = clear ? "" : "Person name", [NativeField.EmployeeId] = clear ? "" : "PERSON-104" });
+        await _db.SaveChangesAsync();
+        SetProof(AuthenticatedProof("Changed source") with
+        {
+            Profile = new AssuredProfile { DisplayName = "Changed source", EmployeeId = "ORG-104",
+                AssuredFields = [AssuredProfileField.DisplayName, AssuredProfileField.EmployeeId] }
+        });
+
+        Assert.True((await _login.AuthenticateAsync(user.UserName!, "password")).IsSuccess);
+
+        _db.ChangeTracker.Clear();
+        user = Assert.Single(_db.Users);
+        person = Assert.Single(_db.Persons);
+        Assert.Equal(clear ? "" : "Account name", user.Nickname);
+        Assert.Equal(clear ? "" : "Person name", person.Nickname);
+        Assert.Equal(clear ? null : "LOCAL-104", user.EmployeeId);
+        Assert.Equal(clear ? null : "PERSON-104", person.EmployeeId);
+    }
+
+    [Fact]
+    public async Task AuthenticateAsync_ShouldProtectAllNativeBlanksUntilUnlockAndStillRefreshProfile()
+    {
+        var policy = CreateNativeFields(_db);
+        SetProof(AuthenticatedProof("Display") with
+        {
+            Profile = new AssuredProfile
+            {
+                DisplayName = "Display", GivenName = "Given", Surname = "Family",
+                Department = "Department", Title = "Title", EmployeeId = "employee",
+                AssuredFields = Enum.GetValues<AssuredProfileField>()
+            }
+        });
+        Assert.True((await _login.AuthenticateAsync("alias", "password")).IsSuccess);
+        var user = Assert.Single(_db.Users);
+        var person = Assert.Single(_db.Persons);
+        var fields = Enum.GetValues<NativeField>();
+        Assert.All((await policy.GetTargetAsync(NativeFieldTarget.User, user.Id)).Fields, f => Assert.True(f.Attributed));
+        Assert.All((await policy.GetTargetAsync(NativeFieldTarget.Person, person.Id)).Fields, f => Assert.True(f.Attributed));
+        policy.ApplyManual(user, fields.ToDictionary(f => f, _ => (string?)""));
+        policy.ApplyManual(person, fields.ToDictionary(f => f, _ => (string?)""));
+        await _db.SaveChangesAsync();
+        for (var i = 0; i < 2; i++)
+            Assert.True((await _login.AuthenticateAsync(user.UserName!, "password")).IsSuccess);
+        foreach (var target in new[] { (NativeFieldTarget.User, user.Id), (NativeFieldTarget.Person, person.Id) })
+        {
+            var state = await policy.GetTargetAsync(target.Item1, target.Id);
+            Assert.All(state.Fields, f => { Assert.True(f.ManualFixed); Assert.True(string.IsNullOrEmpty(f.Value)); });
+            await policy.UpdateAsync(target.Item1, target.Id, NativeField.Nickname,
+                new() { Operation = NativeFieldOperation.Unlock, ExpectedRevision = state.Revision });
+        }
+        Assert.True((await _login.AuthenticateAsync(user.UserName!, "password")).IsSuccess);
+        Assert.Equal("Display", user.Nickname);
+        Assert.Equal("Display", person.Nickname);
+        Assert.Equal("", user.FirstName);
+        Assert.Null(person.EmployeeId);
+        _profile.Verify(p => p.RefreshAfterLoginAsync(It.IsAny<ApplicationUser>(), "example.provider", "opaque-subject",
+            It.IsAny<CancellationToken>()), Times.Exactly(4));
+    }
+
+    [Fact]
+    public async Task AuthenticateAsync_ShouldPauseOnlyNativeFieldsAndRetainExactLinkAndProfileRefresh()
+    {
+        var user = await CreateExistingAccountAsync(null, null);
+        var policy = CreateNativeFields(_db);
+        await policy.SetPausedAsync(NativeFieldSource.Proof, new(true, Guid.Empty));
+        SetProof(AuthenticatedProof("Paused display"));
+        Assert.True((await _login.AuthenticateAsync(user.UserName!, "password")).IsSuccess);
+        Assert.Null(user.Nickname);
+        Assert.Null(Assert.Single(_db.Persons).Nickname);
+        var link = Assert.Single(_db.UserLogins);
+        Assert.Equal(user.Id, link.UserId);
+        Assert.Equal("opaque-subject", link.ProviderKey);
+        Assert.Equal("Paused display", link.ProviderDisplayName);
+        _profile.Verify(p => p.RefreshAfterLoginAsync(user, "example.provider", "opaque-subject",
+            It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task AuthenticateAsync_ShouldIgnoreOversizedNativeValuesAndRefreshProfile_WhenNativeSourceUnavailable(
+        bool nativeEnabled, bool paused)
+    {
+        var user = await CreateExistingAccountAsync(null, null);
+        var person = Assert.Single(_db.Persons);
+        var policy = CreateNativeFields(_db);
+        _nativeFieldOptions.ProofEnabled = nativeEnabled;
+        if (paused) await policy.SetPausedAsync(NativeFieldSource.Proof, new(true, Guid.Empty));
+        var userBefore = await policy.GetTargetAsync(NativeFieldTarget.User, user.Id);
+        var personBefore = await policy.GetTargetAsync(NativeFieldTarget.Person, person.Id);
+        var proof = AuthenticatedProof("Unapplied display") with
+        {
+            Profile = new AssuredProfile
+            {
+                DisplayName = "Unapplied display", GivenName = new string('x', 101), Surname = "Unapplied family",
+                Department = "Unapplied department", Title = "Unapplied title", EmployeeId = "unapplied-employee",
+                AssuredFields = Enum.GetValues<AssuredProfileField>()
+            }
+        };
+        Assert.True(proof.TryValidate(out _));
+        SetProof(proof);
+
+        Assert.True((await _login.AuthenticateAsync(user.UserName!, "password")).IsSuccess);
+
+        _db.ChangeTracker.Clear();
+        var userAfter = await policy.GetTargetAsync(NativeFieldTarget.User, user.Id);
+        var personAfter = await policy.GetTargetAsync(NativeFieldTarget.Person, person.Id);
+        Assert.Equal(userBefore.Fields, userAfter.Fields);
+        Assert.Equal(userBefore.Revision, userAfter.Revision);
+        Assert.Equal(personBefore.Fields, personAfter.Fields);
+        Assert.Equal(personBefore.Revision, personAfter.Revision);
+        _profile.Verify(service => service.RefreshAfterLoginAsync(It.Is<ApplicationUser>(value => value.Id == user.Id),
+            "example.provider", "opaque-subject", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task ProvisionAsync_ShouldKeepSharedPersonOwnerAndPreventBrowserBypass()
+    {
+        var first = await CreateExistingAccountAsync("first", "person");
+        var person = Assert.Single(_db.Persons);
+        var second = new ApplicationUser { UserName = "second", PersonId = person.Id };
+        Assert.True((await _users.CreateAsync(second)).Succeeded);
+        Assert.True((await _users.AddLoginAsync(second, new UserLoginInfo("example.provider", "second", "second"))).Succeeded);
+        var policy = CreateNativeFields(_db);
+        var state = await policy.GetTargetAsync(NativeFieldTarget.Person, person.Id);
+        await policy.UpdateAsync(NativeFieldTarget.Person, person.Id, NativeField.Nickname, new()
+        {
+            Operation = NativeFieldOperation.AssignSource, ExpectedRevision = state.Revision, AllowOverwrite = true,
+            SourceIdentity = new(NativeFieldSource.Proof, first.Id, "example.provider", "opaque-subject")
+        });
+        await _jit.ProvisionExternalUserAsync(new ExternalAuthResult
+        {
+            Provider = "example.provider", ProviderKey = "second", AssuredCanonicalAccount = "second",
+            DisplayName = "competing", Department = "competing department"
+        });
+        Assert.Equal("person", person.Nickname);
+        Assert.Null(person.Department); // Shared Person's unassigned fields cannot be claimed on later login.
+        Assert.Equal("competing", second.Nickname);
+        policy.ApplyManual(second, new Dictionary<NativeField, string?> { [NativeField.FirstName] = "" });
+        await _db.SaveChangesAsync();
+        Assert.True((await _users.AddLoginAsync(second, new UserLoginInfo("Google", "browser", "Google"))).Succeeded);
+        await _jit.ProvisionExternalUserAsync(new ExternalAuthResult
+        {
+            Provider = "Google", ProviderKey = "browser", FirstName = "browser name", Department = "browser department"
+        });
+        Assert.Equal("", second.FirstName);
+        Assert.Equal("competing department", second.Department);
+        Assert.Equal("PersonGiven", person.FirstName);
+        Assert.Null(person.Department);
+    }
 
     public ProofProvisioningTests()
     {
@@ -37,7 +240,10 @@ public sealed class ProofProvisioningTests : IDisposable
             [new UserValidator<ApplicationUser>()], [], new UpperInvariantLookupNormalizer(),
             new IdentityErrorDescriber(), null!, NullLogger<UserManager<ApplicationUser>>.Instance);
         var externalOptions = Options.Create(new ExternalLoginOptions { AutoProvisionDefaultRole = null });
-        _jit = new JitProvisioningService(_users, _db, externalOptions);
+        _jit = new JitProvisioningService(_users,
+            _db,
+            externalOptions,
+            CreateNativeFields(_db));
         var migration = new Mock<ICredentialMigrationStateStore>();
         migration.Setup(store => store.FindAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((CredentialMigrationRecord?)null);
@@ -259,4 +465,9 @@ public sealed class ProofProvisioningTests : IDisposable
     private void SetProof(ProofResult proof) => _proof
         .Setup(provider => provider.ProveAsync(It.IsAny<ProofRequest>(), "password", It.IsAny<CancellationToken>()))
         .ReturnsAsync(proof);
+    private global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(_nativeFieldOptions),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions { Enabled = true, TrustedProviderNamespace = "example.provider" }),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }

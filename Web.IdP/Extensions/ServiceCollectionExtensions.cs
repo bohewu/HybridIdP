@@ -128,6 +128,9 @@ public static class ServiceCollectionExtensions
         services.AddScoped<IDirectoryRequiredCredentialChangeService, DirectoryRequiredCredentialChangeService>();
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IStage1BindingRefreshService, Stage1BindingRefreshService>();
+        services.AddScoped<INativeFieldPolicyService, NativeFieldPolicyService>();
+        services.AddOptions<Core.Application.Options.NativeFieldPolicyOptions>()
+            .Bind(configuration.GetSection(Core.Application.Options.NativeFieldPolicyOptions.Section));
         services.AddScoped<ICredentialMigrationPolicy, CredentialMigrationPolicy>();
         services.AddScoped<ICredentialMigrationStateStore, CredentialMigrationStateStore>();
         services.AddScoped<ILegacyPasswordSyncAttemptStore, LegacyPasswordSyncAttemptStore>();

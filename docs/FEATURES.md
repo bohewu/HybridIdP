@@ -6,6 +6,27 @@
 
 ---
 
+## Native field policies
+
+Administrators can manage `Nickname`, `FirstName`, `LastName`, `Department`,
+`JobTitle` and `EmployeeId` independently on User and Person records. Settings
+shows deployment/trust and pause status before Branding; User row menus and
+Person row buttons open Native field policies. Existing target permissions
+protect reads/updates; source status and UI assignment additionally need `settings.read`
+and pause needs `settings.update`. The UI cannot enable an untrusted source.
+
+Only existing Proof and Stage 1 mappings are supported. Exact persisted bindings
+and field ownership prevent shared Person last-login-wins. Nonempty values are
+preserved unless overwrite is explicitly chosen. Manual fixed values, including
+intentional blanks, survive until explicit Unlock; assignment does not unlock.
+Missing/null/whitespace inputs and outages preserve native values. Source clear
+is unavailable because current contracts supply no authoritative clear signal.
+Policies take effect on the next eligible normal sync without an immediate fetch.
+Identity/security authority, read-only Claims Preview and independent normal-login
+Provider Profile snapshots retain their existing behavior. See
+[field mapping and workflow](IDENTITY_FIELD_MAPPING.md#native-field-policy-and-operator-workflow)
+and [deployment upgrade requirements](DEPLOYMENT_GUIDE.md#native-field-policy-configuration-and-upgrade).
+
 ## Administrative claims preview
 
 Administrators with `claims.preview` can open `/Admin/ClaimsPreview`, select a

@@ -36,7 +36,7 @@ const personDisplayName = computed(() => {
     return nameParts.join(' ')
   }
 
-  return props.person.email || props.person.userName || props.person.username || 'Unknown person'
+  return props.person.nickname?.trim() || t('persons.notProvided')
 })
 
 onMounted(() => {

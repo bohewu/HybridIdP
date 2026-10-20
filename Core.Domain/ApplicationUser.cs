@@ -7,6 +7,8 @@ namespace Core.Domain;
 
 public class ApplicationUser : IdentityUser<Guid>
 {
+    // Bounded field ownership/protection; changed atomically with native values.
+    public string? NativeFieldStateJson { get; set; }
     // Profile Information
     public string? FirstName { get; set; }
     public string? LastName { get; set; }

@@ -169,6 +169,10 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<Guid?>("ModifiedBy")
                         .HasColumnType("uuid");
 
+                    b.Property<string>("NativeFieldStateJson")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
+
                     b.Property<string>("Nickname")
                         .HasColumnType("text");
 
@@ -893,6 +897,24 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.NativeFieldSourcePolicy", b =>
+                {
+                    b.Property<string>("Source")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)");
+
+                    b.Property<bool>("Paused")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("Revision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Source");
+
+                    b.ToTable("NativeFieldSourcePolicies");
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.NativeRecoveryResetApproval", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1072,6 +1094,10 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.Property<string>("NationalId")
                         .HasMaxLength(64)
                         .HasColumnType("character varying(64)");
+
+                    b.Property<string>("NativeFieldStateJson")
+                        .IsConcurrencyToken()
+                        .HasColumnType("text");
 
                     b.Property<string>("Nickname")
                         .HasMaxLength(100)

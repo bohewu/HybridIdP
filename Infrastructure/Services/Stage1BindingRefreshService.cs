@@ -14,9 +14,12 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
 {
     private readonly IApplicationDbContext _dbContext;
 
-    public Stage1BindingRefreshService(IApplicationDbContext dbContext)
+    private readonly INativeFieldPolicyService _nativeFields;
+
+    public Stage1BindingRefreshService(IApplicationDbContext dbContext, INativeFieldPolicyService nativeFields)
     {
         _dbContext = dbContext;
+        _nativeFields = nativeFields;
     }
 
     public async Task<Stage1BindingRefreshOutcome> BindAndRefreshAsync(
@@ -68,32 +71,49 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
             : null;
 
         var existingBinding = subjectBinding ?? objectBinding ?? accountBinding ?? aliasBinding;
-        if (existingBinding is null)
-        {
-            await _dbContext.ProviderSubjectDirectoryBindings.AddAsync(
-                new ProviderSubjectDirectoryBinding(
-                    request.LocalAccountId,
-                    request.ProviderNamespace,
-                    request.StableSubject,
-                    request.DirectoryIdentity.ObjectId,
-                    DateTime.UtcNow,
-                    request.DirectoryIdentity.CanonicalAccount),
-                cancellationToken);
-        }
-        else
-        {
-            existingBinding.SetCanonicalAccountAlias(request.DirectoryIdentity.CanonicalAccount);
-        }
-
-        RefreshLocalProfile(user, person, request.DirectoryIdentity.Profile);
-
+        var binding = existingBinding ?? new ProviderSubjectDirectoryBinding(
+            request.LocalAccountId, request.ProviderNamespace, request.StableSubject,
+            request.DirectoryIdentity.ObjectId, DateTime.UtcNow, request.DirectoryIdentity.CanonicalAccount);
+        await using var transaction = _dbContext is DbContext db && db.Database.IsRelational()
+            ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
         try
         {
+            if (existingBinding is null)
+                await _dbContext.ProviderSubjectDirectoryBindings.AddAsync(binding, cancellationToken);
+            else
+                binding.SetCanonicalAccountAlias(request.DirectoryIdentity.CanonicalAccount);
+
+            // Source policy checks persisted exact bindings, never pending inferred links.
             await _dbContext.SaveChangesAsync(cancellationToken);
+            RefreshContactProfile(user, person, request.DirectoryIdentity.Profile);
+            if (request.DirectoryIdentity.Profile is { } profile)
+            {
+                await _nativeFields.ApplySourceAsync(user, person,
+                    new(NativeFieldSource.Stage1, user.Id, request.ProviderNamespace,
+                        request.StableSubject, request.DirectoryIdentity.ObjectId),
+                    new Dictionary<NativeField, string?>
+                    {
+                        [NativeField.Nickname] = profile.DisplayName, [NativeField.FirstName] = profile.GivenName,
+                        [NativeField.LastName] = profile.Surname, [NativeField.Department] = profile.Department,
+                        [NativeField.JobTitle] = profile.Title, [NativeField.EmployeeId] = profile.EmployeeId
+                    }, cancellationToken);
+            }
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            if (transaction is not null) await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException)
         {
+            _dbContext.Detach(user);
+            if (person is not null) _dbContext.Detach(person);
+            _dbContext.Detach(binding);
             return Stage1BindingRefreshOutcome.Conflict;
+        }
+        catch
+        {
+            _dbContext.Detach(user);
+            if (person is not null) _dbContext.Detach(person);
+            _dbContext.Detach(binding);
+            throw;
         }
 
         return existingBinding is null
@@ -120,7 +140,7 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
          binding.ProviderNamespace == request.ProviderNamespace &&
          binding.StableSubject == request.StableSubject);
 
-    private static void RefreshLocalProfile(
+    private static void RefreshContactProfile(
         ApplicationUser user,
         Person? person,
         AssuredProfile? profile)
@@ -130,27 +150,6 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
             return;
         }
 
-        Apply(profile.DisplayName, value => user.Nickname = value, value =>
-        {
-            if (person is not null)
-            {
-                person.Nickname = value;
-            }
-        });
-        Apply(profile.GivenName, value => user.FirstName = value, value =>
-        {
-            if (person is not null)
-            {
-                person.FirstName = value;
-            }
-        });
-        Apply(profile.Surname, value => user.LastName = value, value =>
-        {
-            if (person is not null)
-            {
-                person.LastName = value;
-            }
-        });
         Apply(profile.Email, value =>
         {
             // Upstream profile assurance cannot replace an enrolled local factor.
@@ -168,28 +167,6 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
                 person.Email = value;
             }
         });
-        Apply(profile.Department, value => user.Department = value, value =>
-        {
-            if (person is not null)
-            {
-                person.Department = value;
-            }
-        });
-        Apply(profile.Title, value => user.JobTitle = value, value =>
-        {
-            if (person is not null)
-            {
-                person.JobTitle = value;
-            }
-        });
-        Apply(profile.EmployeeId, value => user.EmployeeId = value, value =>
-        {
-            if (person is not null)
-            {
-                person.EmployeeId = value;
-            }
-        });
-
         user.ModifiedAt = DateTime.UtcNow;
         if (person is not null)
         {

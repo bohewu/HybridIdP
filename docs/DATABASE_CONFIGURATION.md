@@ -1179,6 +1179,22 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 **維護者:** HybridIdP Team  
 **版本:** 1.3
 
+## Native-field authority storage
+
+SQL Server migration `20261020030913_AddNativeFieldAuthority` and PostgreSQL
+migration `20261020030931_AddNativeFieldAuthority` add nullable
+`AspNetUsers.NativeFieldStateJson` and `Persons.NativeFieldStateJson`, plus
+`NativeFieldSourcePolicies` (`Source`, `Paused`, `Revision`). User and Person
+field ownership/protection are independent. State JSON is a concurrency token;
+native values and protection state are saved together. These migrations contain
+no historical data rewrite or inferred source attribution/binding.
+
+Apply the selected provider's migration before activating the updated app using
+the existing operator-controlled tools above. Preserve the original environment
+and verified backup; application rollback and database rollback remain separate.
+See the [configuration and upgrade notes](DEPLOYMENT_GUIDE.md#native-field-policy-configuration-and-upgrade)
+for the explicit Stage 1 native opt-in and namespace allowlist requirement.
+
 ## Provider Profile and conditional claim storage
 
 Both provider assemblies include `AddProviderProfilesAndClaimConditions`.

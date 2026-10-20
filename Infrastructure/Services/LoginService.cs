@@ -333,25 +333,6 @@ public partial class LoginService : ILoginService
         var result = await ValidateExternalUserSignInAsync(provisioned, cancellationToken);
         if (!result.IsSuccess) return result;
         var displayChanged = false;
-        if (!string.IsNullOrWhiteSpace(profile?.DisplayName))
-        {
-            if (string.IsNullOrWhiteSpace(provisioned.Nickname))
-            {
-                provisioned.Nickname = profile.DisplayName;
-                displayChanged = true;
-            }
-            // Person.Nickname is limited to 100 characters. Optional display data
-            // must not fail login or be truncated to fit the shared profile.
-            if (provisioned.PersonId.HasValue && profile.DisplayName.Length <= 100)
-            {
-                var person = await _dbContext.Persons.FindAsync([provisioned.PersonId.Value], cancellationToken);
-                if (person is not null && string.IsNullOrWhiteSpace(person.Nickname))
-                {
-                    person.Nickname = profile.DisplayName;
-                    displayChanged = true;
-                }
-            }
-        }
         // Only validated Proof may refresh this display-only field on an existing exact binding.
         // Do not remove/re-add the login or change account identifiers or mailbox ownership.
         if (linked is not null && !string.IsNullOrWhiteSpace(profile?.DisplayName))

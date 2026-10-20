@@ -12,8 +12,19 @@ There is no organization-specific or AuthProxy package dependency.
 ## Current behavior
 
 The [identity source and field mapping inventory](IDENTITY_FIELD_MAPPING.md)
-lists the implemented User/Person mappings, API responsibilities and the
-remaining decisions for unified source synchronization.
+lists the implemented User/Person mappings, API responsibilities and bounded
+six-field Proof/Stage 1 policies. Native writes require deployment enablement,
+exact established binding and independent per-User/per-Person ownership.
+`NativeFieldPolicy:ProofEnabled` defaults to `true` to retain explicitly enabled
+Proof deployments, while `ProviderProof:Enabled` still defaults to `false`.
+`NativeFieldPolicy:Stage1Enabled` defaults to `false` and
+`NativeFieldPolicy:TrustedStage1ProviderNamespaces` defaults to empty: an existing
+Stage 1 deployment must explicitly opt into native writes with its exact trusted
+namespace, in addition to `DirectoryIntegration:Enabled`. See the
+[configuration and upgrade notes](DEPLOYMENT_GUIDE.md#native-field-policy-configuration-and-upgrade).
+Pausing native sync or disabling its ceiling does not disable authentication or
+independent Provider Profile snapshot refresh. Email trust, MFA and recovery
+authority remain separate. Claims Preview remains read-only.
 
 Enable `ProviderProof:Enabled` and configure `TrustedProviderNamespace`, the full
 endpoint and service secret to select API credential proof. Actual local-password

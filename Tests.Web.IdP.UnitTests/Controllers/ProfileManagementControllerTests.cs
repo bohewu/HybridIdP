@@ -121,6 +121,30 @@ public class ProfileManagementControllerTests : IDisposable
     #region GetProfile Tests
 
     [Theory]
+    [InlineData(null, "\u6e2c\u8a66\u59d3\u540d", "\u6e2c\u8a66\u59d3\u540d")]
+    [InlineData("PersonGiven", "Source full name", "PersonGiven")]
+    [InlineData(null, "", "")]
+    public async Task GetProfile_ShouldUsePersonNativeNameWithoutInventingPersonNameFromAccount(
+        string? firstName, string nickname, string expected)
+    {
+        var person = new Person { Id = Guid.NewGuid(), FirstName = firstName, Nickname = nickname, EmployeeId = "ORG-104" };
+        _dbContext.Persons.Add(person);
+        await _dbContext.SaveChangesAsync();
+        _testUser.PersonId = person.Id;
+        _testUser.Nickname = "Independent account name";
+        _mockUserManager.Setup(m => m.GetUserAsync(It.IsAny<ClaimsPrincipal>())).ReturnsAsync(_testUser);
+        _mockUserManager.Setup(m => m.GetLoginsAsync(_testUser)).ReturnsAsync(new List<UserLoginInfo>());
+        _mockSecurityPolicyService.Setup(s => s.GetCurrentPolicyAsync()).ReturnsAsync(new SecurityPolicy());
+
+        var profile = Assert.IsType<ProfileDto>(Assert.IsType<OkObjectResult>((await _controller.GetProfile()).Result).Value);
+
+        Assert.Equal(expected, profile.Person!.FullName);
+        Assert.Equal("ORG-104", profile.Person.EmployeeId);
+        Assert.Equal(firstName ?? _testUser.Nickname, profile.DisplayName);
+        Assert.Equal(_testUser.UserName, profile.UserName);
+    }
+
+    [Theory]
     [InlineData("example.organization")]
     [InlineData("Legacy")]
     [InlineData("EXAMPLE.ORGANIZATION")]

@@ -3,7 +3,7 @@
   "pageSubtitle": "Manage person profiles and linked accounts",
   "createPerson": "Create Person",
   "editPerson": "Edit Person",
-  "search": "Search by name, employee ID, or department...",
+  "search": "Search by name, display name or employee ID...",
   "loading": "Loading persons...",
   "noPersons": "No persons found matching your criteria.",
   "noPermission": "You do not have permission to view persons.",
@@ -41,7 +41,7 @@
     "firstName": "First Name",
     "middleName": "Middle Name",
     "lastName": "Last Name",
-    "nickname": "Nickname",
+    "nickname": "Display name / nickname",
     "email": "Email",
     "phoneNumber": "Phone Number",
     "employeeId": "Employee ID",
@@ -76,7 +76,14 @@
     "residentCertificate": "Resident Certificate",
     "residentCertPlaceholder": "e.g., AA12345678",
     "residentCertHint": "10-12 alphanumeric characters",
-    "identityVerified": "Identity verified on"
+    "identityVerified": "Identity verified on",
+    "nameHelp": "If the source supplies only a full name, keep it in Display name. First, middle and last names are optional; do not split the full name to fill them.",
+    "firstNamePlaceholder": "Given name, if provided separately",
+    "middleNamePlaceholder": "Middle name, if provided separately",
+    "lastNamePlaceholder": "Surname, if provided separately",
+    "nicknamePlaceholder": "Full name or preferred display name",
+    "employeeIdPlaceholder": "Organization account identifier",
+    "employeeIdHelp": "Use the account identifier supplied by the organization source. Do not infer it from a name or email address."
   },
   "validation": {
     "nationalIdRequired": "National ID is required when document type is selected",
@@ -147,5 +154,6 @@
     "search": "Search Person",
     "searchPlaceholder": "Name or Employee ID",
     "noPersons": "No persons found."
-  }
+  },
+  "notProvided": "Not provided"
 }

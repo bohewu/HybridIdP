@@ -20,8 +20,10 @@ public class JitProvisioningServiceTests : IDisposable
     {
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "existing@example.test", Email = "existing@example.test", IsActive = true };
         _userManagerMock.Setup(x => x.FindByNameAsync(user.UserName)).ReturnsAsync(user);
-        var service = new JitProvisioningService(_userManagerMock.Object, _context,
-            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }));
+        var service = new JitProvisioningService(_userManagerMock.Object,
+            _context,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }),
+            CreateNativeFields(_context));
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ProvisionExternalUserAsync(new ExternalAuthResult
         {
             Provider = "Google", ProviderKey = "attacker-key", Email = user.Email,
@@ -67,8 +69,8 @@ public class JitProvisioningServiceTests : IDisposable
         _context.ChangeTracker.Clear();
         var contact = await _context.Persons.SingleAsync();
         Assert.Equal("upstream@example.test", contact.Email);
-        Assert.Equal("Updated", contact.FirstName);
-        Assert.Equal("Updated department", contact.Department);
+        Assert.Null(contact.FirstName);
+        Assert.Null(contact.Department);
     }
 
     [Fact]
@@ -115,13 +117,13 @@ public class JitProvisioningServiceTests : IDisposable
         _userManagerMock.Setup(um => um.AddToRoleAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        _service = new JitProvisioningService(
-            _userManagerMock.Object,
+        _service = new JitProvisioningService(_userManagerMock.Object,
             _context,
             Options.Create(new Core.Application.Options.ExternalLoginOptions
             {
                 AutoProvisionDefaultRole = Core.Domain.Constants.AuthConstants.Roles.User
-            }));
+            }),
+            CreateNativeFields(_context));
     }
 
     [Fact]
@@ -277,10 +279,10 @@ public class JitProvisioningServiceTests : IDisposable
             FirstName = "Attacker"
         };
         var contextMock = new Mock<IApplicationDbContext>(MockBehavior.Strict);
-        var service = new JitProvisioningService(
-            _userManagerMock.Object,
+        var service = new JitProvisioningService(_userManagerMock.Object,
             contextMock.Object,
-            Options.Create(new Core.Application.Options.ExternalLoginOptions()));
+            Options.Create(new Core.Application.Options.ExternalLoginOptions()),
+            CreateNativeFields(contextMock.Object));
         _userManagerMock.Setup(manager => manager.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
             .ReturnsAsync(terminalUser);
 
@@ -320,10 +322,10 @@ public class JitProvisioningServiceTests : IDisposable
             FirstName = "Attacker"
         };
         var contextMock = new Mock<IApplicationDbContext>(MockBehavior.Strict);
-        var service = new JitProvisioningService(
-            _userManagerMock.Object,
+        var service = new JitProvisioningService(_userManagerMock.Object,
             contextMock.Object,
-            Options.Create(new Core.Application.Options.ExternalLoginOptions()));
+            Options.Create(new Core.Application.Options.ExternalLoginOptions()),
+            CreateNativeFields(contextMock.Object));
         _userManagerMock.Setup(manager => manager.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
             .ReturnsAsync((ApplicationUser?)null);
         _userManagerMock.Setup(manager => manager.FindByNameAsync(terminalUser.UserName))
@@ -372,8 +374,10 @@ public class JitProvisioningServiceTests : IDisposable
         _userManagerMock.Setup(manager => manager.AddLoginAsync(existingUser, It.IsAny<UserLoginInfo>()))
             .ReturnsAsync(IdentityResult.Success);
 
-        var service = new JitProvisioningService(_userManagerMock.Object, _context,
-            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }));
+        var service = new JitProvisioningService(_userManagerMock.Object,
+            _context,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }),
+            CreateNativeFields(_context));
         var result = await service.ProvisionExternalUserAsync(externalAuth);
 
         Assert.Same(existingUser, result);
@@ -400,8 +404,10 @@ public class JitProvisioningServiceTests : IDisposable
             EmailVerified = true, FirstName = "Attacker"
         };
         var context = new Mock<IApplicationDbContext>(MockBehavior.Strict);
-        var service = new JitProvisioningService(_userManagerMock.Object, context.Object,
-            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = autoLink }));
+        var service = new JitProvisioningService(_userManagerMock.Object,
+            context.Object,
+            Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = autoLink }),
+            CreateNativeFields(context.Object));
         _userManagerMock.Setup(m => m.FindByLoginAsync(externalAuth.Provider, externalAuth.ProviderKey))
             .ReturnsAsync((ApplicationUser?)null);
         _userManagerMock.Setup(m => m.FindByNameAsync(existingUser.UserName)).ReturnsAsync(existingUser);
@@ -617,7 +623,7 @@ public class JitProvisioningServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task ProvisionExternalUser_ExistingPerson_ShouldUpdateFields()
+    public async Task ProvisionExternalUser_ExistingPerson_ShouldPreserveNativeFieldsAndRetainIdentityBehavior()
     {
         // Arrange - Create Person with minimal info
         var existingPerson = new Person
@@ -662,8 +668,8 @@ public class JitProvisioningServiceTests : IDisposable
         // Verify Person was updated
         var updatedPerson = await _context.Persons.FirstOrDefaultAsync(p => p.Id == existingPerson.Id);
         Assert.NotNull(updatedPerson);
-        Assert.Equal("Doe", updatedPerson.LastName); // Should be updated
-        Assert.Equal("IT", updatedPerson.Department); // Should be updated
+        Assert.Null(updatedPerson.LastName); // Unadvertised provider cannot claim an existing Person.
+        Assert.Null(updatedPerson.Department);
         Assert.NotNull(updatedPerson.NationalId); // Should be set (hashed)
         Assert.NotNull(updatedPerson.ModifiedAt); // Should have modification timestamp
     }
@@ -827,7 +833,7 @@ public class JitProvisioningServiceTests : IDisposable
     // Helper methods
     private JitProvisioningService CreateEmailLinkingService() => new(
         _userManagerMock.Object, _context,
-        Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }));
+        Options.Create(new Core.Application.Options.ExternalLoginOptions { AutoLinkMatchingEmail = true }), CreateNativeFields(_context));
 
     private static Mock<UserManager<ApplicationUser>> CreateUserManagerMock()
     {
@@ -861,4 +867,9 @@ public class JitProvisioningServiceTests : IDisposable
     {
         _context?.Dispose();
     }
+    private static global::Infrastructure.Services.NativeFieldPolicyService CreateNativeFields(Core.Application.IApplicationDbContext context) =>
+        new(context,
+            Microsoft.Extensions.Options.Options.Create(new Core.Application.Options.NativeFieldPolicyOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.ProviderProofOptions()),
+            Microsoft.Extensions.Options.Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions()));
 }
