@@ -53,7 +53,11 @@ const pageSize = ref(10)
 const page = ref(1)
 const totalCount = ref(0)
 const search = ref('')
-const sort = ref('lastName:asc')
+const sort = ref('displayName:asc')
+const toggleNameSort = () => {
+  sort.value = sort.value === 'displayName:asc' ? 'displayName:desc' : 'displayName:asc'
+  page.value = 1
+}
 
 const structuredName = person => [person.firstName, person.middleName, person.lastName]
   .map(value => value?.trim()).filter(Boolean).join(' ')
@@ -65,7 +69,8 @@ const fetchPersons = async () => {
   try {
     const params = new URLSearchParams({
       skip: String((page.value - 1) * pageSize.value),
-      take: String(pageSize.value)
+      take: String(pageSize.value),
+      sortDirection: sort.value.split(':')[1]
     })
     
     let url = '/api/admin/people'
@@ -240,7 +245,7 @@ const handlePageSizeChange = (newSize) => {
 }
 
 // Watchers
-watch([page, pageSize, search], () => {
+watch([page, pageSize, search, sort], () => {
   fetchPersons()
 })
 </script>
@@ -334,8 +339,16 @@ watch([page, pageSize, search], () => {
           <table class="min-w-full divide-y divide-gray-200">
             <thead class="bg-gray-50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                  {{ t('persons.table.name') }}
+                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider"
+                    :aria-sort="sort.endsWith(':asc') ? 'ascending' : 'descending'">
+                  <button type="button" @click="toggleNameSort" data-test-id="person-name-sort"
+                    class="inline-flex items-center gap-1 uppercase focus:outline-none focus-visible:ring-2 focus-visible:ring-google-500">
+                    {{ t('persons.table.name') }}
+                    <svg class="h-4 w-4" aria-hidden="true" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        :d="sort.endsWith(':asc') ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'" />
+                    </svg>
+                  </button>
                 </th>
                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                   {{ t('persons.table.employeeId') }}
@@ -375,7 +388,7 @@ watch([page, pageSize, search], () => {
                       <div data-test-id="person-name" class="text-sm font-medium text-gray-900">
                         {{ personDisplayName(person) }}
                       </div>
-                      <div v-if="structuredName(person) && person.nickname" class="text-sm text-gray-500">{{ person.nickname }}</div>
+                      <div v-if="structuredName(person) && person.nickname?.trim() && person.nickname.trim() !== structuredName(person)" class="text-sm text-gray-500">{{ person.nickname }}</div>
                     </div>
                   </div>
                 </td>

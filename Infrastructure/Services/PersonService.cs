@@ -71,15 +71,38 @@ public partial class PersonService : IPersonService
             .FirstOrDefaultAsync(p => p.EmployeeId == employeeId, cancellationToken);
     }
 
-    public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50, CancellationToken cancellationToken = default)
+    public async Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50,
+        CancellationToken cancellationToken = default, string? sortDirection = "asc")
     {
-        return await _context.Persons
-            .Include(p => p.Accounts)
-            .OrderBy(p => p.LastName)
-            .ThenBy(p => p.FirstName)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return await QueryNativeNames(_context.Persons.Include(person => person.Accounts), null, sortDirection)
+            .Skip(skip).Take(take).ToListAsync(cancellationToken);
+    }
+
+    internal static IQueryable<Person> QueryNativeNames(IQueryable<Person> persons, string? searchTerm, string? sortDirection)
+    {
+        var query = persons.Select(person => new
+        {
+            Person = person,
+            StructuredName = ((person.FirstName ?? "").Trim()
+                + (person.MiddleName == null || person.MiddleName.Trim() == "" ? "" : " " + person.MiddleName.Trim())
+                + (person.LastName == null || person.LastName.Trim() == "" ? "" : " " + person.LastName.Trim())).Trim()
+        }).Select(row => new
+        {
+            row.Person,
+            Name = row.StructuredName != "" ? row.StructuredName : (row.Person.Nickname ?? "").Trim()
+        });
+        if (!string.IsNullOrWhiteSpace(searchTerm))
+        {
+            var term = searchTerm.Trim();
+            query = query.Where(row => row.Name.Contains(term)
+                || (row.Person.FirstName != null && row.Person.FirstName.Contains(term))
+                || (row.Person.LastName != null && row.Person.LastName.Contains(term))
+                || (row.Person.Nickname != null && row.Person.Nickname.Contains(term))
+                || (row.Person.EmployeeId != null && row.Person.EmployeeId.Contains(term)));
+        }
+        var ordered = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase)
+            ? query.OrderByDescending(row => row.Name) : query.OrderBy(row => row.Name);
+        return ordered.ThenBy(row => row.Person.Id).Select(row => row.Person);
     }
 
     public async Task<Person> CreatePersonAsync(Person person, Guid? createdBy = null, CancellationToken cancellationToken = default)
@@ -620,30 +643,16 @@ public partial class PersonService : IPersonService
         return true;
     }
 
-    public async Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50, CancellationToken cancellationToken = default)
+    public async Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50,
+        CancellationToken cancellationToken = default, string? sortDirection = "asc")
     {
-        if (string.IsNullOrWhiteSpace(searchTerm))
-            return await GetAllPersonsAsync(skip, take, cancellationToken);
-
-        var term = searchTerm.ToLower();
-
-        return await _context.Persons
-            .Include(p => p.Accounts)
-            .Where(p => 
-                (p.FirstName != null && p.FirstName.Contains(searchTerm)) ||
-                (p.LastName != null && p.LastName.Contains(searchTerm)) ||
-                (p.EmployeeId != null && p.EmployeeId.Contains(searchTerm)) ||
-                (p.Nickname != null && p.Nickname.Contains(searchTerm)))
-            .OrderBy(p => p.LastName)
-            .ThenBy(p => p.FirstName)
-            .Skip(skip)
-            .Take(take)
-            .ToListAsync(cancellationToken);
+        return await QueryNativeNames(_context.Persons.Include(person => person.Accounts), searchTerm, sortDirection)
+            .Skip(skip).Take(take).ToListAsync(cancellationToken);
     }
 
-    public async Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default)
+    public async Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default, string? searchTerm = null)
     {
-        return await _context.Persons.CountAsync(cancellationToken);
+        return await QueryNativeNames(_context.Persons, searchTerm, "asc").CountAsync(cancellationToken);
     }
 
     /// <inheritdoc />

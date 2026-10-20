@@ -33,6 +33,17 @@ public sealed class NativeFieldPoliciesController(INativeFieldPolicyService poli
     [Authorize(Policy = Permissions.Users.Read)]
     public Task<IActionResult> GetUser(Guid id, CancellationToken cancellationToken) => GetTargetAsync(NativeFieldTarget.User, id, cancellationToken);
 
+    [HttpPut("sources/{source}/first-name-fallback")]
+    [Authorize(Policy = Permissions.Settings.Update)]
+    public Task<IActionResult> SetFirstNameFallback(NativeFieldSource source, NativeFieldFirstNameFallbackRequest request,
+        CancellationToken cancellationToken) => ExecuteAsync(async () =>
+        {
+            await policies.SetFirstNameFallbackAsync(source, request, cancellationToken);
+            await audit.LogAdministrativeEventAsync("NativeFieldFirstNameFallbackChanged", "NativeFieldSource", source.ToString(),
+                JsonSerializer.Serialize(new { request.Enabled }), cancellationToken);
+            return NoContent();
+        });
+
     [HttpGet("persons/{id:guid}")]
     [Authorize(Policy = Permissions.Persons.Read)]
     public Task<IActionResult> GetPerson(Guid id, CancellationToken cancellationToken) => GetTargetAsync(NativeFieldTarget.Person, id, cancellationToken);

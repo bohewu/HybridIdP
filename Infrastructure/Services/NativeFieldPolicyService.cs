@@ -25,10 +25,35 @@ public sealed class NativeFieldPolicyService(
         {
             var policy = policies.SingleOrDefault(x => x.Source == source.ToString());
             var enabled = IsEnabled(source);
+            var providerNamespace = source == NativeFieldSource.Proof ? proofOptions.Value.TrustedProviderNamespace : null;
             return new NativeFieldSourceStatusDto(source, enabled, policy?.Paused == true,
                 enabled ? null : "Deployment has not enabled and trusted this native-field source.",
-                Fields, false, NoClear, policy?.Revision ?? Guid.Empty);
+                Fields, false, NoClear, policy?.Revision ?? Guid.Empty, providerNamespace,
+                source == NativeFieldSource.Proof && policy?.FirstNameDisplayNameFallback == true &&
+                string.Equals(policy.FirstNameFallbackProviderNamespace, providerNamespace, StringComparison.Ordinal));
         }).ToArray();
+    }
+
+    public async Task SetFirstNameFallbackAsync(NativeFieldSource source, NativeFieldFirstNameFallbackRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        Require(source == NativeFieldSource.Proof, "unsupported_source");
+        Require(IsEnabled(source), "source_unavailable");
+        Require(!string.IsNullOrWhiteSpace(request.ProviderNamespace) && request.ProviderNamespace.Length <= 200,
+            "invalid_namespace");
+        Require(string.Equals(request.ProviderNamespace, proofOptions.Value.TrustedProviderNamespace, StringComparison.Ordinal),
+            "conflict");
+        var row = await db.NativeFieldSourcePolicies.SingleOrDefaultAsync(x => x.Source == source.ToString(), cancellationToken);
+        Require((row?.Revision ?? Guid.Empty) == request.ExpectedRevision, "conflict");
+        if (row is null)
+        {
+            row = new NativeFieldSourcePolicy { Source = source.ToString() };
+            db.NativeFieldSourcePolicies.Add(row);
+        }
+        row.FirstNameFallbackProviderNamespace = request.ProviderNamespace;
+        row.FirstNameDisplayNameFallback = request.Enabled;
+        row.Revision = Guid.NewGuid();
+        await SaveAsync(row, cancellationToken);
     }
 
     public async Task SetPausedAsync(NativeFieldSource source, NativeFieldPauseRequest request, CancellationToken cancellationToken = default)
@@ -105,13 +130,28 @@ public sealed class NativeFieldPolicyService(
         if (identity.LocalAccountId != user.Id || !await IsAvailableAsync(identity, cancellationToken) ||
             !await IsBoundAsync(identity, NativeFieldTarget.User, user.Id, cancellationToken)) return false;
         ValidateValues(values, user);
-        var changed = ApplySource(user, identity, values, true);
+        // Proof values have already passed contract assurance validation. Never use Profile
+        // snapshots, another source, or a stored nickname as fallback input.
+        var firstNameFallback = false;
+        if (identity.Source == NativeFieldSource.Proof &&
+            string.IsNullOrWhiteSpace(values.GetValueOrDefault(NativeField.FirstName)) &&
+            values.GetValueOrDefault(NativeField.Nickname) is { Length: <= 100 } displayName &&
+            !string.IsNullOrWhiteSpace(displayName))
+        {
+            var policy = await db.NativeFieldSourcePolicies.AsNoTracking()
+                .SingleOrDefaultAsync(x => x.Source == identity.Source.ToString(), cancellationToken);
+            firstNameFallback = policy?.FirstNameDisplayNameFallback == true &&
+                string.Equals(policy.FirstNameFallbackProviderNamespace, identity.ProviderNamespace, StringComparison.Ordinal);
+            if (firstNameFallback)
+                values = new Dictionary<NativeField, string?>(values) { [NativeField.FirstName] = displayName };
+        }
+        var changed = ApplySource(user, identity, values, true, firstNameFallback);
         if (person is not null && user.PersonId == person.Id &&
             await IsBoundAsync(identity, NativeFieldTarget.Person, person.Id, cancellationToken))
         {
             // A shared Person needs an explicit operator assignment before its first source claim.
             var soleAccount = await db.Users.CountAsync(x => x.PersonId == person.Id, cancellationToken) == 1;
-            changed |= ApplySource(person, identity, values, soleAccount);
+            changed |= ApplySource(person, identity, values, soleAccount, firstNameFallback);
         }
         return changed;
     }
@@ -161,7 +201,7 @@ public sealed class NativeFieldPolicyService(
     }
 
     private static bool ApplySource(object entity, NativeFieldSourceIdentity identity,
-        IReadOnlyDictionary<NativeField, string?> values, bool canClaim)
+        IReadOnlyDictionary<NativeField, string?> values, bool canClaim, bool firstNameFallback)
     {
         var state = Read(entity);
         var changed = false;
@@ -173,7 +213,8 @@ public sealed class NativeFieldPolicyService(
             if (entity is Person && field == NativeField.Nickname && value.Length > 100) continue;
             var entry = state.Fields.GetValueOrDefault(field) ?? new FieldState();
             if (entry.ManualFixed || entry.Owner is not null && entry.Owner != identity || entry.Owner is null && !canClaim) continue;
-            if (!string.IsNullOrWhiteSpace(GetValue(entity, field)) && !entry.AllowOverwrite) continue;
+            if (!string.IsNullOrWhiteSpace(GetValue(entity, field)) &&
+                (!entry.AllowOverwrite || field == NativeField.FirstName && firstNameFallback)) continue;
             entry.Owner = identity;
             entry.Attributed = true;
             state.Fields[field] = entry;

@@ -70,46 +70,7 @@ public class UserManagementService : IUserManagementService
         // Filter out soft-deleted users
         query = query.Where(u => !u.IsDeleted);
 
-        // Apply filters
-        if (isActive.HasValue)
-        {
-            query = query.Where(u => u.IsActive == isActive.Value);
-        }
-
-        if (!string.IsNullOrWhiteSpace(search))
-        {
-            query = query.Where(u =>
-                (u.Email != null && u.Email.Contains(search)) ||
-                (u.UserName != null && u.UserName.Contains(search)) ||
-                (u.FirstName != null && u.FirstName.Contains(search)) ||
-                (u.LastName != null && u.LastName.Contains(search)));
-        }
-
-        // Apply sorting
-        var sortByLower = sortBy?.ToLowerInvariant();
-        var isDesc = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
-
-        query = sortByLower switch
-        {
-            "username" => isDesc
-                ? query.OrderByDescending(u => u.UserName)
-                : query.OrderBy(u => u.UserName),
-            "firstname" => isDesc
-                ? query.OrderByDescending(u => u.FirstName)
-                : query.OrderBy(u => u.FirstName),
-            "lastname" => isDesc
-                ? query.OrderByDescending(u => u.LastName)
-                : query.OrderBy(u => u.LastName),
-            "department" => isDesc
-                ? query.OrderByDescending(u => (u.Person != null ? u.Person.Department : u.Department) ?? string.Empty)
-                : query.OrderBy(u => (u.Person != null ? u.Person.Department : u.Department) ?? string.Empty),
-            "createdat" => isDesc
-                ? query.OrderByDescending(u => u.CreatedAt)
-                : query.OrderBy(u => u.CreatedAt),
-            _ => isDesc
-                ? query.OrderByDescending(u => u.Email)
-                : query.OrderBy(u => u.Email)
-        };
+        query = QueryNativeNames(query, search, isActive, sortBy, sortDirection);
 
         // Use synchronous enumeration to support both EF Core and in-memory LINQ providers in tests.
         // (Async 'CountAsync/ToListAsync' requires an EF Core IAsyncQueryProvider; mocked IQueryable lacks it.)
@@ -174,6 +135,61 @@ public class UserManagementService : IUserManagementService
             Skip = skip,
             Take = take
         };
+    }
+
+    // Keep name filtering and ordering in SQL; raw provider display metadata is not native-field authority.
+    internal static IQueryable<ApplicationUser> QueryNativeNames(
+        IQueryable<ApplicationUser> users, string? search, bool? isActive,
+        string? sortBy, string? sortDirection)
+    {
+        if (isActive.HasValue)
+            users = users.Where(user => user.IsActive == isActive.Value);
+
+        var query = users.Select(user => new
+        {
+            User = user,
+            UserName = ((user.FirstName ?? "").Trim()
+                + (user.MiddleName == null || user.MiddleName.Trim() == "" ? "" : " " + user.MiddleName.Trim())
+                + (user.LastName == null || user.LastName.Trim() == "" ? "" : " " + user.LastName.Trim())).Trim(),
+            PersonName = user.Person == null ? "" : ((user.Person.FirstName ?? "").Trim()
+                + (user.Person.MiddleName == null || user.Person.MiddleName.Trim() == "" ? "" : " " + user.Person.MiddleName.Trim())
+                + (user.Person.LastName == null || user.Person.LastName.Trim() == "" ? "" : " " + user.Person.LastName.Trim())).Trim()
+        }).Select(row => new
+        {
+            row.User,
+            Name = row.UserName != "" ? row.UserName
+                : row.PersonName != "" ? row.PersonName
+                : row.User.Nickname != null && row.User.Nickname.Trim() != "" ? row.User.Nickname.Trim()
+                : row.User.Person != null && row.User.Person.Nickname != null && row.User.Person.Nickname.Trim() != "" ? row.User.Person.Nickname.Trim()
+                : row.User.UserName ?? ""
+        });
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            query = query.Where(row => row.Name.Contains(search)
+                || (row.User.FirstName != null && row.User.FirstName.Contains(search))
+                || (row.User.LastName != null && row.User.LastName.Contains(search))
+                || (row.User.Nickname != null && row.User.Nickname.Contains(search))
+                || (row.User.Person != null && ((row.User.Person.FirstName != null && row.User.Person.FirstName.Contains(search))
+                    || (row.User.Person.LastName != null && row.User.Person.LastName.Contains(search))
+                    || (row.User.Person.Nickname != null && row.User.Person.Nickname.Contains(search))))
+                || (row.User.Email != null && row.User.Email.Contains(search))
+                || (row.User.UserName != null && row.User.UserName.Contains(search)));
+        }
+
+        var descending = string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
+        var ordered = sortBy?.ToLowerInvariant() switch
+        {
+            "displayname" or "firstname" => descending ? query.OrderByDescending(row => row.Name) : query.OrderBy(row => row.Name),
+            "username" => descending ? query.OrderByDescending(row => row.User.UserName) : query.OrderBy(row => row.User.UserName),
+            "lastname" => descending ? query.OrderByDescending(row => row.User.LastName) : query.OrderBy(row => row.User.LastName),
+            "department" => descending
+                ? query.OrderByDescending(row => (row.User.Person != null ? row.User.Person.Department : row.User.Department) ?? "")
+                : query.OrderBy(row => (row.User.Person != null ? row.User.Person.Department : row.User.Department) ?? ""),
+            "createdat" => descending ? query.OrderByDescending(row => row.User.CreatedAt) : query.OrderBy(row => row.User.CreatedAt),
+            _ => descending ? query.OrderByDescending(row => row.User.Email) : query.OrderBy(row => row.User.Email)
+        };
+        return ordered.ThenBy(row => row.User.Id).Select(row => row.User);
     }
 
     public async Task<UserDetailDto?> GetUserByIdAsync(Guid userId, CancellationToken cancellationToken = default)

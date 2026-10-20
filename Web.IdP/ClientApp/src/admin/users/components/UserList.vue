@@ -169,12 +169,12 @@ const getSortIcon = (field) => {
                 </div>
               </th>
               <th
-                 @click="handleSort('firstName')"
+                 @click="handleSort('displayName')"
                  class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
               >
                  <div class="flex items-center space-x-1">
                   <span>{{ $t('users.name') }}</span>
-                  <span v-html="getSortIcon('firstName')"></span>
+                  <span v-html="getSortIcon('displayName')"></span>
                 </div>
               </th>
               <th

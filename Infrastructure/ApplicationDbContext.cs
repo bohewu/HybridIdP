@@ -80,6 +80,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
             entity.HasKey(x => x.Source);
             entity.Property(x => x.Source).HasMaxLength(16);
             entity.Property(x => x.Revision).IsConcurrencyToken();
+            entity.Property(x => x.FirstNameFallbackProviderNamespace).HasMaxLength(200);
         });
 
         builder.Entity<ApplicationUser>(entity =>

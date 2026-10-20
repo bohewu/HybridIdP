@@ -946,7 +946,9 @@ Already enabled deployments do not need to add a mandatory Proof flag. Set
 `NativeFieldPolicy__ProofEnabled=false` to block native writes while preserving
 login and independent Profile refresh.
 
-For an approved Stage 1 native rollout, explicitly set
+The Settings UI displays the Stage 1 source as **Organization directory (AD/LDAP)**,
+separately from **Sign-in verification source**. For an approved directory native
+rollout, explicitly set
 `NativeFieldPolicy__Stage1Enabled=true` and at least one exact indexed trusted
 namespace, alongside existing `DirectoryIntegration__Enabled=true` and its
 validated configuration. Matching is case-sensitive, with no wildcard or inferred
@@ -961,10 +963,35 @@ the application through the existing selected deployment procedure after an
 approved configuration change. UI source status/pause is configuration state,
 not a remote connectivity check. Pause/resume cannot create source trust.
 Only the six documented non-security fields are supported; no automatic source
-fallback or source-driven clear is available. See
+switching or source-driven clear is available. See
 [field policies and operator workflow](IDENTITY_FIELD_MAPPING.md#native-field-policy-and-operator-workflow)
 for manual fixed blanks, explicit unlock/overwrite, exact binding, independent
 User/Person ownership and the next eligible normal-sync timing.
+
+For the optional FirstName fill strategy, also apply
+`AddFirstNameDisplayNameFallback`: SQL Server
+`20261020091155_AddFirstNameDisplayNameFallback` or PostgreSQL
+`20261020091320_AddFirstNameDisplayNameFallback`. It adds a default-false
+selection and nullable exact namespace to `NativeFieldSourcePolicies`; it
+does not rewrite User/Person values or assign sources to historical data.
+
+Retain the verified `ProviderProof__Enabled`,
+`ProviderProof__TrustedProviderNamespace`, endpoint and secret in the original
+private `.env`, with `NativeFieldPolicy__ProofEnabled=true` to permit native
+writes. These existing keys are the enablement/trust ceiling. There is no
+additional environment flag for the fallback selection. All five production
+Compose files pass the selected `.env` through `idp-service.env_file`.
+
+In **Settings > Profile field synchronization > Sign-in verification source**,
+select **Use the full name to fill a missing first name**
+and save. The exact namespace is shown under the initially collapsed
+**Sources and sync rules** disclosure. It starts off and is bound to that namespace; changing
+the configured namespace requires a new explicit selection. The next eligible
+normal Proof login can fill a missing, unprotected FirstName from that
+response's assured whole displayName only when givenName is missing. Populated
+FirstName and manually fixed blanks are preserved even if overwrite is selected.
+Pause, source trust, exact binding and independent User/Person ownership still
+apply. Turning the strategy off does not undo previously filled values.
 
 ### Optional Profile Activation
 

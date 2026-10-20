@@ -3,16 +3,25 @@
   "sourceDescription": "Choose which sources can update profile fields. Pausing synchronization keeps saved values and does not pause sign-in. Availability is controlled by deployment settings; it does not indicate connection health.",
   "loading": "Loading synchronization settings...",
   "saved": "Synchronization settings saved.",
-  "sources": {"Proof": "Sign-in verification source", "Stage1": "Directory data source"},
-  "sourceHelp": {"Proof": "Updates profile fields from an assured sign-in result (Provider Proof).", "Stage1": "Updates profile fields from the linked organization directory (Stage 1)."},
+  "sources": {"Proof": "Sign-in verification source", "Stage1": "Organization directory (AD/LDAP)"},
+  "sourceHelp": {"Proof": "Uses personal data verified during sign-in.", "Stage1": "Uses data from the linked organization directory."},
   "manualPlaceholders": {"Nickname": "Enter the full display name to keep", "FirstName": "Enter the given name to keep", "LastName": "Enter the surname to keep", "Department": "Enter the department to keep", "JobTitle": "Enter the job title to keep", "EmployeeId": "Enter the organization account identifier to keep"},
-  "targets": { "User": "User account", "Person": "Person record" },
-  "fields": { "Nickname": "Display name", "FirstName": "First name", "LastName": "Last name", "Department": "Department", "JobTitle": "Job title", "EmployeeId": "Employee ID" },
-  "status": {"disabled": "Not enabled or trusted for deployment", "paused": "Profile sync paused", "enabled": "Profile sync enabled"},
-  "deploymentDisabled": "Enablement and trust must be configured in the deployment. This page cannot activate this source.",
+  "targets": {"User": "User account", "Person": "Person record"},
+  "fields": {"Nickname": "Display name", "FirstName": "First name", "LastName": "Last name", "Department": "Department", "JobTitle": "Job title", "EmployeeId": "Employee ID"},
+  "status": {"disabled": "Not enabled", "paused": "Paused", "enabled": "Enabled"},
+  "deploymentDisabled": "Ask a deployment administrator to enable and trust this source.",
   "supported": "Supported fields",
-  "pause": "Pause profile sync",
-  "resume": "Resume profile sync",
+  "firstNameFallback": {
+    "title": "FirstName fill strategy",
+    "namespace": "Applies to source namespace",
+    "label": "Use the full name to fill a missing first name",
+    "help": "Applies at next sign-in; keeps existing values and manually fixed blanks.",
+    "authority": "Saved only for this exact namespace. Deployment (.env) enablement and trust remain required; this setting cannot activate or trust a source. Changes apply during the next eligible sign-in synchronization; pausing synchronization keeps this selection.",
+    "save": "Save",
+    "mapping": "Off by default. Prefer assured givenName from this source. Only when givenName is missing, empty or whitespace, use this same source's assured whole displayName to fill a blank FirstName. Existing names and manually fixed blanks are preserved, even when source overwrite is allowed. Names are not split and LastName is not filled by this strategy."
+  },
+  "pause": "Pause",
+  "resume": "Resume",
   "reload": "Reload synchronization settings",
   "ownership": "Account and Person settings are separate. A shared Person field keeps its assigned account as owner; another linked account cannot take ownership here.",
   "field": "Field",
@@ -62,5 +71,6 @@
     "invalid_target": "This policy target is invalid.",
     "invalid_fields": "The requested fields are invalid.",
     "request_failed": "The policy request failed. Reload and try again."
-  }
+  },
+  "syncRules": "Sources and sync rules"
 }

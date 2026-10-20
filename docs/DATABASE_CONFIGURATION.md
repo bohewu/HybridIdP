@@ -126,6 +126,16 @@ HybridIdP/
 
 ### Docker Compose 設定
 
+The Docker example below uses SQL Server 2022 for development. Choose an
+engine version that matches the deployment when validating operator SQL;
+a successful run on 2022 does not establish SQL Server 2019 compatibility.
+For SQL Server 2019, JSON object checks must use syntax supported by that
+engine: the second `ISJSON` type-constraint argument (for example,
+`ISJSON(value, OBJECT)`) requires SQL Server 2022. A one-argument `ISJSON`
+check alone also accepts arrays and is insufficient when an object is required.
+Validate the object shape separately and reject invalid or non-object input.
+This guidance is not certification of the entire application on SQL Server 2019.
+
 ```yaml
 # docker-compose.yml
 services:
@@ -1188,6 +1198,15 @@ migration `20261020030931_AddNativeFieldAuthority` add nullable
 field ownership/protection are independent. State JSON is a concurrency token;
 native values and protection state are saved together. These migrations contain
 no historical data rewrite or inferred source attribution/binding.
+
+`AddFirstNameDisplayNameFallback` adds `FirstNameDisplayNameFallback` (false
+for existing rows) and nullable `FirstNameFallbackProviderNamespace` (maximum
+200 characters) to that source policy table. SQL Server migration
+`20261020091155_AddFirstNameDisplayNameFallback` and PostgreSQL migration
+`20261020091320_AddFirstNameDisplayNameFallback` preserve existing pause/revision
+state and all native values. Apply the additive schema before activating the
+new application; do not drop these columns while the new binary is running.
+The Down migration removes only the strategy settings, not names already filled.
 
 Apply the selected provider's migration before activating the updated app using
 the existing operator-controlled tools above. Preserve the original environment

@@ -51,7 +51,7 @@ and profile assurance before passing an `ExternalAuthResult` to JIT provisioning
 | `canonicalAccount` | New `ApplicationUser.UserName` | Used only at initial canonical-account creation, subject to local validation and uniqueness. Repeat login does not rename the account. Older Email-form usernames remain valid stored names. |
 | `profile.email` | `ApplicationUser.Email`, `Person.Email` | With local Email trust off, fill missing values without newly confirming them. With trust on, existing verified-source update rules apply. An enrolled account Email OTP target is not replaced. |
 | Explicit Email assurance + exact local Email trust entry | `ApplicationUser.EmailConfirmed` | Both are required for new confirmation. Saving Email alone does not confirm it. This does not grant recovery-address trust or enroll MFA. |
-| `profile.givenName` | `ApplicationUser.FirstName`, `Person.FirstName` | Subject to the native-field policy below. |
+| `profile.givenName` | `ApplicationUser.FirstName`, `Person.FirstName` | Subject to the native-field policy below. An optional exact-source strategy can fill missing FirstName from assured `displayName` only when `givenName` is missing. |
 | `profile.surname` | `ApplicationUser.LastName`, `Person.LastName` | Subject to the native-field policy below. |
 | `profile.displayName` | `AspNetUserLogins.ProviderDisplayName`, `ApplicationUser.Nickname`, `Person.Nickname` | Login-binding display metadata refresh remains independent. Native Nickname follows field policy. User permits 256 characters; Person permits 100. A source value over 100 is skipped for Person without truncation or login failure. No name splitting or username change. |
 | `profile.department` | `ApplicationUser.Department`, `Person.Department` | Subject to the native-field policy below. |
@@ -119,8 +119,12 @@ and [binding refresh](../Infrastructure/Services/Stage1BindingRefreshService.cs)
 
 Only `Nickname`, `FirstName`, `LastName`, `Department`, `JobTitle` and
 `EmployeeId` are supported, using the existing Proof and Stage 1 mappings above.
-There is no automatic source fallback or source-priority engine. Browser
+There is no automatic fallback between sources or source-priority engine. Browser
 providers and Provider Profile extra properties are not selectable native sources.
+
+The UI labels the existing Stage 1 source **Organization directory (AD/LDAP)**.
+It reads profile fields from the linked organization directory, independently
+of the **Sign-in verification source** used for Provider Proof.
 
 Deployment configuration remains authoritative:
 
@@ -136,6 +140,27 @@ UI pause/resume cannot enable or trust a deployment-disabled source. Pausing
 retains configuration, bindings, values and ownership, and stops only native
 synchronization. A temporary source outage preserves current native values.
 Source status describes configuration and pause state, not connectivity health.
+
+At **Settings > Profile field synchronization > Sign-in verification source**,
+the **Use the full name to fill a missing first name** option
+defaults to off. Save it for the exact Proof provider namespace shown under the initially collapsed
+**Sources and sync rules** disclosure.
+The selection is persisted in the database, not enabled by an additional `.env`
+flag. Existing Proof enablement/trust remains the deployment ceiling. Changing
+the configured namespace does not transfer the old namespace's selection.
+Pause/resume retains the selection; the strategy runs only while the source is
+enabled, trusted and unpaused.
+
+An assured nonblank `givenName` retains the existing FirstName mapping. Only a
+missing, null, empty or whitespace-only `givenName` permits the same validated
+Proof response's assured `displayName` to fill a missing FirstName. The whole
+name is preserved without splitting or inventing LastName. Values over the
+existing 100-character FirstName limit are skipped, never truncated. This
+fallback is fill-only even when the field permits overwrite: populated names
+and manually fixed blanks remain unchanged independently on User and Person.
+The same established binding and ownership rules below apply. Nickname mapping,
+normal-login Profile refresh and read-only Claims Preview remain independent;
+neither stored Nickname nor Profile extra properties supplies fallback input.
 
 Every source write requires the exact persisted identity: Proof uses local account,
 provider namespace and opaque subject in `AspNetUserLogins`; Stage 1 additionally
@@ -162,7 +187,7 @@ dialog to fix a value even when it has not changed.
 
 | UI entry | Read / update permissions | Operation |
 | --- | --- | --- |
-| `/Admin/Settings`, Native field policies section before Branding | `settings.read` / `settings.update` | Inspect supported fields and deployment/pause status; pause or resume an enabled source. |
+| `/Admin/Settings`, Profile field synchronization section before Branding | `settings.read` / `settings.update` | Inspect supported fields and deployment/pause status; pause/resume an enabled source or select the exact Proof source's FirstName fill strategy. |
 | `/Admin/Users`, row action menu, Native field policies | `users.read` / `users.update` | Select a User field, save and fix a value, Unlock, or assign an exact existing binding with optional overwrite. |
 | `/Admin/People`, row Native field policies button | `persons.read` / `persons.update` | Manage the Person's independent field state. |
 
@@ -171,9 +196,13 @@ protection remains available with the target permission. Policy changes apply
 on the next eligible normal synchronization, with no immediate upstream fetch.
 On a concurrent-change conflict, reload current policy before submitting again.
 The protected API is `/api/admin/native-field-policies`: `GET sources`,
-`PUT sources/{source}`, and target `GET users/{id}` / `persons/{id}` plus
+`PUT sources/{source}`, `PUT sources/Proof/first-name-fallback`, and target `GET users/{id}` / `persons/{id}` plus
 `PUT users/{id}/{field}` / `persons/{id}/{field}`. Mutations require the current
 revision and existing administrative authorization/cookie CSRF checks.
+The fallback request contains `providerNamespace`, `enabled` and
+`expectedRevision`; a namespace mismatch or stale source revision returns
+`409 conflict`. Reload source status before resubmitting. Pause and strategy
+updates share the source revision and do not overwrite one another's settings.
 
 These policies do not control Email trust or confirmation, enrolled Email MFA
 targets, recovery, IID, roles, lifecycle, credentials, usernames, IDs or bindings.

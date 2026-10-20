@@ -32,6 +32,57 @@ namespace Tests.Infrastructure.UnitTests;
 /// </summary>
 public class PersonServiceTests : IDisposable
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void NativeNameQueries_ShouldTranslateFilterOrderAndPageForBothProviders(bool postgres)
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>();
+        if (postgres)
+            options.UseNpgsql("Host=localhost;Database=unused;Username=unused");
+        else
+            options.UseSqlServer("Server=localhost;Database=unused;Integrated Security=true;TrustServerCertificate=true");
+        using var context = new ApplicationDbContext(options.Options);
+        foreach (var direction in new[] { "asc", "desc" })
+        {
+            var peopleSql = PersonService.QueryNativeNames(context.Persons.Include(person => person.Accounts), "Whole Name", direction)
+                .Skip(2).Take(3).ToQueryString();
+            var usersSql = UserManagementService.QueryNativeNames(context.Users.Include(user => user.Person).Where(user => !user.IsDeleted),
+                    "Whole Name", true, "displayName", direction)
+                .Skip(2).Take(3).ToQueryString();
+            foreach (var sql in new[] { peopleSql, usersSql })
+            {
+                Assert.Contains("CASE", sql);
+                Assert.Contains("Nickname", sql);
+                Assert.Contains("ORDER BY", sql);
+                Assert.Contains("OFFSET", sql);
+                Assert.DoesNotContain("AspNetUserLogins", sql);
+                if (direction == "desc") Assert.Contains("DESC", sql);
+            }
+            Assert.Contains("IsActive", usersSql);
+            Assert.Contains("IsDeleted", usersSql);
+            Assert.Contains("EmployeeId", peopleSql);
+        }
+    }
+
+    [Fact]
+    public async Task NativeNames_ShouldSearchWholeNamesAndSortBeforePagingWithMatchingCount()
+    {
+        using var context = new ApplicationDbContext(_options);
+        var first = new Person { Id = Guid.NewGuid(), FirstName = "Alpha Whole Name", Nickname = "Distinct Alias", EmployeeId = "employee-a" };
+        var second = new Person { Id = Guid.NewGuid(), FirstName = " ", Nickname = "Beta Whole Name" };
+        var third = new Person { Id = Guid.NewGuid(), FirstName = "Gamma", MiddleName = "Q", LastName = "Whole Name" };
+        context.Persons.AddRange(third, second, first, new Person { Id = Guid.NewGuid(), Nickname = "Other" });
+        await context.SaveChangesAsync();
+        var service = CreateService(context);
+        Assert.Equal(3, await service.GetPersonsCountAsync(searchTerm: "Whole Name"));
+        Assert.Equal(second.Id, Assert.Single(await service.SearchPersonsAsync("Whole Name", 1, 1)).Id);
+        Assert.Equal(third.Id, Assert.Single(await service.SearchPersonsAsync("Whole Name", 0, 1, sortDirection: "desc")).Id);
+        Assert.Equal(first.Id, Assert.Single(await service.SearchPersonsAsync("employee-a")).Id);
+        Assert.Equal(first.Id, Assert.Single(await service.SearchPersonsAsync("Distinct Alias")).Id);
+        Assert.Equal(first.Id, Assert.Single(await service.SearchPersonsAsync(" ", 0, 1)).Id);
+    }
+
     [Fact]
     public async Task UpdatePersonAsync_ShouldProtectExplicitClearsAndLeaveOmittedFieldsAndUserIndependent()
     {

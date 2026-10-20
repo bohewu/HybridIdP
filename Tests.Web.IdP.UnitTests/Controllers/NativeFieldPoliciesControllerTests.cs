@@ -28,6 +28,48 @@ public sealed class NativeFieldPoliciesControllerTests
 {
     [Theory]
     [InlineData(null, false, false, HttpStatusCode.Unauthorized)]
+    [InlineData("settings.read", false, true, HttpStatusCode.Forbidden)]
+    [InlineData("users.update", false, true, HttpStatusCode.Forbidden)]
+    [InlineData("settings.update", true, true, HttpStatusCode.Forbidden)]
+    [InlineData("settings.update", false, false, HttpStatusCode.BadRequest)]
+    [InlineData("settings.update", false, true, HttpStatusCode.NoContent)]
+    public async Task FirstNameFallback_ShouldRequireSettingsAuthorityAndCsrf(
+        string? permission, bool bearer, bool csrf, HttpStatusCode expected)
+    {
+        var policies = new Mock<INativeFieldPolicyService>(MockBehavior.Strict);
+        var audit = new Mock<IAuditService>(MockBehavior.Strict);
+        var request = new NativeFieldFirstNameFallbackRequest("example.provider", true, Guid.NewGuid());
+        policies.Setup(x => x.SetFirstNameFallbackAsync(NativeFieldSource.Proof, request, It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        string? details = null;
+        audit.Setup(x => x.LogAdministrativeEventAsync("NativeFieldFirstNameFallbackChanged", "NativeFieldSource", "Proof",
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string, string?, CancellationToken>((_, _, _, text, _) => details = text)
+            .Returns(Task.CompletedTask);
+        await using var app = CreateApp(policies.Object, audit.Object);
+        await app.StartAsync();
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(app.Urls.Single()) };
+            if (permission is not null) client.DefaultRequestHeaders.Add("X-Fixture-Permission", permission);
+            if (bearer) client.DefaultRequestHeaders.Add("Authorization", "Bearer fixture-only");
+            if (csrf) client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", await client.GetStringAsync("/fixture-antiforgery"));
+            using var response = await client.PutAsJsonAsync("/api/admin/native-field-policies/sources/Proof/first-name-fallback", request);
+            Assert.Equal(expected, response.StatusCode);
+            policies.Verify(x => x.SetFirstNameFallbackAsync(NativeFieldSource.Proof, request, It.IsAny<CancellationToken>()),
+                expected == HttpStatusCode.NoContent ? Times.Once() : Times.Never());
+            if (expected == HttpStatusCode.NoContent)
+            {
+                Assert.Contains("true", details);
+                Assert.DoesNotContain(request.ProviderNamespace, details);
+            }
+            else Assert.Null(details);
+        }
+        finally { await app.StopAsync(); }
+    }
+
+    [Theory]
+    [InlineData(null, false, false, HttpStatusCode.Unauthorized)]
     [InlineData("settings.update", false, true, HttpStatusCode.Forbidden)]
     [InlineData("users.read", false, true, HttpStatusCode.Forbidden)]
     [InlineData("users.update", true, true, HttpStatusCode.Forbidden)]
@@ -77,6 +119,7 @@ public sealed class NativeFieldPoliciesControllerTests
     [Theory]
     [InlineData(nameof(NativeFieldPoliciesController.GetSources), Permissions.Settings.Read)]
     [InlineData(nameof(NativeFieldPoliciesController.SetPaused), Permissions.Settings.Update)]
+    [InlineData(nameof(NativeFieldPoliciesController.SetFirstNameFallback), Permissions.Settings.Update)]
     [InlineData(nameof(NativeFieldPoliciesController.GetUser), Permissions.Users.Read)]
     [InlineData(nameof(NativeFieldPoliciesController.GetPerson), Permissions.Persons.Read)]
     [InlineData(nameof(NativeFieldPoliciesController.UpdateUser), Permissions.Users.Update)]

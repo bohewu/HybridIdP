@@ -22,7 +22,8 @@ public sealed record NativeFieldSourceIdentity(
 
 public sealed record NativeFieldSourceStatusDto(NativeFieldSource Source, bool Enabled, bool Paused,
     string? UnavailableReason, IReadOnlyList<NativeField> SupportedFields, bool SupportsClear,
-    string ClearUnavailableReason, Guid Revision);
+    string ClearUnavailableReason, Guid Revision, string? ProviderNamespace = null,
+    bool FirstNameDisplayNameFallback = false);
 
 public sealed record NativeFieldStateDto(NativeField Field, string? Value, bool ManualFixed,
     bool Attributed, NativeFieldSourceIdentity? Owner, bool AllowOverwrite);
@@ -40,6 +41,8 @@ public sealed class NativeFieldUpdateRequest
 }
 
 public sealed record NativeFieldPauseRequest(bool Paused, Guid ExpectedRevision);
+public sealed record NativeFieldFirstNameFallbackRequest(
+    [Required, MaxLength(200)] string ProviderNamespace, bool Enabled, Guid ExpectedRevision);
 public sealed class NativeFieldPolicyException(string code) : Exception(code)
 {
     public string Code { get; } = code;
@@ -49,6 +52,8 @@ public interface INativeFieldPolicyService
 {
     Task<IReadOnlyList<NativeFieldSourceStatusDto>> GetSourcesAsync(CancellationToken cancellationToken = default);
     Task SetPausedAsync(NativeFieldSource source, NativeFieldPauseRequest request, CancellationToken cancellationToken = default);
+    Task SetFirstNameFallbackAsync(NativeFieldSource source, NativeFieldFirstNameFallbackRequest request,
+        CancellationToken cancellationToken = default);
     Task<NativeFieldTargetDto> GetTargetAsync(NativeFieldTarget target, Guid targetId, CancellationToken cancellationToken = default);
     Task UpdateAsync(NativeFieldTarget target, Guid targetId, NativeField field, NativeFieldUpdateRequest request,
         CancellationToken cancellationToken = default);

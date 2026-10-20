@@ -36,7 +36,7 @@ public interface IPersonService
     /// <param name="skip">Number of records to skip</param>
     /// <param name="take">Number of records to take</param>
     /// <returns>List of persons</returns>
-    Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50, CancellationToken cancellationToken = default);
+    Task<List<Person>> GetAllPersonsAsync(int skip = 0, int take = 50, CancellationToken cancellationToken = default, string? sortDirection = "asc");
 
     /// <summary>
     /// Create a new person
@@ -93,13 +93,13 @@ public interface IPersonService
     /// <param name="skip">Number of records to skip</param>
     /// <param name="take">Number of records to take</param>
     /// <returns>List of matching persons</returns>
-    Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50, CancellationToken cancellationToken = default);
+    Task<List<Person>> SearchPersonsAsync(string searchTerm, int skip = 0, int take = 50, CancellationToken cancellationToken = default, string? sortDirection = "asc");
 
     /// <summary>
     /// Get the total count of persons
     /// </summary>
     /// <returns>Total number of persons</returns>
-    Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default);
+    Task<int> GetPersonsCountAsync(CancellationToken cancellationToken = default, string? searchTerm = null);
 
     /// <summary>
     /// Get all users that are not linked to any person (PersonId is null)

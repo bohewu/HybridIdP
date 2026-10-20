@@ -16,6 +16,167 @@ namespace Tests.Infrastructure.UnitTests;
 public sealed class NativeFieldPolicyServiceTests
 {
     [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData(" \t")]
+    [InlineData("Given")]
+    public async Task FirstNameFallback_ShouldPreferGivenNameAndFillOnlyMissingTargets(string? givenName)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        await service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new(identity.ProviderNamespace, true, Guid.Empty));
+        var values = Values("Whole Display Name");
+        values[NativeField.FirstName] = givenName;
+        await service.ApplySourceAsync(user, person, identity, values);
+        await db.SaveChangesAsync();
+        var expected = string.IsNullOrWhiteSpace(givenName) ? "Whole Display Name" : givenName;
+        Assert.Equal(expected, user.FirstName);
+        Assert.Equal(expected, person.FirstName);
+        Assert.Equal("Whole Display Name", user.Nickname);
+        Assert.Equal("Whole Display Name", person.Nickname);
+        Assert.Null(user.LastName);
+        Assert.Null(person.LastName);
+        var state = await service.GetTargetAsync(NativeFieldTarget.User, user.Id);
+        Assert.Equal(identity, state.Fields.Single(x => x.Field == NativeField.FirstName).Owner);
+    }
+
+    [Theory]
+    [InlineData(NativeFieldTarget.User, false)]
+    [InlineData(NativeFieldTarget.Person, false)]
+    [InlineData(NativeFieldTarget.User, true)]
+    [InlineData(NativeFieldTarget.Person, true)]
+    public async Task FirstNameFallback_ShouldPreservePopulatedOrFixedBlankIndependentlyEvenWithOverwrite(
+        NativeFieldTarget protectedTarget, bool fixedBlank)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        await service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new(identity.ProviderNamespace, true, Guid.Empty));
+        var protectedId = protectedTarget == NativeFieldTarget.User ? user.Id : person.Id;
+        if (fixedBlank)
+            await service.UpdateAsync(protectedTarget, protectedId, NativeField.FirstName, new()
+            {
+                Operation = NativeFieldOperation.Manual, ManualValue = "", ExpectedRevision = Guid.Empty
+            });
+        else
+        {
+            if (protectedTarget == NativeFieldTarget.User) user.FirstName = "Existing";
+            else person.FirstName = "Existing";
+            await db.SaveChangesAsync();
+        }
+        await AssignFirstNameAsync(service, protectedTarget, protectedId, identity);
+        await service.ApplySourceAsync(user, person, identity, Values("Whole Name"));
+        await db.SaveChangesAsync();
+        Assert.Equal(fixedBlank ? "" : "Existing", protectedTarget == NativeFieldTarget.User ? user.FirstName : person.FirstName);
+        Assert.Equal("Whole Name", protectedTarget == NativeFieldTarget.User ? person.FirstName : user.FirstName);
+        var values = Values("Another Whole Name");
+        values[NativeField.FirstName] = "Assured Given";
+        await service.ApplySourceAsync(user, person, identity, values);
+        Assert.Equal(fixedBlank ? "" : "Assured Given", protectedTarget == NativeFieldTarget.User ? user.FirstName : person.FirstName);
+    }
+
+    [Fact]
+    public async Task FirstNameFallback_ShouldRequireExactNamespaceRevisionTrustBindingAndResume()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        Assert.False((await service.GetSourcesAsync()).Single(x => x.Source == NativeFieldSource.Proof).FirstNameDisplayNameFallback);
+        await service.ApplySourceAsync(user, person, identity, Values("Default Off"));
+        Assert.Null(user.FirstName);
+        Assert.Null(person.FirstName);
+        await db.SaveChangesAsync();
+        await service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new(identity.ProviderNamespace, true, Guid.Empty));
+        Assert.Equal("conflict", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new(identity.ProviderNamespace, false, Guid.Empty)))).Code);
+        var status = (await service.GetSourcesAsync()).Single(x => x.Source == NativeFieldSource.Proof);
+        Assert.True(status.FirstNameDisplayNameFallback);
+        Assert.Equal(identity.ProviderNamespace, status.ProviderNamespace);
+        Assert.Equal("conflict", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new("EXAMPLE.PROVIDER", true, status.Revision)))).Code);
+        Assert.Equal("source_unavailable", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            Service(db, proofEnabled: false).SetFirstNameFallbackAsync(NativeFieldSource.Proof,
+                new(identity.ProviderNamespace, true, status.Revision)))).Code);
+        Assert.Equal("unsupported_source", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetFirstNameFallbackAsync(NativeFieldSource.Stage1, new(identity.ProviderNamespace, true, status.Revision)))).Code);
+        foreach (var disabled in new[] { Service(db, proofEnabled: false), Service(db, nativeEnabled: false) })
+            Assert.False(await disabled.ApplySourceAsync(user, person, identity, Values("Denied")));
+        Assert.False(await service.ApplySourceAsync(user, person, identity with { StableSubject = "unbound" }, Values("Denied")));
+        Assert.False(await service.ApplySourceAsync(user, person, identity with { ProviderNamespace = "EXAMPLE.PROVIDER" }, Values("Denied")));
+        await service.SetPausedAsync(NativeFieldSource.Proof, new(true, status.Revision));
+        Assert.False(await service.ApplySourceAsync(user, person, identity, Values("Paused")));
+        status = (await service.GetSourcesAsync()).Single(x => x.Source == NativeFieldSource.Proof);
+        Assert.True(status.FirstNameDisplayNameFallback);
+        await service.SetPausedAsync(NativeFieldSource.Proof, new(false, status.Revision));
+        Assert.Null(user.FirstName);
+        // A new deployment namespace and even its exact binding cannot inherit the old selection.
+        var newIdentity = identity with { ProviderNamespace = "other.provider" };
+        db.UserLogins.Add(new() { UserId = user.Id, LoginProvider = newIdentity.ProviderNamespace, ProviderKey = identity.StableSubject });
+        await db.SaveChangesAsync();
+        var newService = Service(db, providerNamespace: newIdentity.ProviderNamespace);
+        Assert.False((await newService.GetSourcesAsync()).Single(x => x.Source == NativeFieldSource.Proof).FirstNameDisplayNameFallback);
+        await newService.ApplySourceAsync(user, person, newIdentity, Values("Different Source"));
+        Assert.Null(user.FirstName);
+        Assert.Null(person.FirstName);
+        await service.ApplySourceAsync(user, person, identity, Values("Resumed"));
+        Assert.Equal("Resumed", user.FirstName);
+        Assert.Equal("Resumed", person.FirstName);
+    }
+
+    [Fact]
+    public async Task FirstNameFallback_ShouldRespectSharedPersonOwnership()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var other = new ApplicationUser { Id = Guid.NewGuid(), PersonId = person.Id };
+        db.Users.Add(other);
+        db.UserLogins.Add(new() { UserId = other.Id, LoginProvider = identity.ProviderNamespace, ProviderKey = "other" });
+        await db.SaveChangesAsync();
+        var service = Service(db);
+        await service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new(identity.ProviderNamespace, true, Guid.Empty));
+        await service.ApplySourceAsync(user, person, identity, Values("First Account"));
+        Assert.Null(person.FirstName);
+        await db.SaveChangesAsync();
+        await AssignFirstNameAsync(service, NativeFieldTarget.Person, person.Id, identity);
+        var otherIdentity = identity with { LocalAccountId = other.Id, StableSubject = "other" };
+        await service.ApplySourceAsync(other, person, otherIdentity, Values("Other Account"));
+        Assert.Equal("Other Account", other.FirstName);
+        Assert.Null(person.FirstName);
+        await service.ApplySourceAsync(user, person, identity, Values("Owner Name"));
+        Assert.Equal("Owner Name", person.FirstName);
+    }
+
+    [Fact]
+    public async Task FirstNameFallback_ShouldSkipMissingOrOversizedDisplayWithoutUsingStoredNickname()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        await service.SetFirstNameFallbackAsync(NativeFieldSource.Proof, new(identity.ProviderNamespace, true, Guid.Empty));
+        user.Nickname = "Stored Name";
+        person.Nickname = "Stored Name";
+        foreach (var value in new string?[] { null, "", " \t", new('x', 101) })
+        {
+            await service.ApplySourceAsync(user, person, identity, Values(value));
+            Assert.Null(user.FirstName);
+            Assert.Null(person.FirstName);
+        }
+    }
+
+    private static async Task AssignFirstNameAsync(NativeFieldPolicyService service, NativeFieldTarget target, Guid id,
+        NativeFieldSourceIdentity identity) => await service.UpdateAsync(target, id, NativeField.FirstName, new()
+        {
+            Operation = NativeFieldOperation.AssignSource, SourceIdentity = identity, AllowOverwrite = true,
+            ExpectedRevision = (await service.GetTargetAsync(target, id)).Revision
+        });
+
+    [Theory]
     [InlineData(100)]
     [InlineData(101)]
     public async Task SourceNickname_ShouldRespectEachTargetLimitWithoutTruncation(int length)
@@ -265,9 +426,10 @@ public sealed class NativeFieldPolicyServiceTests
         var state = await service.GetTargetAsync(NativeFieldTarget.Person, first.Id);
         Assert.True(state.Fields.Single(x => x.Field == NativeField.EmployeeId).ManualFixed);
     }
-    private static NativeFieldPolicyService Service(ApplicationDbContext db, bool proofEnabled = true, bool nativeEnabled = true) => new(db,
+    private static NativeFieldPolicyService Service(ApplicationDbContext db, bool proofEnabled = true, bool nativeEnabled = true,
+        string providerNamespace = "example.provider") => new(db,
         Options.Create(new NativeFieldPolicyOptions { ProofEnabled = nativeEnabled }),
-        Options.Create(new ProviderProofOptions { Enabled = proofEnabled, TrustedProviderNamespace = "example.provider" }),
+        Options.Create(new ProviderProofOptions { Enabled = proofEnabled, TrustedProviderNamespace = providerNamespace }),
         Options.Create(new DirectoryIntegrationOptions()));
     private static async Task AssignAsync(NativeFieldPolicyService service, NativeFieldTarget target, Guid id, NativeFieldSourceIdentity identity) =>
         await service.UpdateAsync(target, id, NativeField.Nickname, new()

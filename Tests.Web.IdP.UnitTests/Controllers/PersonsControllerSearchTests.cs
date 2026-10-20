@@ -31,11 +31,11 @@ public sealed class PersonsControllerSearchTests
     public async Task Search_ShouldNormalizeInputBeforeSelectingPagedQuery(string? encodedTerm)
     {
         var service = new Mock<IPersonService>(MockBehavior.Strict);
-        service.Setup(value => value.GetAllPersonsAsync(5, 2, It.IsAny<CancellationToken>()))
+        service.Setup(value => value.GetAllPersonsAsync(5, 2, It.IsAny<CancellationToken>(), "desc"))
             .ReturnsAsync(new List<Person>());
-        service.Setup(value => value.SearchPersonsAsync("Example", 5, 2, It.IsAny<CancellationToken>()))
+        service.Setup(value => value.SearchPersonsAsync("Example", 5, 2, It.IsAny<CancellationToken>(), "desc"))
             .ReturnsAsync(new List<Person>());
-        service.Setup(value => value.GetPersonsCountAsync(It.IsAny<CancellationToken>())).ReturnsAsync(0);
+        service.Setup(value => value.GetPersonsCountAsync(It.IsAny<CancellationToken>(), It.IsAny<string?>())).ReturnsAsync(0);
 
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -59,18 +59,19 @@ public sealed class PersonsControllerSearchTests
         {
             using var client = new HttpClient { BaseAddress = new Uri(app.Urls.Single()) };
             var term = encodedTerm is null ? "" : $"&term={encodedTerm}";
-            using var response = await client.GetAsync($"/api/admin/people/search?skip=5&take=2{term}");
+            using var response = await client.GetAsync($"/api/admin/people/search?skip=5&take=2&sortDirection=desc{term}");
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
             Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
             if (encodedTerm == "%20Example%20")
             {
-                service.Verify(value => value.SearchPersonsAsync("Example", 5, 2, It.IsAny<CancellationToken>()), Times.Once);
-                service.Verify(value => value.GetAllPersonsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+                service.Verify(value => value.SearchPersonsAsync("Example", 5, 2, It.IsAny<CancellationToken>(), "desc"), Times.Once);
+                service.Verify(value => value.GetPersonsCountAsync(It.IsAny<CancellationToken>(), "Example"), Times.Once);
+                service.Verify(value => value.GetAllPersonsAsync(It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
             }
             else
             {
-                service.Verify(value => value.GetAllPersonsAsync(5, 2, It.IsAny<CancellationToken>()), Times.Once);
-                service.Verify(value => value.SearchPersonsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>()), Times.Never);
+                service.Verify(value => value.GetAllPersonsAsync(5, 2, It.IsAny<CancellationToken>(), "desc"), Times.Once);
+                service.Verify(value => value.SearchPersonsAsync(It.IsAny<string>(), It.IsAny<int>(), It.IsAny<int>(), It.IsAny<CancellationToken>(), It.IsAny<string?>()), Times.Never);
             }
         }
         finally { await app.StopAsync(); }

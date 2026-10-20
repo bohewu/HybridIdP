@@ -33,6 +33,52 @@ public sealed class ProofProvisioningTests : IDisposable
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
+    public async Task AuthenticateAsync_ShouldFillWholeFirstNameOnlyWhenSelectedAndKeepProfileRefresh(bool enabled)
+    {
+        await CreateNativeFields(_db).SetFirstNameFallbackAsync(NativeFieldSource.Proof,
+            new("example.provider", enabled, Guid.Empty));
+        SetProof(AuthenticatedProof("Whole Display Name"));
+        Assert.True((await _login.AuthenticateAsync("submitted-alias", "password")).IsSuccess);
+        _db.ChangeTracker.Clear();
+        var user = Assert.Single(_db.Users);
+        var person = Assert.Single(_db.Persons);
+        Assert.Equal(enabled ? "Whole Display Name" : null, user.FirstName);
+        Assert.Equal(user.FirstName, person.FirstName);
+        Assert.Equal("Whole Display Name", user.Nickname);
+        Assert.Equal(user.Nickname, person.Nickname);
+        Assert.Null(user.LastName);
+        Assert.Null(person.LastName);
+        Assert.Equal("opaque-subject", Assert.Single(_db.UserLogins).ProviderKey);
+        _profile.Verify(service => service.RefreshAfterLoginAsync(It.Is<ApplicationUser>(value => value.Id == user.Id),
+            "example.provider", "opaque-subject", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AuthenticateAsync_ShouldRejectUnassuredNameEvenWhenFallbackSelected(bool unassuredGivenName)
+    {
+        await CreateNativeFields(_db).SetFirstNameFallbackAsync(NativeFieldSource.Proof,
+            new("example.provider", true, Guid.Empty));
+        SetProof(AuthenticatedProof("Whole Name") with
+        {
+            Profile = new AssuredProfile
+            {
+                DisplayName = "Whole Name", GivenName = unassuredGivenName ? "Given" : null,
+                AssuredFields = unassuredGivenName ? [AssuredProfileField.DisplayName] : []
+            }
+        });
+        Assert.False((await _login.AuthenticateAsync("submitted-alias", "password")).IsSuccess);
+        Assert.Empty(_db.Users);
+        Assert.Empty(_db.Persons);
+        Assert.Empty(_db.UserLogins);
+        _profile.Verify(service => service.RefreshAfterLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
     public async Task AuthenticateAsync_ShouldPersistFullNameAndOrganizationId_ForNewAndExistingBlankAccounts(bool existing)
     {
         var original = existing ? await CreateExistingAccountAsync(null, null) : null;

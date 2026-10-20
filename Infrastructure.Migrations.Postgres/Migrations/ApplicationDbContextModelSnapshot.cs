@@ -903,6 +903,13 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)");
 
+                    b.Property<bool>("FirstNameDisplayNameFallback")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("FirstNameFallbackProviderNamespace")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
                     b.Property<bool>("Paused")
                         .HasColumnType("boolean");
 

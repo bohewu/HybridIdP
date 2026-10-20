@@ -907,6 +907,13 @@ namespace Infrastructure.Migrations.SqlServer.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("nvarchar(16)");
 
+                    b.Property<bool>("FirstNameDisplayNameFallback")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("FirstNameFallbackProviderNamespace")
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
                     b.Property<bool>("Paused")
                         .HasColumnType("bit");
 

@@ -14,6 +14,7 @@ const targetPath = (target, id) => `${base}/${target === 'User' ? 'users' : 'per
 export const nativeFieldPolicyApi = {
   sources: () => adminApi.get(`${base}/sources`, { cache: 'no-store' }).then(read),
   pause: (source, request) => adminApi.put(`${base}/sources/${source}`, request).then(read),
+  firstNameFallback: (source, request) => adminApi.put(`${base}/sources/${source}/first-name-fallback`, request).then(read),
   target: (target, id) => adminApi.get(targetPath(target, id), { cache: 'no-store' }).then(read),
   update: (target, id, field, request) => adminApi.put(`${targetPath(target, id)}/${field}`, { ...request, allowSourceClear: false }).then(read)
 }

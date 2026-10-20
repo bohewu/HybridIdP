@@ -28,16 +28,23 @@ describe.each([['en-US', persons], ['zh-TW', zhPersons]])('Person name presentat
   it('uses structured names then native display name and localized missing text', async () => {
     const records = [
       { id: 'structured', firstName: 'Alex', middleName: 'Q', lastName: 'Example', nickname: 'Preferred' },
+      { id: 'duplicate', firstName: 'Exact Whole Name', nickname: 'Exact Whole Name' },
       { id: 'display-only', firstName: null, lastName: null, nickname: 'Taylor Example' },
       { id: 'missing', firstName: ' ', nickname: ' ', email: 'account@example.test', userName: 'account-id' }
     ]
-    fetch.mockResolvedValueOnce({ ok: true, json: async () => ({ persons: records, totalCount: 3 }) })
+    fetch.mockResolvedValue({ ok: true, json: async () => ({ persons: records, totalCount: records.length }) })
     wrapper = mount(PersonsApp, { global: { plugins: plugins(), stubs: { PersonForm: true,
       LinkedAccountsDialog: true, TransferAssetsDialog: true, AccessDeniedDialog: true, PageHeader: true } } })
     await flushPromises()
     expect(wrapper.findAll('[data-test-id="person-name"]').map(item => item.text()))
-      .toEqual(['Alex Q Example', 'Taylor Example', strings.notProvided])
+      .toEqual(['Alex Q Example', 'Exact Whole Name', 'Taylor Example', strings.notProvided])
     expect(wrapper.text().match(/Taylor Example/g)).toHaveLength(1)
+    expect(wrapper.text().match(/Exact Whole Name/g)).toHaveLength(1)
+    expect(new URL(fetch.mock.calls[0][0], 'http://localhost').searchParams.get('sortDirection')).toBe('asc')
+    await wrapper.get('[data-test-id="person-name-sort"]').trigger('click')
+    await flushPromises()
+    expect(new URL(fetch.mock.calls.at(-1)[0], 'http://localhost').searchParams.get('sortDirection')).toBe('desc')
+    expect(wrapper.get('th').attributes('aria-sort')).toBe('descending')
     expect(wrapper.text()).not.toContain('account@example.test')
     expect(wrapper.text()).not.toContain('account-id')
   })
