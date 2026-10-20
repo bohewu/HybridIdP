@@ -4,7 +4,49 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
-No unreleased changes recorded.
+Prepared version: **1.8.0**. This adds profile-governance features and schema
+changes beyond a patch release. Version metadata and the image example now
+select planned 1.8.0; no 1.8.0 tag, image or release has been created. See the
+[upgrade preparation](RELEASE_READINESS.md#180-preparation).
+
+### Added
+
+- Add native profile field policies for User and Person: exact source selection,
+  independent ownership, manual fixed values including intentional blanks,
+  explicit overwrite controls and source pause/resume. Deployment configuration
+  remains authoritative for source enablement and trust.
+- Add an optional, default-off FirstName fill strategy for the configured Proof
+  source. Use assured givenName first; only when it is missing may that same
+  validated response's whole displayName fill an empty, unprotected FirstName.
+  Preserve populated names and manually fixed blanks without splitting names.
+- Add an Admin-only system-information footer with the embedded product version.
+
+### Fixed and improved
+
+- Fill missing User/Person nicknames from assured Proof displayName while
+  preserving existing values, identity IDs and provider bindings. Align effective
+  native names across Profile, admin lists and issued name claims.
+- Support whole-name search and sorting before pagination in person/user lists;
+  whitespace-only person searches no longer return HTTP 400.
+- Refine Claims Preview searchable client/account selection, payload tabs,
+  decision filtering, placeholders, loading feedback and spacing. Its dedicated
+  permission, read-only identity state and metadata audit remain in place.
+- Align both locales and the developer/operator field-mapping guidance. Settings
+  displays the existing Stage1 source as Organization directory (AD/LDAP).
+
+### Upgrade requirements
+
+- Apply AddNativeFieldAuthority and AddFirstNameDisplayNameFallback for the
+  selected database before starting the updated application. The schema changes
+  add policy storage and settings; they do not backfill names, rename accounts,
+  delete data or change identity bindings.
+- Preserve the existing private environment, secrets, certificates and Data
+  Protection keys. Proof native writes retain the compatibility default; directory
+  native writes require explicit enablement and an exact trusted-source allowlist.
+  The FirstName strategy is selected in Settings and starts off.
+- Existing deployment and migration helpers need no logic change for this
+  release. Use the same approved pinned image for migration and deployment after
+  publication; a deployment-only image change does not apply the new schema.
 
 ## [1.7.1] - 2026-10-19
 

@@ -1,11 +1,227 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-19 for the planned 1.7.1 release. Publishing a release does not
-establish production acceptance or deploy the image. The historical 1.6.0 upgrade
-requirements and evidence below remain applicable when upgrading from 1.5.x or
-1.4.x.
+Updated on 2026-10-20 for prepared 1.8.0 metadata. Publishing a release does not
+establish production acceptance or deploy the image. Older upgrade requirements
+below remain applicable to cumulative upgrades.
 
-## 1.7.1 preparation
+## 1.8.0 preparation
+
+Version 1.8.0 is prepared for review because the changes add native-field
+governance, administrative controls and two schema migrations per provider.
+They are more than a patch, while existing identity IDs, provider bindings and
+protocol contracts remain.
+The [Unreleased changelog](CHANGELOG.md#unreleased) is the release-notes draft.
+VERSION and the image example now select planned 1.8.0 metadata. No 1.8.0 tag,
+release, image or deployment has been created.
+
+The product changes since v1.7.1 were merged through
+[PR #27](https://github.com/bohewu/HybridIdP/pull/27) into main commit
+`7fab2705ee96508a7f5b297a109d79c87ae2f30e`. The following upgrade steps are a plan
+for a separately approved publication and deployment, not commands to execute
+against production during preparation.
+
+### Schema changes from 1.7.1
+
+For a database already at the 1.7.1 schema target, these are the two new
+migrations for its selected provider, applied in order:
+
+| Change | SQL Server | PostgreSQL |
+| --- | --- | --- |
+| Native field policy state and source settings | `20261020030913_AddNativeFieldAuthority` | `20261020030931_AddNativeFieldAuthority` |
+| Optional source-bound FirstName strategy | `20261020091155_AddFirstNameDisplayNameFallback` | `20261020091320_AddFirstNameDisplayNameFallback` |
+
+The first adds nullable NativeFieldStateJson to AspNetUsers and Persons, and the
+NativeFieldSourcePolicies table. The second adds a default-false strategy flag
+and nullable exact source namespace to that table. Neither migration updates
+historical profile values or identity links. Apply the pending migrations for
+one provider, not both sets; an older database can have additional pending
+migrations that also require review. SQL Server deployments retain their
+SqlServer provider and existing SQL Server 2019 connection configuration.
+
+Both migrations are required before the new application starts even when the
+optional strategy stays off. With startup migration disabled, pending schema
+changes prevent readiness. Operator data repair or account-name alignment is
+separate from schema migration and is not an upgrade prerequisite.
+
+### Staged schema upgrade with 1.7.1 still running
+
+An isolated SQL Server 2019 check used the published 1.7.1 image (OCI revision
+`f203204b69e0133f089d8d6cde084036653d6e5b`) with synthetic accounts and a local
+Proof/Profile HTTP fixture. Its existing schema had 45 migrations. Applying the
+two migrations above from product source `81df6d5a` brought it to 47 while the
+same 1.7.1 container remained running without a restart.
+
+- Existing User/Person profile and credential hashes, role assignments and
+  provider bindings were identical immediately before and after schema migration.
+- All 224 authenticated user-list requests spanning migration returned HTTP 200.
+- Existing and new Proof accounts and the local administrator could sign in.
+  Email confirmation, Person identifiers and normal login-driven Profile
+  snapshot refresh persisted correctly; a wrong password remained denied.
+- Old-version person create/read/update/delete and account read/update passed.
+  Restarting that same old image also passed readiness, discovery, existing-cookie
+  use and a fresh Proof login against the upgraded schema.
+
+This supports a schema-first rollout from the tested 1.7.1 build. It does not
+establish compatibility with every 1.7.x build or guarantee uninterrupted traffic:
+SQL Server DDL takes schema-modification locks, which can wait for transactions
+and block queries. Back up first and use a low-traffic maintenance window; see
+[SQL Server schema locks](https://learn.microsoft.com/en-us/sql/relational-databases/sql-server-transaction-locking-and-row-versioning-guide#schema-locks).
+The check did not use production data, a real upstream account, direct AD/LDAP,
+connected PostgreSQL, high load, or a mixed-version MFA/token-exchange matrix.
+The new source-policy controls take effect only after upgrading the application.
+
+### Schema-only execution from a development machine
+
+A development machine with .NET 10 SDK and database network access can run the
+pending migrations before an image is published. Use the reviewed checkout that
+contains both migrations, confirm the target database/provider and a restorable
+backup, and run from the repository root in a dedicated PowerShell session.
+Do not use a checkout or image still at the v1.7.1 migration target.
+
+`update-db.ps1` builds before invoking --migrate-only. A running local development
+server can lock the default build output. The following uses a fresh temporary
+output directory instead; the existing helper was checked successfully with this
+setting against the isolated database, without closing the other development
+server. The connection string is entered interactively and is not written to
+an environment file or passed on the dotnet command line.
+
+```powershell
+$previousOutput = [Environment]::GetEnvironmentVariable('BaseOutputPath', 'Process')
+$secret = Read-Host 'Target database connection string' -AsSecureString
+$connection = [System.Net.NetworkCredential]::new('', $secret).Password
+$env:BaseOutputPath = (Join-Path $env:TEMP ('HybridIdP-migrate-' + [guid]::NewGuid().ToString('N'))) + '/'
+try {
+    .\deployment\update-db.ps1 -Provider SqlServer -ConnectionString $connection
+} finally {
+    if ($null -eq $previousOutput) {
+        [Environment]::SetEnvironmentVariable('BaseOutputPath', [NullString]::Value, 'Process')
+    } else {
+        [Environment]::SetEnvironmentVariable('BaseOutputPath', $previousOutput, 'Process')
+    }
+    Remove-Variable connection, secret
+}
+```
+
+For SQL Server, supply that target's full SQL Server connection string. Retain
+its approved authentication and TLS settings. Do not substitute a PostgreSQL
+connection or copy a development connection into production configuration.
+Successful completion applies schema only: it does not seed, start HTTP, perform
+provider authentication or credential migration, or restart the live application.
+Stop on an error; do not deploy merely because a migration command was attempted.
+Confirm both SQL Server migration IDs above in dbo.__EFMigrationsHistory, then
+check the still-running old application's login and basic reads. Its live .env
+and image selection can remain unchanged until the application upgrade.
+
+### Existing environment update
+
+Retain the original private .env, provider endpoints, secrets, exact namespaces,
+Email trust settings, database connections, certificates and Data Protection
+keys. Do not rerun the setup wizard or copy an entire new environment example
+over an existing deployment. For an already enabled Proof deployment that does
+not use directory profile synchronization, make these values explicit:
+
+```dotenv
+DatabaseMigration__ApplyOnStartup=false
+NativeFieldPolicy__ProofEnabled=true
+NativeFieldPolicy__Stage1Enabled=false
+```
+
+The two NativeFieldPolicy settings already default to true/false respectively;
+they add no mandatory new source activation. Existing ProviderProof__Enabled
+and ProviderProof__TrustedProviderNamespace must still authorize Proof. Keep any
+previously approved ProviderProof__TrustedEmailProviderNamespaces entries;
+native-field settings do not confer Email verification or recovery trust.
+
+Only a deployment intentionally using directory profile synchronization adds
+NativeFieldPolicy__Stage1Enabled=true and its exact indexed
+NativeFieldPolicy__TrustedStage1ProviderNamespaces entries, alongside enabled,
+validated DirectoryIntegration configuration. An existing directory deployment
+must explicitly opt into these native writes; directory authentication and
+credential migration flags do not substitute for that opt-in. UI pause/resume
+cannot enable or trust a source.
+
+There is no extra environment flag for the FirstName strategy. After upgrading,
+open Settings > Profile field synchronization > Sign-in verification source,
+select Use the full name to fill a missing first name and save it for the exact
+configured namespace. Existing values and manually fixed blanks stay protected.
+It takes effect on the next eligible normal Proof login, not when Claims Preview
+runs. Changing the configured namespace requires a new explicit selection.
+
+### Migration and deployment sequence after publication
+
+1. Finish and review the version-metadata change, merge it to main, and require
+   a fresh green CodeQL run on that final source. Publish only after separate
+   authorization and qualify the final image, OCI revision/version and registry
+   digest. The 1.8.0 tag, image and release are not available from this
+   preparation.
+2. On the deployment host, synchronize the reviewed deployment tools without
+   overwriting the existing private .env. Confirm the selected database/provider
+   and take a verified restorable database backup; retain the previous image
+   digest, environment, certificates and Data Protection keys for recovery.
+3. After the approved image exists, pull its pinned tag/digest and run the
+   schema-only helper using the existing Compose mode. For split-host Nginx
+   without a database container, the planned commands are:
+
+   ```bash
+   cd deployment
+   release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+   compose_file='docker-compose.splithost-nginx-nodb.yml'
+   sudo docker pull "$release_image"
+   sudo bash ./migrate-db.sh --confirm-backup --source ghcr \
+     --image "$release_image" --compose "$compose_file" --env-file .env
+   ```
+
+   Use the actual existing Compose mode for other topologies. The helper uses
+   DATABASE_PROVIDER and the selected connection string from the original
+   environment, then invokes --migrate-only. It applies pending schema changes
+   without seeding, an HTTP listener, provider login or credential migration;
+   it does not restart the running service. Do not proceed after a nonzero exit.
+4. Confirm the selected provider's migration history includes the two IDs above.
+   Update IDP_IMAGE in the original .env to the same approved image, then deploy
+   that unchanged image through the existing helper:
+
+   ```bash
+   sudo bash ./deploy-idp.sh --source ghcr --image "$release_image" \
+     --compose "$compose_file" --env-file .env
+   ```
+
+   No deployment/migration-script or Compose logic change is required for these
+   features. Recreate the application container so environment changes take
+   effect; a restart alone can retain the old environment.
+5. Verify readiness and public discovery, then check administrator version info,
+   normal login/MFA/client callback, person/user search, source status and the
+   read-only Claims Preview in the approved deployment. Enable the optional
+   FirstName strategy only for the intended source and confirm the next eligible
+   login preserves existing/manual values. Reverting its checkbox stops future
+   fills but does not undo already saved names.
+
+Do not use EF Down migrations as an automatic rollback. The new schema is
+additive, but downgrading an application bypasses the new policy enforcement
+and must be assessed separately. Restoring a database backup is a separate
+operator recovery decision and can discard subsequent writes.
+
+### Security and evidence status
+
+On 2026-10-20, GitHub returned zero open Dependabot, main CodeQL and Secret
+scanning alerts. Product main `7fab2705` passed C#, JavaScript/TypeScript,
+Python and Actions CodeQL in
+[run 39426682250](https://github.com/bohewu/HybridIdP/actions/runs/39426682250).
+These results cover the merged product source, not a future version-metadata
+commit or unpublished image. Existing dismissals, dependency triage controls and
+ExcelJS prebuilt UUID limitations below remain applicable; zero open alerts is
+not a statement that every historical finding was remediated.
+
+Independent scoped implementation reviews passed. Existing focused backend and
+Vue tests, frontend builds, both providers' migration/model generation and name
+query translation passed. Isolated connected Proof producer + IdP browser E2E
+covered synthetic new/existing accounts, source-bound strategy behavior and
+read-only Claims Preview with recordings. The final label update passed 19 Vue
+tests; credential-free query translation passed for both providers. Connected
+PostgreSQL and final-release-image/production acceptance were not exercised by
+those checks. The additional staged-schema check above exercises the published
+old image with the new schema; it does not qualify a future 1.8.0 release image.
+
+## Historical 1.7.1 preparation
 
 Version metadata selects 1.7.1. This preparation does not create a release tag,
 publish an image or deploy a service. It fixes Proof Email persistence and
