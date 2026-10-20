@@ -3,6 +3,21 @@
 ## Overview
 HybridAuthIdP is committed to maintaining a high level of security. This document outlines our multi-factor authentication (MFA) implementations, security hardening practices, and how to report vulnerabilities.
 
+### Administrator native-profile synchronization
+
+The independently disabled [Provider Native Profile capability](PROVIDER_NATIVE_PROFILE_CONTRACT.md)
+requires both User and Person update authority plus cookie CSRF protection.
+It accepts only the exact existing external-login tuple and existing linked
+Person. Preview uses detached records and never saves. Apply rereads source and
+local policy, checks an actor-bound five-minute protected review token, and
+commits fill-only changes plus value-free audit atomically under serializable
+isolation. Drift, concurrency failures and malformed source data fail closed.
+Manual fixed blanks, populated values, field owners and shared-Person rules
+remain authoritative. Email MFA protects account Email and confirmation;
+new confirmation additionally requires source evidence and independent local
+namespace trust. No login proof, session, security stamp, recovery enrollment,
+role, lifecycle, username or account-link authority is granted by this endpoint.
+
 ### Administrative API authority
 
 Interactive administration uses the authenticated Identity application cookie.

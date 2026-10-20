@@ -62,6 +62,10 @@ public interface INativeFieldPolicyService
     // A failed save must discard/reload the entity before any later save; never retry stale mutations.
     Task<bool> ApplySourceAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
         IReadOnlyDictionary<NativeField, string?> values, CancellationToken cancellationToken = default);
+    // Prepare only, including for detached preview entities. Always preserve populated fields, even with overwrite enabled.
+    Task<IReadOnlyList<ProfileSyncChangeDto>> ApplyMissingSourceAsync(ApplicationUser user, Person person,
+        NativeFieldSourceIdentity identity, IReadOnlyDictionary<NativeField, string?> values,
+        CancellationToken cancellationToken = default);
     void ApplyManual(ApplicationUser user, IReadOnlyDictionary<NativeField, string?> values);
     void ApplyManual(Person person, IReadOnlyDictionary<NativeField, string?> values);
     // Existing unadvertised browser providers may fill empty unowned fields, never fixed or attributed fields.

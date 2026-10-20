@@ -1,5 +1,25 @@
 # HybridIdP Deployment Guide
 
+## Optional administrator native-profile synchronization
+
+[Provider Native Profile 1.0](PROVIDER_NATIVE_PROFILE_CONTRACT.md) is disabled by
+default and has no new schema migration. Existing native-field authority schema
+must already be present. In private deployment configuration, set
+`ProviderNativeProfile__Enabled`, `TrustedProviderNamespace`, the complete
+`Endpoint`, and `SharedSecret` under that section. `Timeout` defaults to five
+seconds; HTTPS verifies the server certificate and redirects/cookies are disabled.
+The existing Proof native-field source must also be enabled, trusted, unpaused
+and use the exact same namespace. No endpoint or source is inferred.
+
+`ProviderNativeProfile__TrustedEmailProviderNamespaces__0` is an independent,
+exact local confirmation allowlist and defaults to absent. Producer email
+assurance alone cannot confirm Email. Preserve existing `.env`, identity links,
+factors and recovery settings. This setting does not enable automatic sync:
+authorized administrators preview and apply each account through the UI. The
+full contract documents fill-only behavior, shared-Person ownership and stale
+preview rejection. Local fixture tests do not establish a production source's
+identity authority, TLS interoperability or deployment acceptance.
+
 This guide covers the deployment of HybridIdP using Docker Compose. For a new deployment, the **interactive setup wizard** generates configuration, security secrets, and certificates. For an existing deployment, preserve the operator-managed `.env`; do not rerun the wizard to upgrade it. See [Upgrading Existing Legacy API Accounts](#upgrading-existing-legacy-api-accounts).
 
 Release workflow actions and official build/production Compose images are pinned

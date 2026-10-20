@@ -9,6 +9,39 @@ vi.mock('../composables/useWebAuthn.js', () => ({
   })
 }))
 
+describe('admin sidebar navigation', () => {
+  it('keeps the toggle state synchronized when opening and dismissing the menu', async () => {
+    document.body.innerHTML = `
+      <button id="sidebar-toggle" aria-expanded="false" aria-controls="admin-sidebar"></button>
+      <div id="admin-sidebar" class="sidebar"><a href="/Admin">Admin</a></div>
+      <div id="mobile-overlay"></div>
+    `
+    const { initAdminSidebar } = await import('./razor.js')
+    initAdminSidebar()
+    const button = document.getElementById('sidebar-toggle')
+    const sidebar = document.getElementById('admin-sidebar')
+    const overlay = document.getElementById('mobile-overlay')
+
+    button.click()
+    expect(sidebar.classList.contains('show')).toBe(true)
+    expect(overlay.classList.contains('show')).toBe(true)
+    expect(button.getAttribute('aria-expanded')).toBe('true')
+
+    overlay.click()
+    expect(sidebar.classList.contains('show')).toBe(false)
+    expect(overlay.classList.contains('show')).toBe(false)
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+
+    button.click()
+    sidebar.querySelector('a').focus()
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+    expect(sidebar.classList.contains('show')).toBe(false)
+    expect(overlay.classList.contains('show')).toBe(false)
+    expect(button.getAttribute('aria-expanded')).toBe('false')
+    expect(document.activeElement).toBe(button)
+  })
+})
+
 describe('passkey MFA step-up', () => {
   beforeEach(() => {
     vi.clearAllMocks()

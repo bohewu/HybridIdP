@@ -124,8 +124,22 @@ public sealed class NativeFieldPolicyService(
         await SaveAsync(entity, cancellationToken);
     }
 
-    public async Task<bool> ApplySourceAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
-        IReadOnlyDictionary<NativeField, string?> values, CancellationToken cancellationToken = default)
+    public Task<bool> ApplySourceAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
+        IReadOnlyDictionary<NativeField, string?> values, CancellationToken cancellationToken = default) =>
+        ApplySourceCoreAsync(user, person, identity, values, false, null, cancellationToken);
+
+    public async Task<IReadOnlyList<ProfileSyncChangeDto>> ApplyMissingSourceAsync(ApplicationUser user, Person person,
+        NativeFieldSourceIdentity identity, IReadOnlyDictionary<NativeField, string?> values,
+        CancellationToken cancellationToken = default)
+    {
+        var decisions = new List<ProfileSyncChangeDto>();
+        await ApplySourceCoreAsync(user, person, identity, values, true, decisions, cancellationToken);
+        return decisions;
+    }
+
+    private async Task<bool> ApplySourceCoreAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
+        IReadOnlyDictionary<NativeField, string?> values, bool fillOnly, List<ProfileSyncChangeDto>? decisions,
+        CancellationToken cancellationToken)
     {
         if (identity.LocalAccountId != user.Id || !await IsAvailableAsync(identity, cancellationToken) ||
             !await IsBoundAsync(identity, NativeFieldTarget.User, user.Id, cancellationToken)) return false;
@@ -145,13 +159,13 @@ public sealed class NativeFieldPolicyService(
             if (firstNameFallback)
                 values = new Dictionary<NativeField, string?>(values) { [NativeField.FirstName] = displayName };
         }
-        var changed = ApplySource(user, identity, values, true, firstNameFallback);
+        var changed = ApplySource(user, identity, values, true, firstNameFallback, fillOnly, decisions);
         if (person is not null && user.PersonId == person.Id &&
             await IsBoundAsync(identity, NativeFieldTarget.Person, person.Id, cancellationToken))
         {
             // A shared Person needs an explicit operator assignment before its first source claim.
             var soleAccount = await db.Users.CountAsync(x => x.PersonId == person.Id, cancellationToken) == 1;
-            changed |= ApplySource(person, identity, values, soleAccount, firstNameFallback);
+            changed |= ApplySource(person, identity, values, soleAccount, firstNameFallback, fillOnly, decisions);
         }
         return changed;
     }
@@ -201,20 +215,33 @@ public sealed class NativeFieldPolicyService(
     }
 
     private static bool ApplySource(object entity, NativeFieldSourceIdentity identity,
-        IReadOnlyDictionary<NativeField, string?> values, bool canClaim, bool firstNameFallback)
+        IReadOnlyDictionary<NativeField, string?> values, bool canClaim, bool firstNameFallback,
+        bool fillOnly, List<ProfileSyncChangeDto>? decisions)
     {
         var state = Read(entity);
         var changed = false;
         foreach (var (field, value) in values)
         {
+            var current = GetValue(entity, field);
+            var entry = state.Fields.GetValueOrDefault(field) ?? new FieldState();
+            if (decisions is not null)
+            {
+                var action = entry.ManualFixed ? "manual_fixed" :
+                    !string.IsNullOrWhiteSpace(current) ? "preserve" :
+                    entry.Owner is not null && entry.Owner != identity ? "owner_mismatch" :
+                    entry.Owner is null && !canClaim ? "shared_person" :
+                    string.IsNullOrWhiteSpace(value) ? "missing_source" :
+                    entity is Person && field == NativeField.Nickname && value.Length > 100 ? "value_too_long" : "fill";
+                decisions.Add(new(entity is ApplicationUser ? "User" : "Person", field.ToString(),
+                    current, value, action == "fill" ? value : current, action));
+            }
             if (string.IsNullOrWhiteSpace(value)) continue;
             // Proof display names can fit User but exceed Person's established 100-character limit.
             // Optional display data must neither fail authentication nor be truncated.
             if (entity is Person && field == NativeField.Nickname && value.Length > 100) continue;
-            var entry = state.Fields.GetValueOrDefault(field) ?? new FieldState();
             if (entry.ManualFixed || entry.Owner is not null && entry.Owner != identity || entry.Owner is null && !canClaim) continue;
-            if (!string.IsNullOrWhiteSpace(GetValue(entity, field)) &&
-                (!entry.AllowOverwrite || field == NativeField.FirstName && firstNameFallback)) continue;
+            if (!string.IsNullOrWhiteSpace(current) &&
+                (fillOnly || !entry.AllowOverwrite || field == NativeField.FirstName && firstNameFallback)) continue;
             entry.Owner = identity;
             entry.Attributed = true;
             state.Fields[field] = entry;

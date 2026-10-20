@@ -135,3 +135,29 @@ describe('UserList role-management authorization', () => {
     }
   })
 })
+
+
+describe('Manual sync account selection', () => {
+  it('hides controls without the combined synchronization permission', () => {
+    const wrapper = createWrapper(false)
+    expect(wrapper.find('[data-test="select-sync-user"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="manual-sync-action"]').exists()).toBe(false)
+    wrapper.unmount()
+  })
+  it('selects only the current page, caps at 50, and resets on loading or filter/page changes', async () => {
+    const wrapper = createWrapper(false)
+    const users = Array.from({ length: 60 }, (_, index) => ({ id: `user-${index}`, userName: `example-${index}`, roles: [] }))
+    await wrapper.setProps({ users, canSync: true })
+    await wrapper.get('[data-test="select-page"]').setValue(true)
+    await wrapper.get('[data-test="preview-selected"]').trigger('click')
+    expect(wrapper.emitted('profile-sync')[0][0]).toHaveLength(50)
+    expect(wrapper.findAll('[data-test="select-sync-user"]')[50].element.disabled).toBe(true)
+    for (const props of [{ page: 2 }, { search: 'example' }, { loading: true }, { loading: false }]) {
+      await wrapper.setProps(props)
+      if (!props.loading) expect(wrapper.get('[data-test="preview-selected"]').element.disabled).toBe(true)
+    }
+    await wrapper.get('[data-test="manual-sync-action"]').trigger('click')
+    expect(wrapper.emitted('profile-sync').at(-1)[0]).toEqual([users[0]])
+    wrapper.unmount()
+  })
+})

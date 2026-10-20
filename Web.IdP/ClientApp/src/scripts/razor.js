@@ -108,24 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Admin Sidebar Mobile Toggle
-    const adminSidebar = document.querySelector('.sidebar');
-    const adminOverlay = document.getElementById('mobile-overlay');
-    const adminToggleBtn = document.getElementById('sidebar-toggle');
-
-    if (adminToggleBtn && adminSidebar) {
-        adminToggleBtn.addEventListener('click', () => {
-            adminSidebar.classList.add('show');
-            if (adminOverlay) adminOverlay.classList.add('show');
-        });
-    }
-
-    if (adminOverlay && adminSidebar) {
-        adminOverlay.addEventListener('click', () => {
-            adminSidebar.classList.remove('show');
-            adminOverlay.classList.remove('show');
-        });
-    }
+    initAdminSidebar();
 
     // Vue Loading Bar - Auto-hide when Vue apps are mounted
     initVueLoadingBar();
@@ -142,6 +125,33 @@ document.addEventListener('DOMContentLoaded', () => {
     initNativeRecoveryForm();
     initNativePasswordPolicy();
 });
+
+export function initAdminSidebar() {
+    const adminSidebar = document.querySelector('.sidebar');
+    const adminOverlay = document.getElementById('mobile-overlay');
+    const adminToggleBtn = document.getElementById('sidebar-toggle');
+
+    if (!adminToggleBtn || !adminSidebar) return;
+
+    const setSidebarOpen = (open) => {
+        adminSidebar.classList.toggle('show', open);
+        adminOverlay?.classList.toggle('show', open);
+        adminToggleBtn.setAttribute('aria-expanded', String(open));
+    };
+
+    adminToggleBtn.addEventListener('click', () => {
+        setSidebarOpen(!adminSidebar.classList.contains('show'));
+    });
+
+    adminOverlay?.addEventListener('click', () => setSidebarOpen(false));
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && adminSidebar.classList.contains('show')) {
+            setSidebarOpen(false);
+            adminToggleBtn.focus();
+        }
+    });
+}
 
 export function initNativeRecoveryForm(root = document) {
     const recoveryRoot = root.querySelector('[data-native-recovery]');

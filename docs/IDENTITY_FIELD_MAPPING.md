@@ -140,10 +140,12 @@ UI pause/resume cannot enable or trust a deployment-disabled source. Pausing
 retains configuration, bindings, values and ownership, and stops only native
 synchronization. A temporary source outage preserves current native values.
 Source status describes configuration and pause state, not connectivity health.
+Pause/resume acts immediately beside an enabled source; disabled sources show
+one deployment-needed explanation without inactive action controls.
 
-At **Settings > Profile field synchronization > Sign-in verification source**,
+At **Settings > Profile field synchronization > Adjust sync settings**,
 the **Use the full name to fill a missing first name** option
-defaults to off. Save it for the exact Proof provider namespace shown under the initially collapsed
+defaults to off. Use **Save settings** to save it for the exact Proof provider namespace shown under the nested, initially collapsed
 **Sources and sync rules** disclosure.
 The selection is persisted in the database, not enabled by an additional `.env`
 flag. Existing Proof enablement/trust remains the deployment ceiling. Changing
@@ -185,6 +187,15 @@ deliberately changed supported values or explicit empty clears; omitted/null
 fields and unchanged nonempty values do not acquire protection. Use the policy
 dialog to fix a value even when it has not changed.
 
+The dialog first shows the selected field, stored value, manual protection and
+assigned source. Choose **Set a fixed value** or **Change sync source** to open
+one form at a time. An empty manual input labels the action **Clear and fix**;
+**Unlock manual protection** is a separate action beside the current protection
+state. Assignment keeps manual protection and takes effect on the next eligible
+sync. Raw target and owner identifiers are under **Sources and sync rules**;
+the binding selector retains the exact account/namespace/subject to distinguish
+existing identities. Read-only operators see the summary and details only.
+
 | UI entry | Read / update permissions | Operation |
 | --- | --- | --- |
 | `/Admin/Settings`, Profile field synchronization section before Branding | `settings.read` / `settings.update` | Inspect supported fields and deployment/pause status; pause/resume an enabled source or select the exact Proof source's FirstName fill strategy. |
@@ -214,6 +225,44 @@ native missing-value preservation must not be applied to those snapshots.
 Implementation: [policy options](../Core.Application/Options/NativeFieldPolicyOptions.cs),
 [policy service](../Infrastructure/Services/NativeFieldPolicyService.cs) and
 [admin API](../Web.IdP/Controllers/Admin/NativeFieldPoliciesController.cs).
+
+## Administrator manual profile synchronization
+
+**Users > row action > Manual sync** opens **Sync source data**. Administrators
+with both `users.update` and `persons.update` can also select up to 50 accounts
+from the current page and choose **Preview selected**. Selection resets when the
+page, filters, sort or loaded results change; this is not an all-accounts job.
+**People > Manual sync** requires an explicit choice from that Person's linked
+accounts. No first account or shared Person owner is inferred.
+
+The deployment must enable manual synchronization separately. When disabled,
+the dialog shows the deployment-needed reason and offers no inactive preview or
+apply controls. It cannot enable or trust a source and does not report source
+connection health. Existing normal-login and policy-setting behavior is unchanged.
+
+Choose **Preview differences** to fetch and compare source data without writing
+User/Person fields. Each account has a separate result; expand it to compare
+**Current**, **Source** and **Proposed** values, with User and Person targets
+shown separately. Existing values, manually fixed blanks, ownership and Email
+MFA protections remain subject to server policy. This UI does not rename usernames.
+**Apply X field updates** explicitly applies only ready, previewed fill/confirmation
+changes. The displayed count is field decisions across both record types, not
+an account count. Protected, missing-source, blocked and failed outcomes remain
+visible and are not reported as successful updates.
+
+Batch preview/apply requests execute sequentially per account with progress.
+Closing and reentrant requests are disabled in flight. The server-issued preview
+token expires after five minutes and binds the proposed operation to its preview;
+apply sends only that token, never client-supplied replacement field values.
+A stale/invalid preview or failed apply requires **Preview again** before that
+account can be applied; there is no automatic conflict retry. Account lists refresh
+only after reported field changes. Source namespaces are optional technical details.
+
+The protected endpoints are `GET /api/admin/profile-sync/status`,
+`POST /api/admin/profile-sync/users/{id}/preview` and
+`POST /api/admin/profile-sync/users/{id}/apply`. All require both update permissions
+and mutating requests retain cookie CSRF validation. Person account selection uses
+the existing `GET /api/admin/people/{personId}/accounts` read permission boundary.
 
 ## Identity-document identifiers (IID): implemented storage and boundaries
 

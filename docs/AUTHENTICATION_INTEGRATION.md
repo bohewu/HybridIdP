@@ -26,6 +26,13 @@ Pausing native sync or disabling its ceiling does not disable authentication or
 independent Provider Profile snapshot refresh. Email trust, MFA and recovery
 authority remain separate. Claims Preview remains read-only.
 
+Administrators may independently enable [Provider Native Profile 1.0](PROVIDER_NATIVE_PROFILE_CONTRACT.md)
+for reviewed, manual fill-only synchronization of an already linked account
+and Person. It requires the same existing Proof source policy and its own exact
+namespace/endpoint/secret/email trust settings. Preview performs no write; apply
+refetches and rejects changed source or local state. This capability supplies
+no login proof and does not change normal login synchronization or claims snapshots.
+
 Enable `ProviderProof:Enabled` and configure `TrustedProviderNamespace`, the full
 endpoint and service secret to select API credential proof. Actual local-password
 accounts use local authentication. Upstream-linked accounts without a local

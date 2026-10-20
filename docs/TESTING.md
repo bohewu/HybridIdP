@@ -486,6 +486,17 @@ curl --location 'https://localhost:7035/connect/token' `
 
 ## Proof/Profile and conditional claims
 
+Administrator manual native-profile synchronization has focused tests in
+`AdminProfileSyncServiceTests`, `ProviderNativeProfileClientTests` and
+`ProfileSyncControllerTests`. Run these together with `NativeFieldPolicyServiceTests`
+and `NativeFieldPoliciesControllerTests` using the normal `dotnet test --filter`
+mechanism. They cover detached preview, exact tuple, source enablement/pause,
+independent User/Person fill, fixed blanks, shared ownership, email evidence/MFA,
+actor/expiry/source/local drift, concurrency/audit rollback and both administrative
+permissions with cookie CSRF. The service tests use isolated SQLite and synthetic
+source data; controller fixtures stop their temporary HTTP host in `finally`.
+These tests do not establish live source authority or production interoperability.
+
 The historically named Tests.LegacyApi project now serves only Proof 1.0 at
 `/api/authenticate/login` and Profile 1.0 at `/api/authenticate/profile`. Configure
 its `FixtureSecret` outside Git, and explicitly enable ProviderProof with namespace
