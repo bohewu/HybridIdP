@@ -54,7 +54,7 @@ and profile assurance before passing an `ExternalAuthResult` to JIT provisioning
 | Explicit Email assurance + exact local Email trust entry | `ApplicationUser.EmailConfirmed` | Both are required for new confirmation. Saving Email alone does not confirm it. This does not grant recovery-address trust or enroll MFA. |
 | `profile.givenName` | `ApplicationUser.FirstName`, `Person.FirstName` | Existing JIT uses a supplied value, otherwise retains the old value via null coalescing. |
 | `profile.surname` | `ApplicationUser.LastName`, `Person.LastName` | Same null-coalescing behavior as given name. |
-| `profile.displayName` | `AspNetUserLogins.ProviderDisplayName` | Refreshes the display value on the existing exact binding. It is not currently copied into Person name columns or `Nickname`. |
+| `profile.displayName` | `AspNetUserLogins.ProviderDisplayName`, `ApplicationUser.Nickname`, `Person.Nickname` | Refreshes the display value on the existing exact binding. On new and repeat login, independently fills each null, empty or whitespace-only Nickname; existing nonblank values are preserved. Person fill requires at most 100 characters. No name splitting or username change. |
 | `profile.department` | `ApplicationUser.Department`, `Person.Department` | Supplied values refresh the copies through JIT. |
 | `profile.title` | `ApplicationUser.JobTitle`, `Person.JobTitle` | Supplied values refresh the copies through JIT. |
 | `profile.employeeId` | `ApplicationUser.EmployeeId`, `Person.EmployeeId` | Contact/profile attribute; not the provider subject or an automatic account-linking key. |
@@ -164,18 +164,20 @@ Implementation: [PidHasher](../Core.Application/Utilities/PidHasher.cs),
 
 ## Known gaps and decisions before unified synchronization
 
-- Independent Proof retains assured `displayName` on the login binding, whereas
-  the directory flow also writes it to `Nickname`. A Person can therefore exist
-  with no given/family names even while an account list shows an assured display
-  name. The Person account-dialog fallback currently uses name parts, Email and
-  account-name fields; it does not establish or repair a missing Person name.
+- Independent Proof fills blank User/Person `Nickname` values from assured
+  `displayName` only during successful login. It preserves each nonblank local
+  value independently. Values longer than Person's 100-character limit remain
+  available on the User and login binding without filling Person.Nickname or
+  failing login. Claims preview remains read-only, and the normal login Profile
+  snapshot refresh remains independent. Given/family names are not derived from
+  display text.
 - JIT's null-coalescing updates and directory refresh's whitespace filtering are
   different. A unified policy must explicitly distinguish absent, blank, clear
   and authoritative replacement values. No bulk clear or new normalization
   policy is introduced by this inventory.
-- Choose whether a source's display name should own `Nickname`, a separate
-  display field or a read-only projection. Do not infer name parts by splitting
-  display text, or substitute an account identifier for a person's legal name.
+- Any broader display-name ownership policy remains a separate decision. Do not
+  infer name parts by splitting display text, or substitute an account identifier
+  for a person's legal name.
 - Define field-level ownership for multiple source accounts linked to one
   Person, manual edits, source priority and conflicts. Current JIT/refresh writes
   are not evidence of a configurable general source-priority engine.
@@ -187,6 +189,6 @@ Implementation: [PidHasher](../Core.Application/Utilities/PidHasher.cs),
   already stored usernames. Historical account cleanup is an independent,
   explicitly scoped maintenance decision.
 
-This inventory changes no runtime field mapping. A follow-up mapping decision
-must state the source, target, assurance, missing-value behavior, overwrite rule,
-timing and compatibility tests before implementation.
+This inventory includes the bounded Proof Nickname fill described above. A
+broader mapping decision must state the source, target, assurance, missing-value
+behavior, overwrite rule, timing and compatibility tests before implementation.
