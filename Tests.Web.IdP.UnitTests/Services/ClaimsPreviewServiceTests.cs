@@ -15,6 +15,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Moq;
 using OpenIddict.Abstractions;
+using OpenIddict.EntityFrameworkCore.Models;
+using Microsoft.Extensions.DependencyInjection;
 using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Services;
@@ -162,6 +164,34 @@ public sealed class ClaimsPreviewServiceTests
         Assert.Empty(fixture.Db.ChangeTracker.Entries());
     }
 
+    [Fact]
+    public async Task Lookups_ShouldSearchAndPageClientsInTheStoreWithoutDisclosingProperties()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<ApplicationDbContext>(options => options.UseInMemoryDatabase(Guid.NewGuid().ToString()).UseOpenIddict<Guid>());
+        services.AddOpenIddict().AddCore(options => options.UseEntityFrameworkCore().UseDbContext<ApplicationDbContext>().ReplaceDefaultEntities<Guid>());
+        await using var provider = services.BuildServiceProvider();
+        await using var scope = provider.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        for (var i = 0; i < 110; i++)
+            db.Add(new OpenIddictEntityFrameworkCoreApplication<Guid> { ClientId = $"search-{i:000}", DisplayName = $"Example {i:000}",
+                Permissions = JsonSerializer.Serialize(new[] { i == 109 ? "gt:client_credentials" : "gt:authorization_code" }),
+                Properties = "{\"internal_value\":\"never-expose\"}" });
+        await db.SaveChangesAsync(); db.ChangeTracker.Clear();
+        await using var fixture = new Fixture(scope.ServiceProvider.GetRequiredService<IOpenIddictApplicationManager>());
+        var page = await fixture.Service.GetClientsAsync(" search- ", 5, 1000);
+        Assert.Equal(100, page.Count);
+        Assert.Equal("search-005", page[0].ClientId);
+        Assert.DoesNotContain("never-expose", JsonSerializer.Serialize(page));
+        var named = Assert.Single(await fixture.Service.GetClientsAsync("Example 109", 0, 50));
+        Assert.Equal("search-109", named.ClientId);
+        Assert.False(named.Supported);
+        Assert.Empty(db.ChangeTracker.Entries());
+        var error = await Assert.ThrowsAsync<ClaimsPreviewException>(() => fixture.Service.GetClientsAsync(new string('x', 201), 0, 50));
+        Assert.Equal("invalid_request", error.Code);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         public CountingDb Db { get; } = new();
@@ -181,7 +211,7 @@ public sealed class ClaimsPreviewServiceTests
         public bool LifecycleAllowed { get; set; } = true;
         public string SourceStatus { get; set; } = "confirmed";
         public ClaimsPreviewService Service { get; }
-        public Fixture()
+        public Fixture(IOpenIddictApplicationManager? applicationManager = null)
         {
             var applications = new Mock<IOpenIddictApplicationManager>();
             var app = new object();
@@ -202,7 +232,7 @@ public sealed class ClaimsPreviewServiceTests
             lifecycle.Setup(m => m.IsEligibleAsync(User.Id, It.IsAny<CancellationToken>())).ReturnsAsync(() => LifecycleAllowed);
             var resources = new Mock<IApiResourceService>();
             resources.Setup(r => r.GetAudiencesByScopesAsync(It.IsAny<IEnumerable<string>>())).ReturnsAsync(["fixture-api"]);
-            Service = new(Db, applications.Object, usage.Object, Reader.Object, enrichment,
+            Service = new(Db, applicationManager ?? applications.Object, usage.Object, Reader.Object, enrichment,
                 new UserInfoService(Db, new CaptureLogger<UserInfoService>(Logs)), lifecycle.Object, migration.Object, resources.Object);
         }
         public async Task SeedAsync()

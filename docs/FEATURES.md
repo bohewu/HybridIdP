@@ -10,10 +10,14 @@
 
 Administrators with `claims.preview` can open `/Admin/ClaimsPreview`, select a
 native user-flow client and local account, choose hypothetical allowed scopes,
-then explicitly run Preview. Separate ID Token, Access Token and flat UserInfo
-JSON preserve boolean, string and string-array types and show inclusion,
-omission and unknown reasons. Changing an input clears the result and requires
-a new preview. Account search and client lists are paged.
+then explicitly run Preview. Client name/ID and account username searches are
+server-side, length-limited and paged. Searchable pickers keep the current
+selection while browsing results; changing the selected client, account or
+scopes clears the payload and requires an explicit new preview. Separate
+ID Token, Access Token and flat UserInfo JSON preserve boolean, string and
+string-array types and show inclusion, omission and unknown reasons. Status
+filters and text search narrow the displayed decisions without changing the
+payload. Copy JSON copies only the selected destination's payload.
 
 This operation does not authenticate, issue a token or reusable JWT, or modify
 Profile snapshots, sessions, consent, grants or authorization. Selected scopes

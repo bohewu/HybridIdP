@@ -5,12 +5,10 @@
 @if (User?.IsInRole(AuthConstants.Roles.Admin) == true)
 {
     <details class="static md:relative" data-test-id="system-info">
-        <summary class="flex cursor-pointer list-none items-center rounded text-gray-500 hover:text-gray-700 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-blue-600 [&::-webkit-details-marker]:hidden"
+        <summary class="inline-flex min-h-8 cursor-pointer list-none items-center gap-1.5 rounded-md px-2 text-xs text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800 focus:outline-none focus-visible:ring-2 focus-visible:ring-google-500 focus-visible:ring-offset-2 [&::-webkit-details-marker]:hidden"
                  aria-label="@Localizer["AdminSystemInfo.Title"]">
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-                <circle cx="12" cy="12" r="9" />
-                <path stroke-linecap="round" d="M12 11v6m0-10h.01" />
-            </svg>
+            <i class="bi bi-info-circle text-base leading-none" aria-hidden="true"></i>
+            <span>@Localizer["AdminSystemInfo.Title"]</span>
         </summary>
         <div class="absolute bottom-full left-1/2 z-50 mb-3 w-60 max-w-[calc(100vw-2rem)] -translate-x-1/2 rounded-lg border border-gray-200 bg-white p-4 text-left text-sm text-gray-700 shadow-lg md:left-auto md:right-0 md:translate-x-0">
             <p class="mb-2 font-semibold">@Localizer["AdminSystemInfo.Title"]</p>

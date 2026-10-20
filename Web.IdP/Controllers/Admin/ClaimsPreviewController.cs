@@ -33,8 +33,12 @@ public sealed class ClaimsPreviewController(IClaimsPreviewService preview, IAudi
     }
 
     [HttpGet("clients")]
-    public async Task<IActionResult> Clients([FromQuery] int skip = 0, [FromQuery] int take = 50, CancellationToken cancellationToken = default) =>
-        Ok(new { items = await preview.GetClientsAsync(skip, take, cancellationToken) });
+    public async Task<IActionResult> Clients([FromQuery] string? search = null, [FromQuery] int skip = 0,
+        [FromQuery] int take = 50, CancellationToken cancellationToken = default)
+    {
+        try { return Ok(new { items = await preview.GetClientsAsync(search, skip, take, cancellationToken) }); }
+        catch (ClaimsPreviewException error) { return BadRequest(new { code = error.Code }); }
+    }
 
     [HttpGet("accounts")]
     public async Task<IActionResult> Accounts([FromQuery] string? search = null, [FromQuery] int skip = 0,
