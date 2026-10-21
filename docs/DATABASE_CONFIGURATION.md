@@ -1191,6 +1191,29 @@ dotnet ef database update 0 --startup-project ..\Web.IdP --context ApplicationDb
 
 ## Native-field authority storage
 
+Editable native mappings add no migration. One system-managed Settings row,
+`system.nativeFieldMappings`, stores the full revisioned mapping/fallback JSON
+and optional exact-source `UserNamePolicies` array. Missing naming selections
+retain canonical-account defaults. Naming selection adds no schema migration.
+Only the native-field mapping service may write it; the generic settings API
+rejects this key, including database-collation equivalents. A missing row keeps
+legacy fixed mappings; an explicitly saved empty array disables those writes.
+Mapping saves use a serializable transaction and advance the existing source
+policy revisions. Normal native writes check those revisions atomically with
+User/Person values; manual preview/apply also binds the mapping configuration.
+Existing native authority/fallback migrations below are still prerequisites.
+
+Validated independent Proof logins retain lookup-only source-login metadata in
+the existing `AspNetUserTokens` table: `LoginProvider` is `HybridIdP.ProofLogin`,
+`Name` is the uppercase SHA256 hex of the exact namespace encoded as UTF-8, and
+`Value` is JSON with `ProviderNamespace`, `StableSubject`, and `CanonicalAccount`.
+This is not a credential or identity authority. The containing UserId and
+embedded tuple must match the selected existing login, and fresh Proof must
+match that tuple and account. Application code manages it; browser profile
+data and generic settings cannot supply it. Historical username repair is a
+separate operator-reviewed private operation, never an application migration
+or automatic Email matching procedure.
+
 SQL Server migration `20261020030913_AddNativeFieldAuthority` and PostgreSQL
 migration `20261020030931_AddNativeFieldAuthority` add nullable
 `AspNetUsers.NativeFieldStateJson` and `Persons.NativeFieldStateJson`, plus

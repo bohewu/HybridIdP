@@ -116,9 +116,17 @@ ready plan has a token. Each change contains `target`, `field`, `currentValue`,
 and User `EmailConfirmed` are shown with `fill`, `confirm`, `preserve`,
 `manual_fixed`, `owner_mismatch`, `missing_source`, `mfa_protected`,
 `shared_person`, `value_too_long`, `inconsistent_email`, `email_untrusted` or
-`email_mismatch`. Names map as Proof does: displayName to Nickname, givenName to
+`email_mismatch` or `mapping_disabled`. Without saved mapping configuration,
+names map as Proof does: displayName to Nickname, givenName to
 FirstName, surname to LastName, department to Department, title to JobTitle,
 employeeId to EmployeeId.
+
+Saved native mappings use the same six assured structured properties for both
+normal login and manual sync. They are bound to the exact source and namespace;
+an omitted mapping disables that target. Neither arbitrary Profile extras nor
+Email trust are configurable mapping properties. The FirstName fallback reads
+the original assured givenName/displayName, independent of Nickname remapping.
+Remapped values exceeding a target's native length are skipped without truncation.
 
 Binding must be exactly one existing `AspNetUserLogins` provider/key for the
 configured namespace. There is no username/email match, new link or new Person.
@@ -142,7 +150,8 @@ without confirming it. This does not enroll MFA or change recovery addresses.
 Apply fetches a fresh source before opening a bounded serializable database
 transaction. It rechecks actor, account, tuple, Person link and linked-account
 membership, native policy revision/owners/protection, MFA and email state,
-configuration and the entire reviewed source/diff. Any drift rejects with
+configuration (including mapping revision even for an otherwise identical draft)
+and the entire reviewed source/diff. Any drift rejects with
 `409 preview_stale`; it never applies an unseen changed value. Identity and
 native-state concurrency tokens protect the save; failed writes are discarded
 and never automatically retried. User/Person changes and the administrative audit

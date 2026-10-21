@@ -5,12 +5,13 @@ namespace Core.Domain.Constants;
 /// </summary>
 public static class SettingKeys
 {
+    public const string NativeFieldMappings = "system.nativeFieldMappings";
     public const string OperationalAdminBootstrapCompleted =
         "system.operationalAdminBootstrap.completed";
 
     public static bool IsSystemOwned(string key)
     {
-        return string.Equals(
+        return string.Equals(key, NativeFieldMappings, StringComparison.OrdinalIgnoreCase) || string.Equals(
             key,
             OperationalAdminBootstrapCompleted,
             StringComparison.Ordinal);

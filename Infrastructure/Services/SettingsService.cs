@@ -162,7 +162,7 @@ public class SettingsService : ISettingsService
         {
             await using var command = connection.CreateCommand();
             command.CommandText =
-                "SELECT CASE WHEN @candidate = @reserved THEN 1 ELSE 0 END";
+                "SELECT CASE WHEN @candidate = @reserved OR @candidate = @mappings THEN 1 ELSE 0 END";
             command.Transaction = dbContext.Database.CurrentTransaction?.GetDbTransaction();
 
             var candidateParameter = command.CreateParameter();
@@ -174,6 +174,11 @@ public class SettingsService : ISettingsService
             reservedParameter.ParameterName = "@reserved";
             reservedParameter.Value = SettingKeys.OperationalAdminBootstrapCompleted;
             command.Parameters.Add(reservedParameter);
+
+            var mappingsParameter = command.CreateParameter();
+            mappingsParameter.ParameterName = "@mappings";
+            mappingsParameter.Value = SettingKeys.NativeFieldMappings;
+            command.Parameters.Add(mappingsParameter);
 
             var result = await command.ExecuteScalarAsync(ct);
             return Convert.ToInt32(result, CultureInfo.InvariantCulture) == 1;

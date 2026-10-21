@@ -66,7 +66,8 @@
     "value_too_long": "Source value too long",
     "inconsistent_email": "Email values inconsistent",
     "email_untrusted": "Email assurance not trusted",
-    "email_mismatch": "Email does not match"
+    "email_mismatch": "Email does not match",
+    "mapping_disabled": "Mapping disabled"
   },
   "reasons": {
     "disabled": "Manual sync is not enabled. Ask a deployment administrator.",

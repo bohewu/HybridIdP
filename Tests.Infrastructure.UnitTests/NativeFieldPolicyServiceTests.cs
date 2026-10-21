@@ -15,6 +15,289 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class NativeFieldPolicyServiceTests
 {
+    [Fact]
+    public async Task UserNamePolicy_ShouldSaveAtomicallyPreserveOmissionAndIsolateChangedNamespace()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var service = Service(db);
+        var initial = await service.GetMappingsAsync();
+        Assert.Empty(initial.UserNamePolicies!);
+        var policies = new[] { new ProofUserNamePolicyDto(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email) };
+        var saved = await service.SetMappingsAsync(new(initial.Revision, initial.Mappings, initial.FirstNameFallback, policies));
+        Assert.Equal(policies, saved.UserNamePolicies);
+        Assert.Equal("conflict", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetMappingsAsync(new(initial.Revision, [], initial.FirstNameFallback, [])))).Code);
+        var preserved = await service.SetMappingsAsync(new(saved.Revision, [], saved.FirstNameFallback));
+        Assert.Equal(policies, preserved.UserNamePolicies);
+        var changed = Service(db, providerNamespace: "Example.provider");
+        Assert.Equal(ProofUserNameStrategy.CanonicalAccount, await changed.GetProofUserNameStrategyAsync("Example.provider"));
+        db.ChangeTracker.Clear();
+        var config = await changed.GetMappingsAsync();
+        Assert.Contains(config.Sources, x => x.ProviderNamespace == "example.provider" && !x.UserNamePolicyAvailable);
+        var retained = await changed.SetMappingsAsync(new(config.Revision, config.Mappings, config.FirstNameFallback, policies));
+        Assert.Equal(policies, retained.UserNamePolicies);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(true, true)]
+    public async Task UserNamePolicy_ShouldUseProofAuthenticationAvailabilityIndependentlyOfNativePause(bool proofEnabled, bool allowed)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        db.NativeFieldSourcePolicies.Add(new() { Source = "Proof", Paused = true });
+        await db.SaveChangesAsync();
+        var service = Service(db, proofEnabled: proofEnabled, nativeEnabled: false);
+        var config = await service.GetMappingsAsync();
+        Assert.Equal(allowed, Assert.Single(config.Sources).UserNamePolicyAvailable);
+        var request = new NativeFieldMappingsRequest(config.Revision, config.Mappings, config.FirstNameFallback,
+            [new(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email)]);
+        if (allowed)
+        {
+            await service.SetMappingsAsync(request);
+            Assert.Equal(ProofUserNameStrategy.Email, await service.GetProofUserNameStrategyAsync("example.provider"));
+        }
+        else Assert.Equal("source_unavailable", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() => service.SetMappingsAsync(request))).Code);
+    }
+
+    [Theory]
+    [InlineData("duplicate")]
+    [InlineData("stage1")]
+    [InlineData("enum")]
+    public async Task UserNamePolicy_ShouldRejectInvalidPolicyBeforeSaving(string invalid)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var service = Service(db);
+        var config = await service.GetMappingsAsync();
+        var row = new ProofUserNamePolicyDto(invalid == "stage1" ? NativeFieldSource.Stage1 : NativeFieldSource.Proof,
+            "example.provider", invalid == "enum" ? (ProofUserNameStrategy)999 : ProofUserNameStrategy.Email);
+        Assert.Equal("invalid_mapping", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() => service.SetMappingsAsync(
+            new(config.Revision, config.Mappings, config.FirstNameFallback, invalid == "duplicate" ? [row, row] : [row])))).Code);
+        Assert.Empty(db.Settings);
+    }
+
+    [Fact]
+    public async Task UserNamePolicyChange_ShouldInvalidatePreparedCreationDecision()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var service = Service(db);
+        var config = await service.GetMappingsAsync();
+        await service.SetMappingsAsync(new(config.Revision, config.Mappings, config.FirstNameFallback,
+            [new(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email)]));
+        Assert.Equal(ProofUserNameStrategy.Email, await service.GetProofUserNameStrategyAsync("example.provider"));
+        await using (var other = f.Open())
+        {
+            var admin = Service(other);
+            var current = await admin.GetMappingsAsync();
+            await admin.SetMappingsAsync(new(current.Revision, current.Mappings, current.FirstNameFallback, []));
+        }
+        db.Users.Add(new ApplicationUser { UserName = "name@example.test" });
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(() => db.SaveChangesAsync());
+        await using var verify = f.Open();
+        Assert.Empty(verify.Users);
+    }
+    [Fact]
+    public async Task MappingSave_ShouldPersistOnlyConfigurationAndRejectStaleDraft()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, _) = await SeedAsync(db);
+        var service = Service(db);
+        var initial = await service.GetMappingsAsync();
+        Assert.Equal(6, initial.Mappings.Count);
+        Assert.Empty(await db.Settings.ToListAsync());
+        var rows = initial.Mappings.Select(x => x.Field == NativeField.Nickname ? x with { SourceProperty = "givenName" } : x).ToArray();
+        var saved = await service.SetMappingsAsync(new(initial.Revision, rows, new("example.provider", true)));
+        Assert.NotEqual(initial.Revision, saved.Revision);
+        Assert.Equal(rows, saved.Mappings);
+        Assert.True(saved.FirstNameFallback.Enabled);
+        Assert.Null(user.Nickname);
+        Assert.Null(person.FirstName);
+        Assert.Null(person.ProviderProfilesJson);
+        Assert.Null(user.NativeFieldStateJson);
+        Assert.Equal(1, await db.UserLogins.CountAsync());
+        Assert.Equal("conflict", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetMappingsAsync(new(initial.Revision, rows, new("example.provider", false))))).Code);
+        Assert.True((await Service(db).GetMappingsAsync()).FirstNameFallback.Enabled);
+    }
+
+    [Fact]
+    public async Task Mapping_ShouldRouteOriginalPropertiesAndFallbackWithoutTruncatingTargets()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        var config = await service.GetMappingsAsync();
+        await service.SetMappingsAsync(new(config.Revision,
+        [new(NativeField.Nickname, NativeFieldSource.Proof, identity.ProviderNamespace, "department"),
+         new(NativeField.FirstName, NativeFieldSource.Proof, identity.ProviderNamespace, "givenName"),
+         new(NativeField.EmployeeId, NativeFieldSource.Proof, identity.ProviderNamespace, "displayName")],
+            new(identity.ProviderNamespace, true)));
+        await service.ApplySourceAsync(user, person, identity, new Dictionary<NativeField, string?>
+        {
+            [NativeField.Nickname] = new string('n', 60), [NativeField.FirstName] = null,
+            [NativeField.Department] = new string('d', 150), [NativeField.EmployeeId] = "original-id"
+        });
+        await db.SaveChangesAsync();
+        Assert.Equal(new string('d', 150), user.Nickname);
+        Assert.Null(person.Nickname);
+        Assert.Equal(new string('n', 60), user.FirstName);
+        Assert.Equal(user.FirstName, person.FirstName);
+        Assert.Null(user.EmployeeId);
+        Assert.Null(person.EmployeeId);
+        Assert.Null(user.Department);
+    }
+
+    [Fact]
+    public async Task Mapping_ShouldPreserveFixedBlanksPopulatedValuesAndIndependentOwnership()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        service.ApplyManual(user, Values(""));
+        person.Nickname = "existing person";
+        await db.SaveChangesAsync();
+        var config = await service.GetMappingsAsync();
+        await service.SetMappingsAsync(new(config.Revision,
+            [new(NativeField.Nickname, NativeFieldSource.Proof, identity.ProviderNamespace, "givenName")], config.FirstNameFallback));
+        await service.ApplySourceAsync(user, person, identity, new Dictionary<NativeField, string?> { [NativeField.FirstName] = "new given" });
+        Assert.Equal("", user.Nickname);
+        Assert.Equal("existing person", person.Nickname);
+        var owner = identity with { StableSubject = "another-subject" };
+        db.UserLogins.Add(new() { UserId = user.Id, LoginProvider = owner.ProviderNamespace, ProviderKey = owner.StableSubject });
+        person.Nickname = null;
+        await db.SaveChangesAsync();
+        await AssignAsync(service, NativeFieldTarget.Person, person.Id, owner);
+        await service.ApplySourceAsync(user, person, identity, new Dictionary<NativeField, string?> { [NativeField.FirstName] = "new given" });
+        Assert.Null(person.Nickname);
+    }
+
+    [Fact]
+    public async Task Mapping_ShouldRetainUnavailableRowsButRejectNewAssignmentsAndNamespaceInheritance()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        var current = await service.GetMappingsAsync();
+        await service.SetMappingsAsync(new(current.Revision, current.Mappings, current.FirstNameFallback));
+        var unavailable = Service(db, proofEnabled: false);
+        var disabled = await unavailable.GetMappingsAsync();
+        Assert.Equal(6, disabled.Mappings.Count);
+        Assert.False(Assert.Single(disabled.Sources).Enabled);
+        var retained = await unavailable.SetMappingsAsync(new(disabled.Revision, disabled.Mappings, disabled.FirstNameFallback));
+        var changed = retained.Mappings.Select(x => x.Field == NativeField.FirstName ? x with { SourceProperty = "displayName" } : x).ToArray();
+        Assert.Equal("source_unavailable", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            unavailable.SetMappingsAsync(new(retained.Revision, changed, retained.FirstNameFallback)))).Code);
+        Assert.False(await unavailable.ApplySourceAsync(user, person, identity, Values("disabled")));
+        db.UserLogins.Add(new() { UserId = user.Id, LoginProvider = "new.provider", ProviderKey = identity.StableSubject });
+        await db.SaveChangesAsync();
+        var next = Service(db, providerNamespace: "new.provider");
+        Assert.False(await next.ApplySourceAsync(user, person, identity with { ProviderNamespace = "new.provider" }, Values("new")));
+        Assert.Null(user.Nickname);
+        Assert.Contains((await next.GetMappingsAsync()).Sources, x => x.ProviderNamespace == identity.ProviderNamespace && !x.Enabled);
+    }
+
+    [Fact]
+    public async Task MappingDeletion_ShouldDisableTargetsInsteadOfRestoringDefaults()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        var service = Service(db);
+        var current = await service.GetMappingsAsync();
+        await service.SetMappingsAsync(new(current.Revision, [], new(identity.ProviderNamespace, true)));
+        Assert.False(await service.ApplySourceAsync(user, person, identity, Values("no mapping")));
+        Assert.Null(user.Nickname);
+        Assert.Null(user.FirstName);
+        var preview = await service.ApplyMissingSourceAsync(user, person, identity, Values("no mapping"));
+        Assert.Equal(12, preview.Count);
+        Assert.All(preview, x => Assert.Equal("mapping_disabled", x.Action));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task MappingSave_ShouldInvalidatePreparedNormalLoginWrites(bool hasConfiguration)
+    {
+        using var f = new Fixture();
+        await using var loginDb = f.Open();
+        var (user, person, identity) = await SeedAsync(loginDb);
+        var login = Service(loginDb);
+        var initial = await login.GetMappingsAsync();
+        if (hasConfiguration) await login.SetMappingsAsync(new(initial.Revision, initial.Mappings, initial.FirstNameFallback));
+        await login.ApplySourceAsync(user, person, identity, Values("stale prepared value"));
+        await using (var adminDb = f.Open())
+        {
+            var admin = Service(adminDb);
+            var config = await admin.GetMappingsAsync();
+            await admin.SetMappingsAsync(new(config.Revision, [], config.FirstNameFallback));
+        }
+        await Assert.ThrowsAnyAsync<DbUpdateException>(() => loginDb.SaveChangesAsync());
+        loginDb.ChangeTracker.Clear();
+        Assert.Null((await loginDb.Users.SingleAsync()).Nickname);
+        Assert.Null((await loginDb.Persons.SingleAsync()).Nickname);
+    }
+
+    [Theory]
+    [InlineData("duplicate")]
+    [InlineData("field")]
+    [InlineData("source")]
+    [InlineData("property")]
+    public async Task MappingSave_ShouldRejectInvalidDraftWithoutWriting(string invalid)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var service = Service(db);
+        var config = await service.GetMappingsAsync();
+        var row = config.Mappings[0];
+        var rows = invalid switch
+        {
+            "duplicate" => new[] { row, row },
+            "field" => [row with { Field = (NativeField)999 }],
+            "source" => [row with { Source = (NativeFieldSource)999 }],
+            _ => [row with { SourceProperty = "email" }]
+        };
+        Assert.Equal("invalid_mapping", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetMappingsAsync(new(config.Revision, rows, config.FirstNameFallback)))).Code);
+        Assert.Empty(await db.Settings.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("null")]
+    [InlineData("{}")]
+    [InlineData("{\"Revision\":\"11111111-1111-1111-1111-111111111111\",\"Mappings\":[],\"FirstNameFallback\":null}")]
+    public async Task Mapping_ShouldFailClosedForMalformedStoredConfiguration(string value)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        db.Settings.Add(new() { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NativeFieldMappings, Value = value });
+        await db.SaveChangesAsync();
+        Assert.Equal("invalid_stored_state", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() => Service(db).GetMappingsAsync())).Code);
+    }
+
+    [Fact]
+    public async Task MappingInvalidState_ShouldSkipOptionalLoginNativeWritesAndKeepAdministrationFailClosed()
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var (user, person, identity) = await SeedAsync(db);
+        db.Settings.Add(new() { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NativeFieldMappings, Value = "{}" });
+        await db.SaveChangesAsync();
+        var service = Service(db);
+        Assert.False(await service.ApplySourceAsync(user, person, identity, Values("not written")));
+        Assert.Null(user.Nickname);
+        Assert.Null(person.Nickname);
+        Assert.False(db.ChangeTracker.HasChanges());
+        Assert.Equal("invalid_stored_state", (await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.ApplyMissingSourceAsync(user, person, identity, Values("not written")))).Code);
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]

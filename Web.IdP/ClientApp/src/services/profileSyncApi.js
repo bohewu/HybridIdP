@@ -11,6 +11,7 @@ async function read(response) {
 }
 const base = '/api/admin/profile-sync'
 export const profileSyncApi = {
+  searchAccounts: (search, skip = 0) => adminApi.get(`/api/admin/users?${new URLSearchParams({ search, skip: String(skip), take: '10' })}`, { cache: 'no-store' }).then(read),
   status: () => adminApi.get(`${base}/status`, { cache: 'no-store' }).then(read),
   accounts: personId => adminApi.get(`/api/admin/people/${encodeURIComponent(personId)}/accounts`, { cache: 'no-store' }).then(read),
   preview: userId => adminApi.post(`${base}/users/${encodeURIComponent(userId)}/preview`).then(read),

@@ -146,7 +146,8 @@ public sealed class AdminProfileSyncService(
                 user.JobTitle, user.EmployeeId, user.Email, user.NormalizedEmail, user.EmailConfirmed, user.EmailMfaEnabled },
             Person = new { person.Id, person.NativeFieldStateJson, person.Nickname, person.FirstName, person.LastName,
                 person.Department, person.JobTitle, person.EmployeeId, person.Email, person.Status, person.IsDeleted },
-            context.Identity, context.Accounts, context.Policy, Configuration = options.Value
+            context.Identity, context.Accounts, context.Policy, Configuration = options.Value,
+            Mappings = await nativeFields.GetMappingsAsync(ct)
         });
         var profile = source.Profile;
         var changes = (await nativeFields.ApplyMissingSourceAsync(user, person, context.Identity,

@@ -1,4 +1,5 @@
 using Core.Application;
+using Infrastructure.Identity;
 using Core.Application.DTOs;
 using Core.Application.Ports;
 using Core.Domain;
@@ -290,7 +291,15 @@ public partial class LoginService : ILoginService
             if (!eligibility.IsSuccess) return eligibility;
         }
         ProofResult proof;
-        try { proof = await _proofProvider.ProveAsync(new ProofRequest { AccountName = login }, password, cancellationToken); }
+        try
+        {
+            var sourceLogin = login;
+            if (existingUser is not null && boundSubject is not null &&
+                _userManager.NormalizeName(login) == _userManager.NormalizeName(existingUser.UserName))
+                sourceLogin = await ProofLoginHint.ReadAsync(_userManager, existingUser,
+                    _proofOptions.TrustedProviderNamespace, boundSubject) ?? login;
+            proof = await _proofProvider.ProveAsync(new ProofRequest { AccountName = sourceLogin }, password, cancellationToken);
+        }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch { return LoginResult.InvalidCredentials(); }
         if (!proof.TryValidate(out _) || proof.Outcome != ProofOutcome.Authenticated ||
@@ -298,8 +307,12 @@ public partial class LoginService : ILoginService
             (boundSubject is not null && proof.StableSubject != boundSubject)) return LoginResult.InvalidCredentials();
 
         var linked = await _userManager.FindByLoginAsync(proof.ProviderNamespace!, proof.StableSubject!);
+        // A local lookup is only a routing candidate. Never provision/adopt another account for it.
+        if (existingUser is not null && linked?.Id != existingUser.Id) return LoginResult.InvalidCredentials();
         if (linked is not null)
         {
+            // A source-login alias must not bypass the account's established local credential authority.
+            if (!string.IsNullOrEmpty(linked.PasswordHash)) return LoginResult.InvalidCredentials();
             var links = await _userManager.GetLoginsAsync(linked);
             if (!links.Any(l => l.LoginProvider == proof.ProviderNamespace && l.ProviderKey == proof.StableSubject) ||
                 _credentialMigrationStateStore is null ||
@@ -319,6 +332,7 @@ public partial class LoginService : ILoginService
             {
                 Provider = proof.ProviderNamespace!, ProviderKey = proof.StableSubject!,
                 AssuredCanonicalAccount = proof.CanonicalAccount,
+                ProofEmailAssured = profile?.AssuredFields.Contains(AssuredProfileField.Email) == true,
                 Email = profile?.Email,
                 EmailVerified = _proofOptions.TrustedEmailProviderNamespaces.Contains(proof.ProviderNamespace!, StringComparer.Ordinal) &&
                     profile?.AssuredFields.Contains(AssuredProfileField.Email) == true &&
@@ -347,6 +361,11 @@ public partial class LoginService : ILoginService
             }
         }
         if (displayChanged) await _dbContext.SaveChangesAsync(cancellationToken);
+        if (linked is not null)
+        {
+            try { await ProofLoginHint.SaveAsync(_userManager, provisioned, proof.ProviderNamespace!, proof.StableSubject!, proof.CanonicalAccount!); }
+            catch (InvalidOperationException) { return LoginResult.InvalidCredentials(); }
+        }
         await RefreshProviderProfileAsync(provisioned, proof.ProviderNamespace!, proof.StableSubject!, cancellationToken);
         return LoginResult.LegacySuccess(provisioned);
     }

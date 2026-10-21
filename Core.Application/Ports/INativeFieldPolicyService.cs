@@ -13,6 +13,12 @@ public enum NativeFieldTarget { User, Person }
 public enum NativeFieldSource { Proof, Stage1 }
 [JsonConverter(typeof(JsonStringEnumConverter<NativeFieldOperation>))]
 public enum NativeFieldOperation { AssignSource, Manual, Unlock }
+[JsonConverter(typeof(JsonStringEnumConverter<ProofUserNameStrategy>))]
+public enum ProofUserNameStrategy { CanonicalAccount, Email }
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record ProofUserNamePolicyDto([property: JsonRequired] NativeFieldSource Source,
+    [property: JsonRequired][Required, MaxLength(200)] string ProviderNamespace,
+    [property: JsonRequired] ProofUserNameStrategy Strategy);
 
 public sealed record NativeFieldSourceIdentity(
     NativeFieldSource Source, Guid LocalAccountId,
@@ -43,6 +49,21 @@ public sealed class NativeFieldUpdateRequest
 public sealed record NativeFieldPauseRequest(bool Paused, Guid ExpectedRevision);
 public sealed record NativeFieldFirstNameFallbackRequest(
     [Required, MaxLength(200)] string ProviderNamespace, bool Enabled, Guid ExpectedRevision);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record NativeFieldMappingDto([property: JsonRequired] NativeField Field, [property: JsonRequired] NativeFieldSource Source,
+    [property: JsonRequired][Required, MaxLength(200)] string ProviderNamespace,
+    [property: JsonRequired][Required] string SourceProperty);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record NativeFieldMappingFallbackDto([property: JsonRequired] string? ProviderNamespace, [property: JsonRequired] bool Enabled);
+public sealed record NativeFieldMappingSourceDto(NativeFieldSource Source, string ProviderNamespace, bool Enabled, bool Paused,
+    bool UserNamePolicyAvailable = false);
+public sealed record NativeFieldMappingsDto(Guid Revision, IReadOnlyList<NativeFieldMappingDto> Mappings,
+    NativeFieldMappingFallbackDto FirstNameFallback, IReadOnlyList<NativeFieldMappingSourceDto> Sources,
+    IReadOnlyList<string> SourceProperties, IReadOnlyList<ProofUserNamePolicyDto>? UserNamePolicies = null);
+[JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
+public sealed record NativeFieldMappingsRequest(Guid ExpectedRevision,
+    [Required] IReadOnlyList<NativeFieldMappingDto> Mappings, [Required] NativeFieldMappingFallbackDto FirstNameFallback,
+    IReadOnlyList<ProofUserNamePolicyDto>? UserNamePolicies = null);
 public sealed class NativeFieldPolicyException(string code) : Exception(code)
 {
     public string Code { get; } = code;
@@ -50,6 +71,9 @@ public sealed class NativeFieldPolicyException(string code) : Exception(code)
 
 public interface INativeFieldPolicyService
 {
+    Task<ProofUserNameStrategy> GetProofUserNameStrategyAsync(string providerNamespace, CancellationToken cancellationToken = default);
+    Task<NativeFieldMappingsDto> GetMappingsAsync(CancellationToken cancellationToken = default);
+    Task<NativeFieldMappingsDto> SetMappingsAsync(NativeFieldMappingsRequest request, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<NativeFieldSourceStatusDto>> GetSourcesAsync(CancellationToken cancellationToken = default);
     Task SetPausedAsync(NativeFieldSource source, NativeFieldPauseRequest request, CancellationToken cancellationToken = default);
     Task SetFirstNameFallbackAsync(NativeFieldSource source, NativeFieldFirstNameFallbackRequest request,

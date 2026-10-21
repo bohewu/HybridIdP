@@ -12,6 +12,7 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -29,6 +30,341 @@ public sealed class ProofProvisioningTests : IDisposable
     private readonly Mock<IProviderProfileService> _profile = new();
     private readonly NativeFieldPolicyOptions _nativeFieldOptions = new();
     private readonly LoginService _login;
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task EmailNaming_ShouldPreserveExactIdentityAndSupportSourceAndLocalNameLogin(bool nativePaused)
+    {
+        await SaveEmailNamingAsync();
+        if (nativePaused)
+        {
+            _nativeFieldOptions.ProofEnabled = false;
+            _db.NativeFieldSourcePolicies.Add(new() { Source = "Proof", Paused = true });
+            await _db.SaveChangesAsync();
+        }
+        var proof = AuthenticatedProof("Whole Name") with
+        {
+            Profile = new AssuredProfile { Email = "name@example.test", EmployeeId = "real-employee",
+                AssuredFields = [AssuredProfileField.Email, AssuredProfileField.EmployeeId] }
+        };
+        _proof.Setup(x => x.ProveAsync(It.Is<ProofRequest>(r => r.AccountName == "source-account"), "password", It.IsAny<CancellationToken>()))
+            .ReturnsAsync(proof);
+        Assert.True((await _login.AuthenticateAsync("source-account", "password")).IsSuccess);
+        var user = Assert.Single(_db.Users);
+        var person = Assert.Single(_db.Persons);
+        var originalId = user.Id;
+        Assert.Equal("name@example.test", user.UserName);
+        Assert.False(user.EmailConfirmed);
+        Assert.Equal(nativePaused ? null : "real-employee", user.EmployeeId);
+        Assert.Equal(nativePaused ? null : "real-employee", person.EmployeeId);
+        Assert.True((await _login.AuthenticateAsync("name@example.test", "password")).IsSuccess);
+        Assert.True((await _login.AuthenticateAsync("source-account", "password")).IsSuccess);
+        Assert.Equal(originalId, Assert.Single(_db.Users).Id);
+        Assert.Equal(person.Id, user.PersonId);
+        Assert.Single(_db.UserLogins);
+        Assert.Single(_db.UserTokens);
+        _profile.Verify(x => x.RefreshAfterLoginAsync(It.IsAny<ApplicationUser>(), "example.provider", "opaque-subject", It.IsAny<CancellationToken>()), Times.Exactly(3));
+    }
+
+    [Theory]
+    [InlineData(null, true)]
+    [InlineData("invalid", true)]
+    [InlineData("name@example.test", false)]
+    [InlineData("bad!name@example.test", true)]
+    [InlineData("too-long", true)]
+    [InlineData("collision@example.test", true)]
+    public async Task EmailNaming_ShouldRejectUnavailableNameWithoutPartialCreation(string? email, bool assured)
+    {
+        await SaveEmailNamingAsync();
+        if (email == "too-long") email = new string('x', 250) + "@example.test";
+        if (email == "collision@example.test")
+            Assert.True((await _users.CreateAsync(new ApplicationUser { UserName = email })).Succeeded);
+        var before = await _db.Users.CountAsync();
+        SetProof(AuthenticatedProof(null) with { Profile = new AssuredProfile { Email = email,
+            AssuredFields = assured ? [AssuredProfileField.Email] : [] } });
+        Assert.False((await _login.AuthenticateAsync("source-account", "password")).IsSuccess);
+        Assert.Equal(before, await _db.Users.CountAsync());
+        Assert.Empty(_db.Persons);
+        Assert.Empty(_db.UserLogins);
+        Assert.Empty(_db.UserTokens);
+        Assert.Empty(_db.UserRoles);
+    }
+
+    [Fact]
+    public async Task EmailNaming_ShouldNeverRenameExistingAccountOrAdoptHintResponseForAnotherSubject()
+    {
+        var original = await CreateExistingAccountAsync(null, null);
+        await SaveEmailNamingAsync();
+        SetProof(AuthenticatedProof(null) with { Profile = new AssuredProfile { Email = "new@example.test", AssuredFields = [AssuredProfileField.Email] } });
+        Assert.True((await _login.AuthenticateAsync(original.UserName!, "password")).IsSuccess);
+        Assert.Equal("historical-account", original.UserName);
+        SetProof(AuthenticatedProof("Untrusted change") with { StableSubject = "other-subject" });
+        Assert.False((await _login.AuthenticateAsync(original.UserName!, "password")).IsSuccess);
+        Assert.Equal(original.Id, Assert.Single(_db.Users).Id);
+        Assert.Single(_db.Persons);
+        Assert.Equal("opaque-subject", Assert.Single(_db.UserLogins).ProviderKey);
+    }
+
+    [Theory]
+    [InlineData("shared@example.test")]
+    [InlineData("SHARED@EXAMPLE.TEST")]
+    public async Task EmailNaming_ShouldRejectExistingNormalizedEmailWithoutChangingExistingRows(string email)
+    {
+        var original = await CreateExistingAccountAsync("Existing user", "Existing person");
+        Assert.True((await _users.SetEmailAsync(original, "shared@example.test")).Succeeded);
+        var person = Assert.Single(_db.Persons);
+        person.Email = "shared@example.test";
+        _db.Roles.Add(new ApplicationRole { Name = "ExistingRole", NormalizedName = "EXISTINGROLE" });
+        await _db.SaveChangesAsync();
+        Assert.True((await _users.AddToRoleAsync(original, "ExistingRole")).Succeeded);
+        await SaveEmailNamingAsync();
+        var before = new[]
+        {
+            _db.Entry(original).CurrentValues.Clone(),
+            _db.Entry(person).CurrentValues.Clone(),
+            _db.Entry(Assert.Single(_db.UserLogins)).CurrentValues.Clone(),
+            _db.Entry(Assert.Single(_db.UserTokens)).CurrentValues.Clone(),
+            _db.Entry(Assert.Single(_db.UserRoles)).CurrentValues.Clone(),
+            _db.Entry(Assert.Single(_db.Roles)).CurrentValues.Clone()
+        };
+        SetProof(AuthenticatedProof(null) with
+        {
+            StableSubject = "different-subject",
+            Profile = new AssuredProfile { Email = email, AssuredFields = [AssuredProfileField.Email] }
+        });
+
+        Assert.False((await _login.AuthenticateAsync("source-account", "password")).IsSuccess);
+        await _db.SaveChangesAsync();
+
+        _db.ChangeTracker.Clear();
+        var after = new[]
+        {
+            _db.Entry(Assert.Single(_db.Users)).CurrentValues,
+            _db.Entry(Assert.Single(_db.Persons)).CurrentValues,
+            _db.Entry(Assert.Single(_db.UserLogins)).CurrentValues,
+            _db.Entry(Assert.Single(_db.UserTokens)).CurrentValues,
+            _db.Entry(Assert.Single(_db.UserRoles)).CurrentValues,
+            _db.Entry(Assert.Single(_db.Roles)).CurrentValues
+        };
+        for (var i = 0; i < before.Length; i++)
+            Assert.Equal(before[i].Properties.Select(property => before[i][property]),
+                after[i].Properties.Select(property => after[i][property]));
+        _profile.Verify(service => service.RefreshAfterLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    private async Task SaveEmailNamingAsync()
+    {
+        var service = CreateNativeFields(_db);
+        var current = await service.GetMappingsAsync();
+        _db.Settings.Add(new() { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NativeFieldMappings,
+            Value = System.Text.Json.JsonSerializer.Serialize(new { Revision = Guid.NewGuid(), current.Mappings, current.FirstNameFallback,
+                UserNamePolicies = new[] { new ProofUserNamePolicyDto(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email) } }) });
+        await _db.SaveChangesAsync();
+    }
+
+    [Theory]
+    [InlineData("different-subject")]
+    [InlineData("different-namespace")]
+    [InlineData("malformed")]
+    public async Task SourceLoginHint_ShouldRejectMismatchedStoredTupleBeforeSendingCredentials(string invalid)
+    {
+        var original = await CreateExistingAccountAsync(null, null);
+        var token = Assert.Single(_db.UserTokens);
+        token.Value = invalid == "malformed" ? "{}" : System.Text.Json.JsonSerializer.Serialize(new
+        {
+            ProviderNamespace = invalid == "different-namespace" ? "Example.provider" : "example.provider",
+            StableSubject = invalid == "different-subject" ? "wrong-subject" : "opaque-subject",
+            CanonicalAccount = "source-account"
+        });
+        await _db.SaveChangesAsync();
+        Assert.False((await _login.AuthenticateAsync(original.UserName!, "password")).IsSuccess);
+        _proof.Verify(x => x.ProveAsync(It.IsAny<ProofRequest>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.Equal(original.Id, Assert.Single(_db.Users).Id);
+    }
+
+    [Fact]
+    public async Task SourceLogin_ShouldNotBypassEstablishedLocalCredentialAuthorityAfterEmailNaming()
+    {
+        await SaveEmailNamingAsync();
+        SetProof(AuthenticatedProof(null) with { Profile = new AssuredProfile { Email = "name@example.test", AssuredFields = [AssuredProfileField.Email] } });
+        Assert.True((await _login.AuthenticateAsync("source-account", "password")).IsSuccess);
+        var user = Assert.Single(_db.Users);
+        user.PasswordHash = _users.PasswordHasher.HashPassword(user, "Local-only-password!123");
+        Assert.True((await _users.UpdateAsync(user)).Succeeded);
+        Assert.False((await _login.AuthenticateAsync("source-account", "password")).IsSuccess);
+        Assert.Equal(user.Id, Assert.Single(_db.Users).Id);
+        _profile.Verify(x => x.RefreshAfterLoginAsync(It.IsAny<ApplicationUser>(), It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task EmailNaming_ShouldRejectEmailCommittedByExistingProofAccountBeforeCreationTransaction()
+    {
+        var connectionString = $"Data Source=proof-gap-{Guid.NewGuid()};Mode=Memory;Cache=Shared";
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection(connectionString);
+        await connection.OpenAsync();
+        var interleaving = new BeforeCreationTransactionInterceptor();
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection).AddInterceptors(interleaving).Options);
+        await db.Database.EnsureCreatedAsync();
+        using var users = new UserManager<ApplicationUser>(new UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>(db),
+            Options.Create(new IdentityOptions()), new PasswordHasher<ApplicationUser>(), [new UserValidator<ApplicationUser>()], [],
+            new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null!, NullLogger<UserManager<ApplicationUser>>.Instance);
+        var policies = CreateNativeFields(db);
+        var config = await policies.GetMappingsAsync();
+        await policies.SetMappingsAsync(new(config.Revision, config.Mappings, config.FirstNameFallback,
+            [new(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email)]));
+        var existingPerson = new Person { Id = Guid.NewGuid() };
+        db.Persons.Add(existingPerson);
+        var existing = new ApplicationUser { UserName = "historical-account", PersonId = existingPerson.Id, IsActive = true };
+        Assert.True((await users.CreateAsync(existing)).Succeeded);
+        Assert.True((await users.AddLoginAsync(existing, new UserLoginInfo("example.provider", "existing-subject", "Existing"))).Succeeded);
+        db.Roles.Add(new ApplicationRole { Name = "Member", NormalizedName = "MEMBER" });
+        await db.SaveChangesAsync();
+        var competitorCommitted = false;
+        interleaving.BeforeStart = async () =>
+        {
+            // This is the former gap: the old email check has finished, but the
+            // creation transaction has not started. Commit through the real bound-login path.
+            await using var writerDb = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+                .UseSqlite(connectionString).Options);
+            using var writerUsers = new UserManager<ApplicationUser>(new UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>(writerDb),
+                Options.Create(new IdentityOptions()), new PasswordHasher<ApplicationUser>(), [new UserValidator<ApplicationUser>()], [],
+                new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null!, NullLogger<UserManager<ApplicationUser>>.Instance);
+            var writer = new JitProvisioningService(writerUsers, writerDb, Options.Create(new ExternalLoginOptions()), CreateNativeFields(writerDb));
+            var updated = await writer.ProvisionExternalUserAsync(new()
+            {
+                Provider = "example.provider", ProviderKey = "existing-subject", AssuredCanonicalAccount = "historical-account",
+                Email = "shared@example.test", ProofEmailAssured = true
+            });
+            Assert.Equal(existing.Id, updated.Id);
+            Assert.Equal("SHARED@EXAMPLE.TEST", updated.NormalizedEmail);
+            competitorCommitted = true;
+        };
+        var jit = new JitProvisioningService(users, db,
+            Options.Create(new ExternalLoginOptions { AutoProvisionDefaultRole = "Member" }), policies);
+
+        var error = await Assert.ThrowsAsync<InvalidOperationException>(() => jit.ProvisionExternalUserAsync(new()
+        {
+            Provider = "example.provider", ProviderKey = "new-subject", AssuredCanonicalAccount = "new-source-account",
+            Email = "SHARED@EXAMPLE.TEST", ProofEmailAssured = true
+        }));
+
+        Assert.Equal("Provider email name is unavailable.", error.Message);
+        Assert.True(competitorCommitted);
+        Assert.Equal(System.Data.IsolationLevel.Serializable, interleaving.RequestedIsolation);
+        Assert.Null(db.Database.CurrentTransaction);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        Assert.Equal(existing.Id, Assert.Single(db.Users).Id);
+        Assert.Equal("shared@example.test", Assert.Single(db.Users).Email);
+        Assert.Equal(existingPerson.Id, Assert.Single(db.Persons).Id);
+        Assert.Equal("shared@example.test", Assert.Single(db.Persons).Email);
+        Assert.Equal("existing-subject", Assert.Single(db.UserLogins).ProviderKey);
+        Assert.All(db.UserTokens, token => Assert.Equal(existing.Id, token.UserId));
+        Assert.Empty(db.UserRoles);
+    }
+
+    private sealed class BeforeCreationTransactionInterceptor : DbTransactionInterceptor
+    {
+        public Func<Task>? BeforeStart { get; set; }
+        public System.Data.IsolationLevel? RequestedIsolation { get; private set; }
+
+        public override async ValueTask<InterceptionResult<System.Data.Common.DbTransaction>> TransactionStartingAsync(
+            System.Data.Common.DbConnection connection, TransactionStartingEventData eventData,
+            InterceptionResult<System.Data.Common.DbTransaction> result, CancellationToken cancellationToken = default)
+        {
+            if (BeforeStart is { } beforeStart)
+            {
+                BeforeStart = null;
+                RequestedIsolation = eventData.IsolationLevel;
+                await beforeStart();
+            }
+            return result;
+        }
+    }
+
+    [Fact]
+    public async Task EmailNaming_ShouldRollbackPersonAccountAndHintWhenDefaultRoleCannotBeAssigned()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        using var users = new UserManager<ApplicationUser>(new UserStore<ApplicationUser, ApplicationRole, ApplicationDbContext, Guid>(db),
+            Options.Create(new IdentityOptions()), new PasswordHasher<ApplicationUser>(), [new UserValidator<ApplicationUser>()], [],
+            new UpperInvariantLookupNormalizer(), new IdentityErrorDescriber(), null!, NullLogger<UserManager<ApplicationUser>>.Instance);
+        var policies = CreateNativeFields(db);
+        var config = await policies.GetMappingsAsync();
+        await policies.SetMappingsAsync(new(config.Revision, config.Mappings, config.FirstNameFallback,
+            [new(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email)]));
+        var jit = new JitProvisioningService(users, db,
+            Options.Create(new ExternalLoginOptions { AutoProvisionDefaultRole = "missing-role" }), policies);
+        await Assert.ThrowsAsync<InvalidOperationException>(() => jit.ProvisionExternalUserAsync(new()
+        {
+            Provider = "example.provider", ProviderKey = "opaque-subject", AssuredCanonicalAccount = "source-account",
+            Email = "name@example.test", ProofEmailAssured = true
+        }));
+        await db.SaveChangesAsync();
+        Assert.Empty(db.Users);
+        Assert.Empty(db.Persons);
+        Assert.Empty(db.UserLogins);
+        Assert.Empty(db.UserTokens);
+        Assert.Empty(db.UserRoles);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AuthenticateAsync_ShouldUseSavedMappingAndPreserveProfileRefresh(bool existing)
+    {
+        var original = existing ? await CreateExistingAccountAsync(null, null) : null;
+        if (original is not null)
+        {
+            original.FirstName = null;
+            Assert.Single(_db.Persons).FirstName = null;
+        }
+        _db.Settings.Add(new() { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NativeFieldMappings,
+            Value = System.Text.Json.JsonSerializer.Serialize(new
+            {
+                Revision = Guid.NewGuid(),
+                Mappings = new[] { new NativeFieldMappingDto(NativeField.FirstName, NativeFieldSource.Proof, "example.provider", "displayName") },
+                FirstNameFallback = new NativeFieldMappingFallbackDto("example.provider", false)
+            }) });
+        await _db.SaveChangesAsync();
+        SetProof(AuthenticatedProof("Mapped full name"));
+        Assert.True((await _login.AuthenticateAsync(original?.UserName ?? "submitted-alias", "password")).IsSuccess);
+        _db.ChangeTracker.Clear();
+        var user = Assert.Single(_db.Users);
+        Assert.Equal("Mapped full name", user.FirstName);
+        Assert.Equal("Mapped full name", Assert.Single(_db.Persons).FirstName);
+        Assert.Null(user.Nickname);
+        _profile.Verify(service => service.RefreshAfterLoginAsync(It.Is<ApplicationUser>(value => value.Id == user.Id),
+            "example.provider", "opaque-subject", It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData("invalid", false)]
+    [InlineData("invalid", true)]
+    [InlineData("disabled", false)]
+    [InlineData("disabled", true)]
+    public async Task AuthenticateAsync_ShouldKeepLoginAndProfileRefreshWhenMappingCannotWrite(string condition, bool existing)
+    {
+        var original = existing ? await CreateExistingAccountAsync(null, null) : null;
+        if (condition == "invalid")
+            _db.Settings.Add(new() { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NativeFieldMappings, Value = "{}" });
+        else _nativeFieldOptions.ProofEnabled = false;
+        await _db.SaveChangesAsync();
+        SetProof(AuthenticatedProof("Not synchronized"));
+        Assert.True((await _login.AuthenticateAsync(original?.UserName ?? "submitted-alias", "password")).IsSuccess);
+        _db.ChangeTracker.Clear();
+        var user = Assert.Single(_db.Users);
+        Assert.Null(user.Nickname);
+        Assert.Null(Assert.Single(_db.Persons).Nickname);
+        _profile.Verify(service => service.RefreshAfterLoginAsync(It.Is<ApplicationUser>(value => value.Id == user.Id),
+            "example.provider", "opaque-subject", It.IsAny<CancellationToken>()), Times.Once);
+    }
 
     [Theory]
     [InlineData(false)]

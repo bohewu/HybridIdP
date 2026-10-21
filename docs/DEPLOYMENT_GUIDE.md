@@ -1002,16 +1002,31 @@ writes. These existing keys are the enablement/trust ceiling. There is no
 additional environment flag for the fallback selection. All five production
 Compose files pass the selected `.env` through `idp-service.env_file`.
 
-In **Settings > Profile field synchronization > Sign-in verification source**,
-select **Use the full name to fill a missing first name**
-and save. The exact namespace is shown under the initially collapsed
-**Sources and sync rules** disclosure. It starts off and is bound to that namespace; changing
+In **Settings > Profile field synchronization > Adjust sync settings**, edit
+the native/source/property mappings and optional **Use the full name to fill a
+missing first name** strategy. **Save for next login** saves configuration only;
+**Save and sync now** then opens account selection, read-only preview and explicit
+apply. Editable mappings use the existing system-managed Settings storage and
+source-policy revisions, with no additional migration or environment flag.
+Saved rows retain their exact namespace; changing deployment trust does not
+transfer mappings to a replacement source. The fallback starts off; changing
 the configured namespace requires a new explicit selection. The next eligible
 normal Proof login can fill a missing, unprotected FirstName from that
 response's assured whole displayName only when givenName is missing. Populated
 FirstName and manually fixed blanks are preserved even if overwrite is selected.
 Pause, source trust, exact binding and independent User/Person ownership still
 apply. Turning the strategy off does not undo previously filled values.
+
+Username naming is selected separately in the same dialog under **New-account
+username**. **Source account** is the default; **Source Email** uses a fresh
+assured Proof Email only for new accounts of that exact namespace. Save needs
+no new environment flag or schema migration and never renames existing accounts.
+Proof authentication enablement/trust remains authoritative. Pausing native sync
+does not disable or change the username choice, and missing/invalid/occupied
+Email denies creation without canonical fallback. Email confirmation remains
+independent: keep its existing trust list unchanged unless explicitly intended.
+See [username selection](IDENTITY_FIELD_MAPPING.md#new-account-username-selection)
+for source-login compatibility and separately reviewed historical rename limits.
 
 ### Optional Profile Activation
 

@@ -48,6 +48,8 @@ public class LoginServiceTests
         var logger = new Mock<ILogger<UserManager<ApplicationUser>>>();
         _mockUserManager = new Mock<UserManager<ApplicationUser>>(
             store.Object, options.Object, hasher.Object, userValidators, passwordValidators, normalizer.Object, errors, services.Object, logger.Object);
+        _mockUserManager.Setup(manager => manager.SetAuthenticationTokenAsync(It.IsAny<ApplicationUser>(),
+            "HybridIdP.ProofLogin", It.IsAny<string>(), It.IsAny<string>())).ReturnsAsync(IdentityResult.Success);
 
         _mockSecurityPolicyService = new Mock<ISecurityPolicyService>();
         _mockProofProvider = new Mock<IProofProvider>();
@@ -89,6 +91,7 @@ public class LoginServiceTests
     {
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "shadow", PasswordHash = null };
         _mockUserManager.Setup(m => m.FindByEmailAsync("shadow")).ReturnsAsync(user);
+        _mockUserManager.Setup(m => m.FindByLoginAsync("example.provider", "subject")).ReturnsAsync(user);
         _mockUserManager.Setup(m => m.GetLoginsAsync(user)).ReturnsAsync(new List<UserLoginInfo>
         {
             new("example.provider", "subject", "Provider")

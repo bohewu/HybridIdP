@@ -9,7 +9,7 @@ import zh from '@/i18n/locales/zh-TW/native-fields.json'
 
 vi.mock('@/utils/permissionService', () => ({
   default: { loadPermissions: vi.fn(), hasPermission: vi.fn() },
-  Permissions: { Settings: { Read: 'settings.read' } }
+  Permissions: { Settings: { Read: 'settings.read' }, Users: { Read: 'users.read', Update: 'users.update' }, Persons: { Update: 'persons.update' } }
 }))
 const identity = (source, account = 'account-a') => ({ source, localAccountId: account, providerNamespace: 'example', stableSubject: 'subject-a' })
 const sources = [
@@ -63,9 +63,9 @@ describe('Native field policy controls', () => {
     wrapper.unmount()
     wrapper = mount(NativeFieldSources, { props: { canUpdate: false }, global: { plugins: [i18n(locale)] } })
     await flushPromises()
-    expect(wrapper.findAll('h3').map(item => item.text())).toEqual([strings.sources.Proof, strings.sources.Stage1])
-    expect(wrapper.text()).toContain(strings.sourceHelp.Proof)
-    expect(wrapper.text()).toContain(strings.sourceHelp.Stage1)
+    expect(wrapper.text()).toContain(strings.sources.Proof)
+    expect(wrapper.text()).toContain(strings.sources.Stage1)
+    expect(wrapper.text()).toContain(strings.mapping.sourceHelp)
   })
 
   it('disables deployment-disabled, unsupported and different-owner bindings', async () => {
@@ -157,109 +157,12 @@ describe('Native field policy controls', () => {
     const buttons = wrapper.findAll('[data-test="toggle-source"]')
     expect(buttons[0].element.disabled).toBe(false)
     expect(buttons).toHaveLength(1)
-    expect(wrapper.text()).toContain(en.deploymentDisabled)
+    expect(wrapper.text()).toContain(en.status.disabled)
     await buttons[0].trigger('click')
     await flushPromises()
     expect(mutations()[0][0]).toBe('/api/admin/native-field-policies/sources/Proof')
     expect(JSON.parse(mutations()[0][1].body)).toEqual({ paused: true, expectedRevision: 'source-r1' })
   })
-
-  it.each([['en-US', en], ['zh-TW', zh]])('saves the exact-source fallback with revision and CSRF in %s', async (locale, strings) => {
-    let sourceState = structuredClone(sources)
-    fetch.mockImplementation(async (url, options) => {
-      if (options?.method === 'PUT') {
-        sourceState[0].firstNameDisplayNameFallback = JSON.parse(options.body).enabled
-        sourceState[0].revision = 'source-r3'
-        return response(null, 204)
-      }
-      return response(sourceState)
-    })
-    wrapper = mount(NativeFieldSources, { props: { canUpdate: true }, global: { plugins: [i18n(locale)] } })
-    await flushPromises()
-    const checkbox = wrapper.get('[data-test="first-name-fallback"]')
-    const save = wrapper.get('[data-test="save-first-name-fallback"]')
-    expect(checkbox.element.checked).toBe(false)
-    expect(save.element.disabled).toBe(true)
-    expect(wrapper.text()).toContain(strings.firstNameFallback.label)
-    expect(wrapper.text()).toContain(strings.firstNameFallback.help)
-    expect(wrapper.text()).toContain(strings.firstNameFallback.authority)
-    const settings = wrapper.get('[data-test="sync-settings"]')
-    expect(settings.element.open).toBe(false)
-    expect(settings.get('summary').text()).toBe(strings.settingsTitle)
-    settings.element.open = true
-    await settings.trigger('toggle')
-    const rules = wrapper.get('[data-test="source-details"]')
-    expect(rules.element.open).toBe(false)
-    expect(rules.get('summary').text()).toBe(strings.syncRules)
-    expect(rules.text()).toContain(strings.firstNameFallback.mapping)
-    expect(rules.text()).toContain('example.provider')
-    rules.element.open = true
-    await rules.trigger('toggle')
-    expect(rules.element.open).toBe(true)
-    expect(wrapper.get(`#${checkbox.attributes('aria-describedby')}`).text()).toBe(strings.firstNameFallback.help)
-    await checkbox.setValue(true)
-    await save.trigger('click')
-    await flushPromises()
-    expect(mutations()[0][0]).toBe('/api/admin/native-field-policies/sources/Proof/first-name-fallback')
-    expect(JSON.parse(mutations()[0][1].body)).toEqual({ providerNamespace: 'example.provider', enabled: true, expectedRevision: 'source-r1' })
-    expect(mutations()[0][1].credentials).toBe('include')
-    expect(mutations()[0][1].headers['X-XSRF-TOKEN']).toBe('synthetic-csrf')
-    expect(wrapper.get('[data-test="first-name-fallback"]').element.checked).toBe(true)
-    expect(wrapper.get('[role="status"]').text()).toBe(strings.saved)
-    await wrapper.get('[data-test="first-name-fallback"]').setValue(false)
-    await wrapper.get('[data-test="save-first-name-fallback"]').trigger('click')
-    await flushPromises()
-    expect(JSON.parse(mutations()[1][1].body)).toEqual({ providerNamespace: 'example.provider', enabled: false, expectedRevision: 'source-r3' })
-  })
-
-  it.each([
-    [false, true, 'example.provider'],
-    [true, false, 'example.provider'],
-    [true, true, null]
-  ])('blocks fallback edits when permission/availability/namespace are missing: %s %s %s', async (canUpdate, enabled, providerNamespace) => {
-    fetch.mockResolvedValue(response([{ ...sources[0], enabled, providerNamespace }]))
-    wrapper = mount(NativeFieldSources, { props: { canUpdate }, global: { plugins: [i18n('en-US')] } })
-    await flushPromises()
-    if (enabled && providerNamespace) {
-      expect(wrapper.get('[data-test="first-name-fallback"]').element.disabled).toBe(true)
-    } else {
-      expect(wrapper.find('[data-test="first-name-fallback"]').exists()).toBe(false)
-    }
-    expect(wrapper.find('[data-test="save-first-name-fallback"]').exists()).toBe(false)
-    expect(mutations()).toHaveLength(0)
-  })
-
-  it('refreshes changed namespace and revision after fallback conflict without retrying the save', async () => {
-    wrapper = mount(NativeFieldSources, { props: { canUpdate: true }, global: { plugins: [i18n('en-US')] } })
-    await flushPromises()
-    fetch.mockResolvedValueOnce(response({ error: 'conflict' }, 409))
-      .mockResolvedValueOnce(response([{ ...sources[0], providerNamespace: 'other.example', revision: 'source-r4' }]))
-    await wrapper.get('[data-test="first-name-fallback"]').setValue(true)
-    await wrapper.get('[data-test="save-first-name-fallback"]').trigger('click')
-    await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toBe(en.errors.conflict)
-    expect(wrapper.find('[role="status"]').exists()).toBe(false)
-    expect(wrapper.get('[data-test="first-name-fallback"]').element.checked).toBe(false)
-    expect(wrapper.text()).toContain('other.example')
-    expect(mutations()).toHaveLength(1)
-    await wrapper.get('[data-test="first-name-fallback"]').setValue(true)
-    await wrapper.get('[data-test="save-first-name-fallback"]').trigger('click')
-    await flushPromises()
-    expect(JSON.parse(mutations()[1][1].body)).toEqual({ providerNamespace: 'other.example', enabled: true, expectedRevision: 'source-r4' })
-  })
-
-  it('shows fallback rejection without claiming a saved change', async () => {
-    wrapper = mount(NativeFieldSources, { props: { canUpdate: true }, global: { plugins: [i18n('zh-TW')] } })
-    await flushPromises()
-    fetch.mockResolvedValueOnce(response({ error: 'source_unavailable' }, 400))
-    await wrapper.get('[data-test="first-name-fallback"]').setValue(true)
-    await wrapper.get('[data-test="save-first-name-fallback"]').trigger('click')
-    await flushPromises()
-    expect(wrapper.get('[role="alert"]').text()).toBe(zh.errors.source_unavailable)
-    expect(wrapper.find('[role="status"]').exists()).toBe(false)
-    expect(mutations()).toHaveLength(1)
-  })
-
 
   it.each([['en-US', en], ['zh-TW', zh]])('progressively opens one action while keeping unlock separate in %s', async (locale, strings) => {
     await dialog(true, locale)

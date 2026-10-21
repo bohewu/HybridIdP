@@ -3,12 +3,39 @@
   "sourceDescription": "Choose which sources can update profile fields. Pausing synchronization keeps saved values and does not pause sign-in. Availability is controlled by deployment settings; it does not indicate connection health.",
   "loading": "Loading synchronization settings...",
   "saved": "Synchronization settings saved.",
-  "sources": {"Proof": "Sign-in verification source", "Stage1": "Organization directory (AD/LDAP)"},
-  "sourceHelp": {"Proof": "Uses personal data verified during sign-in.", "Stage1": "Uses data from the linked organization directory."},
-  "manualPlaceholders": {"Nickname": "Enter the full display name to keep", "FirstName": "Enter the given name to keep", "LastName": "Enter the surname to keep", "Department": "Enter the department to keep", "JobTitle": "Enter the job title to keep", "EmployeeId": "Enter the organization account identifier to keep"},
-  "targets": {"User": "User account", "Person": "Person record"},
-  "fields": {"Nickname": "Display name", "FirstName": "First name", "LastName": "Last name", "Department": "Department", "JobTitle": "Job title", "EmployeeId": "Employee ID"},
-  "status": {"disabled": "Not enabled", "paused": "Paused", "enabled": "Enabled"},
+  "sources": {
+    "Proof": "Sign-in verification source",
+    "Stage1": "Organization directory (AD/LDAP)"
+  },
+  "sourceHelp": {
+    "Proof": "Uses personal data verified during sign-in.",
+    "Stage1": "Uses data from the linked organization directory."
+  },
+  "manualPlaceholders": {
+    "Nickname": "Enter the full display name to keep",
+    "FirstName": "Enter the given name to keep",
+    "LastName": "Enter the surname to keep",
+    "Department": "Enter the department to keep",
+    "JobTitle": "Enter the job title to keep",
+    "EmployeeId": "Enter the organization account identifier to keep"
+  },
+  "targets": {
+    "User": "User account",
+    "Person": "Person record"
+  },
+  "fields": {
+    "Nickname": "Display name",
+    "FirstName": "First name",
+    "LastName": "Last name",
+    "Department": "Department",
+    "JobTitle": "Job title",
+    "EmployeeId": "Employee ID"
+  },
+  "status": {
+    "disabled": "Not enabled",
+    "paused": "Paused",
+    "enabled": "Enabled"
+  },
   "deploymentDisabled": "Ask a deployment administrator to enable and trust this source.",
   "supported": "Supported fields",
   "firstNameFallback": {
@@ -77,7 +104,73 @@
     "unsupported_field": "This field is not supported.",
     "invalid_target": "This policy target is invalid.",
     "invalid_fields": "The requested fields are invalid.",
-    "request_failed": "The policy request failed. Reload and try again."
+    "request_failed": "The policy request failed. Reload and try again.",
+    "invalid_mapping": "The mapping is invalid. Choose a supported field and source property."
   },
-  "syncRules": "Sources and sync rules"
+  "syncRules": "Sources and sync rules",
+  "userName": {
+    "title": "New-account username",
+    "help": "Only affects newly created accounts. Existing accounts keep their usernames.",
+    "label": "Default username source",
+    "canonical": "Source account (default)",
+    "email": "Source email",
+    "emailHelp": "A missing, invalid or already used email stops account creation. The source account is not used as a fallback.",
+    "authority": "This choice does not confirm email or link accounts. Only enabled, trusted sources can be configured here; deployment settings control enablement and trust.",
+    "details": "Technical details",
+    "properties": "Source account: canonicalAccount. Source email: profile.email.",
+    "noSources": "No supported sign-in verification source is configured."
+  },
+  "mapping": {
+    "title": "Profile sync",
+    "help": "Choose a source for each field. Existing values and manually fixed blanks stay protected.",
+    "manage": "Manage field mappings",
+    "addTitle": "Add field mapping",
+    "field": "Profile field",
+    "property": "Source property",
+    "chooseField": "Choose a field",
+    "chooseSource": "Choose a source",
+    "chooseSourceFirst": "Choose a source first",
+    "chooseProperty": "Choose a property",
+    "add": "Add",
+    "availableHelp": "Only enabled, trusted and unpaused sources can be selected.",
+    "allMapped": "All fields are mapped for the available sources. Remove a mapping to add it again.",
+    "noSources": "No sources are available. A deployment administrator must enable and trust a source; resume paused sources in source settings.",
+    "current": "Current mappings",
+    "count": "{count} mappings",
+    "actions": "Actions",
+    "unavailable": "Unavailable source",
+    "advanced": "First-name fallback",
+    "edit": "Edit",
+    "complete": "Done",
+    "cancel": "Cancel",
+    "remove": "Remove",
+    "removeField": "Remove mapping for {field}",
+    "empty": "No fields are mapped.",
+    "save": "Save for next sign-in",
+    "saveNow": "Save and sync now",
+    "syncHelp": "Sync now saves settings first, then lets you choose accounts, preview differences and confirm changes.",
+    "syncUnavailable": "Saving settings does not fetch or change profile data. Sync now requires account read access, both account and Person update permissions, and an enabled native profile capability.",
+    "readOnly": "Read-only access. Updating mappings requires settings update permission.",
+    "draftKept": "Your unsaved draft is retained. Reloading discards it and loads the latest settings.",
+    "reloadDiscard": "Reload and discard draft",
+    "sourceHelp": "Pausing retains saved mappings and values. Enablement and trust are controlled by deployment settings; status does not indicate connection health.",
+    "chooseAccounts": "Choose accounts to sync",
+    "readUsersRequired": "Account read permission is required to choose accounts. Your mappings are already saved.",
+    "pickerHelp": "Mappings are saved. Select up to 50 accounts explicitly. Review their differences before applying any profile changes.",
+    "search": "Search",
+    "searchPlaceholder": "Search accounts",
+    "noAccounts": "No matching accounts.",
+    "selectedCount": "{count} / 50 accounts selected",
+    "previous": "Previous",
+    "next": "Next",
+    "reviewSelected": "Preview selected accounts",
+    "properties": {
+      "displayName": "Full display name",
+      "givenName": "First name",
+      "surname": "Last name",
+      "department": "Department",
+      "title": "Job title",
+      "employeeId": "Employee ID"
+    }
+  }
 }

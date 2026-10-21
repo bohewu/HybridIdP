@@ -20,6 +20,66 @@ namespace Tests.Infrastructure.UnitTests;
 public sealed class AdminProfileSyncServiceTests
 {
     [Fact]
+    public async Task MappingSave_ShouldNotFetchAndShouldInvalidateUnchangedPreview()
+    {
+        using var f = new Fixture();
+        await f.SeedAsync();
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        var count = f.Fetches;
+        var config = await f.Native.GetMappingsAsync();
+        await f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, config.FirstNameFallback));
+        Assert.Equal(count, f.Fetches);
+        Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+        Assert.Equal("retained-profiles", (await f.Db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+        Assert.Equal("preview_stale", (await Assert.ThrowsAsync<ProfileSyncException>(() =>
+            f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!))).Code);
+        Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+    }
+
+    [Fact]
+    public async Task Mapping_ShouldRemapFreshManualPreviewAndApplyWhileRemainingFillOnly()
+    {
+        using var f = new Fixture();
+        await f.SeedAsync();
+        var user = await f.Db.Users.SingleAsync();
+        user.Nickname = "retained user";
+        await f.Db.SaveChangesAsync();
+        var config = await f.Native.GetMappingsAsync();
+        var rows = config.Mappings.Select(x => x.Field == NativeField.Nickname ? x with { SourceProperty = "givenName" } : x).ToArray();
+        await f.Native.SetMappingsAsync(new(config.Revision, rows, config.FirstNameFallback));
+        await f.Native.UpdateAsync(NativeFieldTarget.User, f.UserId, NativeField.Nickname, new()
+        {
+            Operation = NativeFieldOperation.AssignSource, SourceIdentity = f.Identity, AllowOverwrite = true,
+            ExpectedRevision = Guid.Empty
+        });
+        f.Db.ChangeTracker.Clear();
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Empty(f.Db.ChangeTracker.Entries());
+        Assert.Equal("retained user", preview.Changes.Single(x => x.Target == "User" && x.Field == "Nickname").ProposedValue);
+        Assert.Equal("Source first", preview.Changes.Single(x => x.Target == "Person" && x.Field == "Nickname").ProposedValue);
+        await f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!);
+        Assert.Equal("retained user", (await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+        Assert.Equal("Source first", (await f.Db.Persons.AsNoTracking().SingleAsync()).Nickname);
+        Assert.Equal("retained-profiles", (await f.Db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+    }
+
+    [Fact]
+    public async Task MappingChangeDuringFreshFetch_ShouldRejectManualApply()
+    {
+        using var f = new Fixture();
+        await f.SeedAsync();
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        f.OnFetch = async () =>
+        {
+            var config = await f.Native.GetMappingsAsync();
+            await f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, config.FirstNameFallback));
+        };
+        Assert.Equal("preview_stale", (await Assert.ThrowsAsync<ProfileSyncException>(() =>
+            f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!))).Code);
+        Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+    }
+
+    [Fact]
     public async Task Preview_ShouldRemainDetachedAndNeverFlushProfileOrAudit()
     {
         using var f = new Fixture();

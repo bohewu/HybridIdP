@@ -45,7 +45,7 @@ explicit `AssuredFields.Email` and an exact entry in
 Selecting `TrustedProviderNamespace` alone does not trust its Email for local
 confirmation. Email cannot silently link an existing account.
 
-For a new Proof account, the assured `canonicalAccount` is used as the local
+For a new Proof account, the assured `canonicalAccount` is used by default as the local
 username only when it meets the local username length/character policy and is
 unoccupied. An unusable or occupied name denies provisioning; it never selects
 or links the account holding that name. The exact namespace/subject tuple stays
@@ -58,6 +58,16 @@ no new confirmation is inferred. An enrolled Email OTP factor is not retargeted
 by an upstream address change. `AssuredFields.Email` is required contract evidence,
 separate from local authority to set `EmailConfirmed`: unassured nonempty Proof
 fields are denied even when source trust is on.
+
+Administrators can select **Source Email** for new accounts of an exact Proof
+namespace in the mapping dialog. This database-persisted selection uses fresh
+assured `profile.email`; it does not change the producer's `canonicalAccount`
+or grant Email confirmation. Invalid or occupied names deny creation without
+fallback. Existing accounts keep their usernames. Local Email-form username
+sign-in uses a server-owned source-login hint and still requires fresh Proof of
+the same existing tuple/UserId; original source-account login remains supported.
+Native-field pause does not disable naming. See the [selection and compatibility
+rules](IDENTITY_FIELD_MAPPING.md#new-account-username-selection).
 
 The email trust list compares namespaces exactly, without trimming, case folding,
 or wildcards. For example, a deployment that has independently selected and

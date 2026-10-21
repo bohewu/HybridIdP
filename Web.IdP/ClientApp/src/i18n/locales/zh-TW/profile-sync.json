@@ -66,7 +66,8 @@
     "value_too_long": "來源值過長",
     "inconsistent_email": "電子郵件資料不一致",
     "email_untrusted": "電子郵件尚未獲得信任",
-    "email_mismatch": "電子郵件不符"
+    "email_mismatch": "電子郵件不符",
+    "mapping_disabled": "未啟用此欄位對應"
   },
   "reasons": {
     "disabled": "尚未啟用手動同步，請由部署管理員設定。",

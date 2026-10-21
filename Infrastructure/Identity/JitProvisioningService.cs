@@ -125,6 +125,7 @@ public class JitProvisioningService : IJitProvisioningService
             {
                 _context.Detach(existingUser);
                 if (existingPerson is not null) _context.Detach(existingPerson);
+                DetachNativePolicyGuards();
                 throw;
             }
             
@@ -306,6 +307,7 @@ public class JitProvisioningService : IJitProvisioningService
         {
             _context.Detach(newUser);
             _context.Detach(person);
+            DetachNativePolicyGuards();
             throw;
         }
 
@@ -315,10 +317,17 @@ public class JitProvisioningService : IJitProvisioningService
     private async Task<ApplicationUser> ProvisionCanonicalAccountAsync(
         ExternalAuthResult externalAuth, CancellationToken cancellationToken)
     {
-        var username = externalAuth.AssuredCanonicalAccount!;
+        ProofUserNameStrategy strategy;
+        try { strategy = await _nativeFields.GetProofUserNameStrategyAsync(externalAuth.Provider, cancellationToken); }
+        catch (NativeFieldPolicyException) { throw new InvalidOperationException("Provider naming policy is unavailable."); }
+        var username = strategy == ProofUserNameStrategy.Email ? externalAuth.Email : externalAuth.AssuredCanonicalAccount;
+        if (strategy == ProofUserNameStrategy.Email && (!externalAuth.ProofEmailAssured ||
+            !new System.ComponentModel.DataAnnotations.EmailAddressAttribute().IsValid(username)))
+            throw new InvalidOperationException("Provider email name is unavailable.");
         var contactEmail = string.IsNullOrWhiteSpace(externalAuth.Email) ? null : externalAuth.Email;
         var allowedCharacters = _userManager.Options.User.AllowedUserNameCharacters;
-        if (string.IsNullOrWhiteSpace(username) || username.Length > 256 ||
+        if (string.IsNullOrWhiteSpace(username) || username.Length > 256 || username != username.Trim() || username.Any(char.IsControl) ||
+            !ProofLoginHint.ValidAccount(externalAuth.AssuredCanonicalAccount) ||
             (!string.IsNullOrEmpty(allowedCharacters) && username.Any(c => !allowedCharacters.Contains(c))) ||
             await _userManager.FindByNameAsync(username) is not null)
         {
@@ -327,8 +336,26 @@ public class JitProvisioningService : IJitProvisioningService
 
         // Proof naming never matches a Person or account by email/name. Persist the
         // new Person, account, default role and exact login together on relational stores.
-        await using var transaction = _context is DbContext db && db.Database.IsRelational()
-            ? await db.Database.BeginTransactionAsync(cancellationToken) : null;
+        var relationalDb = _context is DbContext db && db.Database.IsRelational() ? db : null;
+        var emailNaming = strategy == ProofUserNameStrategy.Email;
+        await using var transaction = relationalDb is null ? null : emailNaming
+            ? await relationalDb.Database.BeginTransactionAsync(relationalDb.Database.IsNpgsql()
+                ? System.Data.IsolationLevel.ReadCommitted : System.Data.IsolationLevel.Serializable, cancellationToken)
+            : await relationalDb.Database.BeginTransactionAsync(cancellationToken);
+        if (emailNaming)
+        {
+            // SQL Server serializable reads protect the email range through commit.
+            // PostgreSQL SSI does not block ordinary existing-account writers: lock
+            // their table first, then read a fresh Read Committed snapshot. The lock
+            // also serializes competing creators without a shared-lock upgrade.
+            if (relationalDb is not null && relationalDb.Database.IsNpgsql())
+                await relationalDb.Database.ExecuteSqlRawAsync(
+                    "LOCK TABLE \"AspNetUsers\" IN SHARE ROW EXCLUSIVE MODE", cancellationToken);
+            var normalizedEmail = _userManager.NormalizeEmail(username);
+            if (await _context.Users.AnyAsync(user => user.NormalizedEmail == normalizedEmail, cancellationToken))
+                throw new InvalidOperationException("Provider email name is unavailable.");
+        }
+
         var person = new Person
         {
             Id = Guid.NewGuid(), Email = contactEmail, CreatedAt = DateTime.UtcNow
@@ -351,18 +378,22 @@ public class JitProvisioningService : IJitProvisioningService
             await _context.SaveChangesAsync(cancellationToken);
             await ApplyNativeFieldsAsync(user, person, externalAuth, cancellationToken);
             await _context.SaveChangesAsync(cancellationToken);
+            await ProofLoginHint.SaveAsync(_userManager, user, externalAuth.Provider, externalAuth.ProviderKey,
+                externalAuth.AssuredCanonicalAccount!);
             if (transaction is not null) await transaction.CommitAsync(cancellationToken);
             return user;
         }
         catch
         {
+            DetachNativePolicyGuards();
             // A failed request must not flush its pending account/link on a later save.
             if (_context is DbContext failedDb)
             {
                 foreach (var entry in failedDb.ChangeTracker.Entries().Where(entry =>
                     ReferenceEquals(entry.Entity, user) || ReferenceEquals(entry.Entity, person) ||
                     entry.Entity is IdentityUserLogin<Guid> login && login.UserId == user.Id ||
-                    entry.Entity is IdentityUserRole<Guid> role && role.UserId == user.Id).ToList())
+                    entry.Entity is IdentityUserRole<Guid> role && role.UserId == user.Id ||
+                    entry.Entity is IdentityUserToken<Guid> token && token.UserId == user.Id).ToList())
                     entry.State = EntityState.Detached;
             }
             throw;
@@ -388,6 +419,13 @@ public class JitProvisioningService : IJitProvisioningService
         {
             _nativeFields.ApplyUnattributed(user, person, values);
         }
+    }
+
+    private void DetachNativePolicyGuards()
+    {
+        if (_context is DbContext db)
+            foreach (var entry in db.ChangeTracker.Entries<NativeFieldSourcePolicy>().ToArray())
+                entry.State = EntityState.Detached;
     }
 
     private async Task AssignDefaultRoleIfConfiguredAsync(ApplicationUser user)

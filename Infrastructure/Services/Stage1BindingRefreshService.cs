@@ -103,6 +103,7 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
         }
         catch (DbUpdateException)
         {
+            DetachNativePolicyGuards();
             _dbContext.Detach(user);
             if (person is not null) _dbContext.Detach(person);
             _dbContext.Detach(binding);
@@ -110,6 +111,7 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
         }
         catch
         {
+            DetachNativePolicyGuards();
             _dbContext.Detach(user);
             if (person is not null) _dbContext.Detach(person);
             _dbContext.Detach(binding);
@@ -131,6 +133,13 @@ public sealed class Stage1BindingRefreshService : IStage1BindingRefreshService
         request.DirectoryIdentity.IsEnabled &&
         !request.DirectoryIdentity.IsLocked &&
         (request.DirectoryIdentity.Profile is null || request.DirectoryIdentity.Profile.IsValid());
+
+    private void DetachNativePolicyGuards()
+    {
+        if (_dbContext is DbContext db)
+            foreach (var entry in db.ChangeTracker.Entries<NativeFieldSourcePolicy>().ToArray())
+                entry.State = EntityState.Detached;
+    }
 
     private static bool MatchesOrAbsent(
         ProviderSubjectDirectoryBinding? binding,
