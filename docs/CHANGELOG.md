@@ -4,10 +4,49 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
-Prepared version: **1.8.0**. This adds profile-governance features and schema
-changes beyond a patch release. Version metadata and the image example now
-select planned 1.8.0; no 1.8.0 tag, image or release has been created. See the
-[upgrade preparation](RELEASE_READINESS.md#180-preparation).
+## [1.9.0] - 2026-10-21
+
+### Added
+
+- Add default-off Provider Native Profile 1.0 for guarded administrator manual
+  synchronization of exact existing provider/account/Person tuples. Review a
+  read-only preview, then explicitly apply fill-only updates. Apply refetches
+  and rejects changed source or local state; populated values, manual fixed
+  blanks, ownership and Email MFA protections remain enforced.
+- Add editable native-field source/property mappings and exact-source
+  new-account username choices: canonical source account (default) or fresh
+  assured Source Email. Invalid or occupied names deny creation without fallback
+  or linking. Existing IDs, usernames, provider bindings and factors are preserved.
+  Saving contact Email and confirming it remain separate local authority decisions.
+- Add Settings mapping controls: Save for next login saves configuration only;
+  Save and sync now saves configuration before explicit account selection,
+  preview and apply. No whole-pool sync or extra naming environment flag is added.
+
+### Fixed and improved
+
+- Refine Traditional Chinese synchronization and source-selection copy.
+- Correct narrow-screen navigation and cookie-notice layout, including the
+  Samsung S24 viewport.
+- Expose the existing real cookie CSRF guard through a CodeQL-compatible
+  antiforgery attribute alias on the manual-sync controller.
+
+### Upgrade requirements
+
+- No new EF migration relative to published 1.8.0. Older 1.7.1 deployments still
+  require their provider's AddNativeFieldAuthority and
+  AddFirstNameDisplayNameFallback migrations before application startup.
+- Preserve the original environment, secrets, endpoints, certificates and Data
+  Protection keys. Manual sync is independently default-off and requires a
+  compatible producer contract; normal-login Profile snapshots and local Email
+  trust remain under their existing rules. No historical backfill or automatic
+  account rename is part of this release.
+- See the [1.9.0 readiness guide](RELEASE_READINESS.md#190-release-readiness)
+  for migration, configuration and pending image-verification boundaries.
+
+## [1.8.0] - 2026-10-20
+
+Published as `v1.8.0` at `9256f698`. See the
+[historical upgrade instructions](RELEASE_READINESS.md#historical-180-upgrade-instructions).
 
 ### Added
 

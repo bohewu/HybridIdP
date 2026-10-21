@@ -1,24 +1,139 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-20 for prepared 1.8.0 metadata. Publishing a release does not
+Updated on 2026-10-21 for 1.9.0 release preparation. Publishing a release does not
 establish production acceptance or deploy the image. Older upgrade requirements
 below remain applicable to cumulative upgrades.
 
-## 1.8.0 preparation
+## 1.9.0 release readiness
 
-Version 1.8.0 is prepared for review because the changes add native-field
+The baseline is published [v1.8.0](https://github.com/bohewu/HybridIdP/releases/tag/v1.8.0)
+at `9256f698`; retain that existing tag and release. The product changes in
+[PR #29](https://github.com/bohewu/HybridIdP/pull/29) are merged at
+`2721ed97e9f6c1a50d58911389eda86e121c7ffc`. The
+[1.9.0 changelog](CHANGELOG.md#190---2026-10-21) describes the next minor release.
+Production is untouched by this preparation.
+
+### Database and existing deployment
+
+There is **no new EF migration from 1.8.0**; both migration assemblies are
+unchanged. An installation with the complete 1.8.0 schema (47 migrations for the
+SQL Server target) can skip schema migration after checking its actual applied
+IDs. A 1.7.1 database must apply these existing pending migrations for its own
+provider before starting 1.9.0:
+
+| Change | SQL Server | PostgreSQL |
+| --- | --- | --- |
+| Native authority | `20261020030913_AddNativeFieldAuthority` | `20261020030931_AddNativeFieldAuthority` |
+| Optional FirstName fallback | `20261020091155_AddFirstNameDisplayNameFallback` | `20261020091320_AddFirstNameDisplayNameFallback` |
+
+Use only the selected provider's migrations. Older installations may have other
+pending migrations. Retain SQL Server 2019 compatibility and its approved
+connection settings; no SQL Server 2022-only SQL is required. Schema changes do
+not backfill historical names or bindings, rename accounts or confirm Email.
+See the [historical 1.8.0 instructions](#historical-180-upgrade-instructions)
+for the staged-schema evidence and development-machine helper procedure.
+
+Preserve the original private `.env`, secrets, provider endpoints and exact
+namespaces, database connections, signing/encryption certificates and Data
+Protection keys. Preserve local Email trust decisions. Do not rerun setup or
+replace an existing environment with the example. Existing Proof/native-field
+defaults and normal-login Provider Profile snapshot behavior remain in force.
+
+### Optional manual synchronization and UI settings
+
+Manual sync uses the independent, default-off
+[Provider Native Profile 1.0 contract](PROVIDER_NATIVE_PROFILE_CONTRACT.md).
+The producer API must implement that compatible contract; a Proof or extra-property
+Profile endpoint alone is insufficient. Its transport settings are independent,
+but its exact namespace must match the available enabled/trusted/unpaused Proof
+native source and an existing account binding. Configure privately only when
+activation is intended; these are inert defaults:
+
+```dotenv
+ProviderNativeProfile__Enabled=false
+ProviderNativeProfile__TrustedProviderNamespace=
+ProviderNativeProfile__Endpoint=
+ProviderNativeProfile__SharedSecret=
+ProviderNativeProfile__Timeout=00:00:05
+ProviderNativeProfile__AllowPrivateNetworkHttp=false
+# Optional independent local Email confirmation trust, illustrative only:
+# ProviderNativeProfile__TrustedEmailProviderNamespaces__0=example.provider
+```
+
+A generic endpoint example is `https://provider.example.test/api/profile/native`.
+Select the deployment's exact namespace, endpoint and service secret explicitly.
+Email confirmation still requires fresh source evidence and independent exact
+local namespace trust; saving an address does not confirm it, enroll MFA or
+authorize recovery. The Proof Email trust list remains separate.
+
+Open **Settings > Profile field synchronization > Adjust sync settings** to
+edit native-field source/property mappings and the exact-source new-account
+username choice. **Save for next login** saves configuration only. **Save and
+sync now** saves that configuration, then opens explicit account selection,
+read-only preview and explicit apply. Manual apply remains fill-only and rejects
+stale previews; it preserves nonempty values, manually fixed blanks and ownership.
+It does not sync all accounts automatically.
+
+**New-account username** selects canonical **Source account** (default) or fresh
+assured **Source Email** in the UI, without an extra environment flag. Invalid
+or occupied names deny new-account creation. Existing usernames, User/Person
+IDs and bindings are preserved; neither this choice nor manual sync performs
+automatic renames or grants Email confirmation.
+
+### Commands after image approval
+
+These are instructions only and have not been executed against production.
+After publication and verification, substitute the approved 1.9.0 image digest
+and the deployment's existing Compose mode. Keep
+`DatabaseMigration__ApplyOnStartup=false`. Verify a restorable database backup
+and retain the previous image/configuration before any host change.
+
+```bash
+cd deployment
+release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+compose_file='<existing-mode-compose-file>'
+# Only if reviewed migrations are pending (for example, from 1.7.1):
+bash ./migrate-db.sh --confirm-backup --source ghcr --image "$release_image" \
+  --compose "$compose_file" --env-file .env
+# After confirming schema is current, deploy the same approved image:
+bash ./deploy-idp.sh --source ghcr --image "$release_image" \
+  --compose "$compose_file" --env-file .env
+```
+
+For an already current 1.8.0 database, omit the migration command. For 1.7.1,
+stop after any migration failure and confirm the selected provider's IDs before
+deploying. The helpers require no logic change. Recreate the application container
+when changing environment settings, retain rollback material and do not use EF
+Down automatically. See the [deployment command reference](DEPLOYMENT_GUIDE.md#operator-controlled-schema-migration).
+
+### Publication and verification status
+
+The source-only CodeQL/security checks reported for exact product revision
+`2721ed97e9f6c1a50d58911389eda86e121c7ffc` passed. They do not qualify a later
+metadata commit, release image or deployed runtime. The final release commit's
+checks, 1.9.0 tag/release publication, image build, OCI version/revision labels,
+registry digest and image/runtime verification remain pending at preparation.
+The current image workflow requires the release commit to equal current
+`origin/main` and builds Linux amd64; complete those checks on the final release
+source before accepting the published image. Then verify readiness/discovery,
+normal login/MFA/client flows, preserved snapshot behavior, and any explicitly
+enabled manual-sync preview/apply against the approved deployment. Source tests
+and fixture evidence do not establish connected producer or production acceptance.
+
+## Historical 1.8.0 upgrade instructions
+
+Version 1.8.0 was published on 2026-10-20 at `9256f698`. It added native-field
 governance, administrative controls and two schema migrations per provider.
 They are more than a patch, while existing identity IDs, provider bindings and
 protocol contracts remain.
-The [Unreleased changelog](CHANGELOG.md#unreleased) is the release-notes draft.
-VERSION and the image example now select planned 1.8.0 metadata. No 1.8.0 tag,
-release, image or deployment has been created.
+The [1.8.0 changelog](CHANGELOG.md#180---2026-10-20) records that release.
+The following preserves its upgrade instructions and historical evidence limits;
+current release preparation is described in the 1.9.0 section above.
 
 The product changes since v1.7.1 were merged through
 [PR #27](https://github.com/bohewu/HybridIdP/pull/27) into main commit
-`7fab2705ee96508a7f5b297a109d79c87ae2f30e`. The following upgrade steps are a plan
-for a separately approved publication and deployment, not commands to execute
-against production during preparation.
+`7fab2705ee96508a7f5b297a109d79c87ae2f30e`. The upgrade steps below remain
+operator instructions, not evidence of a production deployment.
 
 ### Schema changes from 1.7.1
 
@@ -149,11 +264,9 @@ runs. Changing the configured namespace requires a new explicit selection.
 
 ### Migration and deployment sequence after publication
 
-1. Finish and review the version-metadata change, merge it to main, and require
-   a fresh green CodeQL run on that final source. Publish only after separate
-   authorization and qualify the final image, OCI revision/version and registry
-   digest. The 1.8.0 tag, image and release are not available from this
-   preparation.
+1. Select the approved published release and verify its image, OCI
+   revision/version and registry digest. The existing 1.8.0 publication is the
+   baseline; use the current 1.9.0 section for the next release's pending checks.
 2. On the deployment host, synchronize the reviewed deployment tools without
    overwriting the existing private .env. Confirm the selected database/provider
    and take a verified restorable database backup; retain the previous image
@@ -206,8 +319,8 @@ On 2026-10-20, GitHub returned zero open Dependabot, main CodeQL and Secret
 scanning alerts. Product main `7fab2705` passed C#, JavaScript/TypeScript,
 Python and Actions CodeQL in
 [run 39426682250](https://github.com/bohewu/HybridIdP/actions/runs/39426682250).
-These results cover the merged product source, not a future version-metadata
-commit or unpublished image. Existing dismissals, dependency triage controls and
+These historical results covered the merged product source, not the subsequent
+version-metadata commit or then-unpublished image. Existing dismissals, dependency triage controls and
 ExcelJS prebuilt UUID limitations below remain applicable; zero open alerts is
 not a statement that every historical finding was remediated.
 
@@ -219,7 +332,7 @@ read-only Claims Preview with recordings. The final label update passed 19 Vue
 tests; credential-free query translation passed for both providers. Connected
 PostgreSQL and final-release-image/production acceptance were not exercised by
 those checks. The additional staged-schema check above exercises the published
-old image with the new schema; it does not qualify a future 1.8.0 release image.
+old image with the new schema; it did not qualify the subsequently published 1.8.0 release image.
 
 ## Historical 1.7.1 preparation
 
