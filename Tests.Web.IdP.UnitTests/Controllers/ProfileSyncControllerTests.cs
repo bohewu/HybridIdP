@@ -71,6 +71,29 @@ public sealed class ProfileSyncControllerTests
         finally { await app.StopAsync(); }
     }
 
+    [Fact]
+    public async Task Endpoints_ShouldRejectInvalidCookieCsrfBeforeInvokingService()
+    {
+        var service = new Mock<IAdminProfileSyncService>(MockBehavior.Strict);
+        var id = Guid.NewGuid();
+        await using var app = CreateApp(service.Object);
+        await app.StartAsync();
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(app.Urls.Single()) };
+            client.DefaultRequestHeaders.Add("X-Fixture-Permissions", "users.update,persons.update");
+            _ = await client.GetStringAsync("/fixture-antiforgery");
+            client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", "invalid-antiforgery-token");
+
+            using var preview = await client.PostAsync($"/api/admin/profile-sync/users/{id}/preview", null);
+            Assert.Equal(HttpStatusCode.BadRequest, preview.StatusCode);
+            using var apply = await client.PostAsJsonAsync($"/api/admin/profile-sync/users/{id}/apply", new { previewToken = "protected-token" });
+            Assert.Equal(HttpStatusCode.BadRequest, apply.StatusCode);
+            service.VerifyNoOtherCalls();
+        }
+        finally { await app.StopAsync(); }
+    }
+
     [Theory]
     [InlineData("preview_stale", 409)]
     [InlineData("source_unavailable", 503)]

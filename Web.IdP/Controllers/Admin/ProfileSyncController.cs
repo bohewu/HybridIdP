@@ -12,7 +12,7 @@ namespace Web.IdP.Controllers.Admin;
 [ApiController]
 [Route("api/admin/profile-sync")]
 [ApiAuthorize]
-[ValidateCsrfForCookies]
+[ValidateAntiforgeryForCookies]
 [Authorize(Policy = Permissions.Users.Update)]
 [Authorize(Policy = Permissions.Persons.Update)]
 public sealed class ProfileSyncController(IAdminProfileSyncService sync, IAdministrativeAuthorizationBoundary boundary)
