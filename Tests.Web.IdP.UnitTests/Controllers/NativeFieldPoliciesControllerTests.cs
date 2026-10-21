@@ -32,6 +32,52 @@ public sealed class NativeFieldPoliciesControllerTests
     [InlineData("users.update", false, true, HttpStatusCode.Forbidden)]
     [InlineData("settings.update", true, true, HttpStatusCode.Forbidden)]
     [InlineData("settings.update", false, false, HttpStatusCode.BadRequest)]
+    [InlineData("settings.update", false, true, HttpStatusCode.OK)]
+    public async Task Mappings_ShouldRequireSettingsAuthorityAndCsrfAndAuditOnlyCount(
+        string? permission, bool bearer, bool csrf, HttpStatusCode expected)
+    {
+        var policies = new Mock<INativeFieldPolicyService>(MockBehavior.Strict);
+        var audit = new Mock<IAuditService>(MockBehavior.Strict);
+        var fallback = new NativeFieldMappingFallbackDto("example.provider", false);
+        var request = new NativeFieldMappingsRequest(Guid.NewGuid(),
+            [new(NativeField.Nickname, NativeFieldSource.Proof, "example.provider", "givenName")], fallback,
+            [new(NativeFieldSource.Proof, "example.provider", ProofUserNameStrategy.Email)]);
+        policies.Setup(x => x.SetMappingsAsync(It.IsAny<NativeFieldMappingsRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NativeFieldMappingsDto(Guid.NewGuid(), request.Mappings, fallback, [], []));
+        string? details = null;
+        audit.Setup(x => x.LogAdministrativeEventAsync("NativeFieldMappingsChanged", "NativeFieldMappings", "global",
+                It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Callback<string, string, string?, string?, CancellationToken>((_, _, _, text, _) => details = text)
+            .Returns(Task.CompletedTask);
+        await using var app = CreateApp(policies.Object, audit.Object);
+        await app.StartAsync();
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(app.Urls.Single()) };
+            if (permission is not null) client.DefaultRequestHeaders.Add("X-Fixture-Permission", permission);
+            if (bearer) client.DefaultRequestHeaders.Add("Authorization", "Bearer fixture-only");
+            if (csrf) client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", await client.GetStringAsync("/fixture-antiforgery"));
+            using var response = await client.PutAsJsonAsync("/api/admin/native-field-policies/mappings", request);
+            Assert.Equal(expected, response.StatusCode);
+            policies.Verify(x => x.SetMappingsAsync(It.IsAny<NativeFieldMappingsRequest>(), It.IsAny<CancellationToken>()),
+                expected == HttpStatusCode.OK ? Times.Once() : Times.Never());
+            if (expected == HttpStatusCode.OK)
+            {
+                Assert.Contains("MappingCount", details);
+                Assert.DoesNotContain("example.provider", details);
+                Assert.DoesNotContain("givenName", details);
+            }
+            else Assert.Null(details);
+        }
+        finally { await app.StopAsync(); }
+    }
+
+    [Theory]
+    [InlineData(null, false, false, HttpStatusCode.Unauthorized)]
+    [InlineData("settings.read", false, true, HttpStatusCode.Forbidden)]
+    [InlineData("users.update", false, true, HttpStatusCode.Forbidden)]
+    [InlineData("settings.update", true, true, HttpStatusCode.Forbidden)]
+    [InlineData("settings.update", false, false, HttpStatusCode.BadRequest)]
     [InlineData("settings.update", false, true, HttpStatusCode.NoContent)]
     public async Task FirstNameFallback_ShouldRequireSettingsAuthorityAndCsrf(
         string? permission, bool bearer, bool csrf, HttpStatusCode expected)
@@ -118,6 +164,8 @@ public sealed class NativeFieldPoliciesControllerTests
 
     [Theory]
     [InlineData(nameof(NativeFieldPoliciesController.GetSources), Permissions.Settings.Read)]
+    [InlineData(nameof(NativeFieldPoliciesController.GetMappings), Permissions.Settings.Read)]
+    [InlineData(nameof(NativeFieldPoliciesController.SetMappings), Permissions.Settings.Update)]
     [InlineData(nameof(NativeFieldPoliciesController.SetPaused), Permissions.Settings.Update)]
     [InlineData(nameof(NativeFieldPoliciesController.SetFirstNameFallback), Permissions.Settings.Update)]
     [InlineData(nameof(NativeFieldPoliciesController.GetUser), Permissions.Users.Read)]

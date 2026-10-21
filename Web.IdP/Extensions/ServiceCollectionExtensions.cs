@@ -129,6 +129,11 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IStage1BindingRefreshService, Stage1BindingRefreshService>();
         services.AddScoped<INativeFieldPolicyService, NativeFieldPolicyService>();
+        services.AddOptions<ProviderNativeProfileOptions>()
+            .Bind(configuration.GetSection(ProviderNativeProfileOptions.Section));
+        services.AddHttpClient<IProviderNativeProfileClient, ProviderNativeProfileClient>()
+            .ConfigurePrimaryHttpMessageHandler(ProviderNativeProfileClient.CreatePrimaryHandler);
+        services.AddScoped<IAdminProfileSyncService, AdminProfileSyncService>();
         services.AddOptions<Core.Application.Options.NativeFieldPolicyOptions>()
             .Bind(configuration.GetSection(Core.Application.Options.NativeFieldPolicyOptions.Section));
         services.AddScoped<ICredentialMigrationPolicy, CredentialMigrationPolicy>();

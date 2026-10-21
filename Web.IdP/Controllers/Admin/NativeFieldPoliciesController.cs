@@ -14,9 +14,26 @@ namespace Web.IdP.Controllers.Admin;
 [ValidateCsrfForCookies]
 public sealed class NativeFieldPoliciesController(INativeFieldPolicyService policies, IAuditService audit) : ControllerBase
 {
+    [HttpGet("mappings")]
+    [Authorize(Policy = Permissions.Settings.Read)]
+    public Task<IActionResult> GetMappings(CancellationToken cancellationToken) =>
+        ExecuteAsync(async () => Ok(await policies.GetMappingsAsync(cancellationToken)));
+
+    [HttpPut("mappings")]
+    [Authorize(Policy = Permissions.Settings.Update)]
+    public Task<IActionResult> SetMappings(NativeFieldMappingsRequest request, CancellationToken cancellationToken) =>
+        ExecuteAsync(async () =>
+        {
+            var result = await policies.SetMappingsAsync(request, cancellationToken);
+            await audit.LogAdministrativeEventAsync("NativeFieldMappingsChanged", "NativeFieldMappings", "global",
+                JsonSerializer.Serialize(new { MappingCount = result.Mappings.Count }), cancellationToken);
+            return Ok(result);
+        });
+
     [HttpGet("sources")]
     [Authorize(Policy = Permissions.Settings.Read)]
-    public async Task<IActionResult> GetSources(CancellationToken cancellationToken) => Ok(await policies.GetSourcesAsync(cancellationToken));
+    public Task<IActionResult> GetSources(CancellationToken cancellationToken) =>
+        ExecuteAsync(async () => Ok(await policies.GetSourcesAsync(cancellationToken)));
 
     [HttpPut("sources/{source}")]
     [Authorize(Policy = Permissions.Settings.Update)]

@@ -10,7 +10,7 @@ using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Services;
 
-public sealed class NativeFieldPolicyService(
+public sealed partial class NativeFieldPolicyService(
     IApplicationDbContext db, IOptions<NativeFieldPolicyOptions> options,
     IOptions<ProviderProofOptions> proofOptions, IOptions<DirectoryIntegrationOptions> directoryOptions)
     : INativeFieldPolicyService
@@ -21,6 +21,7 @@ public sealed class NativeFieldPolicyService(
     public async Task<IReadOnlyList<NativeFieldSourceStatusDto>> GetSourcesAsync(CancellationToken cancellationToken = default)
     {
         var policies = await db.NativeFieldSourcePolicies.AsNoTracking().ToListAsync(cancellationToken);
+        var mappings = await ReadMappingDocumentAsync(cancellationToken);
         return Enum.GetValues<NativeFieldSource>().Select(source =>
         {
             var policy = policies.SingleOrDefault(x => x.Source == source.ToString());
@@ -29,8 +30,9 @@ public sealed class NativeFieldPolicyService(
             return new NativeFieldSourceStatusDto(source, enabled, policy?.Paused == true,
                 enabled ? null : "Deployment has not enabled and trusted this native-field source.",
                 Fields, false, NoClear, policy?.Revision ?? Guid.Empty, providerNamespace,
-                source == NativeFieldSource.Proof && policy?.FirstNameDisplayNameFallback == true &&
-                string.Equals(policy.FirstNameFallbackProviderNamespace, providerNamespace, StringComparison.Ordinal));
+                source == NativeFieldSource.Proof && (mappings is null
+                    ? policy?.FirstNameDisplayNameFallback == true && policy.FirstNameFallbackProviderNamespace == providerNamespace
+                    : mappings.FirstNameFallback.Enabled && mappings.FirstNameFallback.ProviderNamespace == providerNamespace));
         }).ToArray();
     }
 
@@ -38,6 +40,7 @@ public sealed class NativeFieldPolicyService(
         CancellationToken cancellationToken = default)
     {
         Require(source == NativeFieldSource.Proof, "unsupported_source");
+        Require(await ReadMappingDocumentAsync(cancellationToken) is null, "mapping_configuration_required");
         Require(IsEnabled(source), "source_unavailable");
         Require(!string.IsNullOrWhiteSpace(request.ProviderNamespace) && request.ProviderNamespace.Length <= 200,
             "invalid_namespace");
@@ -124,35 +127,70 @@ public sealed class NativeFieldPolicyService(
         await SaveAsync(entity, cancellationToken);
     }
 
-    public async Task<bool> ApplySourceAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
-        IReadOnlyDictionary<NativeField, string?> values, CancellationToken cancellationToken = default)
+    public Task<bool> ApplySourceAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
+        IReadOnlyDictionary<NativeField, string?> values, CancellationToken cancellationToken = default) =>
+        ApplySourceCoreAsync(user, person, identity, values, false, null, cancellationToken);
+
+    public async Task<IReadOnlyList<ProfileSyncChangeDto>> ApplyMissingSourceAsync(ApplicationUser user, Person person,
+        NativeFieldSourceIdentity identity, IReadOnlyDictionary<NativeField, string?> values,
+        CancellationToken cancellationToken = default)
     {
+        var decisions = new List<ProfileSyncChangeDto>();
+        await ApplySourceCoreAsync(user, person, identity, values, true, decisions, cancellationToken);
+        return decisions;
+    }
+
+    private async Task<bool> ApplySourceCoreAsync(ApplicationUser user, Person? person, NativeFieldSourceIdentity identity,
+        IReadOnlyDictionary<NativeField, string?> values, bool fillOnly, List<ProfileSyncChangeDto>? decisions,
+        CancellationToken cancellationToken)
+    {
+        // Capture before reading mapping configuration. A later config save advances this token.
+        var guard = fillOnly ? null : await db.NativeFieldSourcePolicies.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Source == identity.Source.ToString(), cancellationToken);
         if (identity.LocalAccountId != user.Id || !await IsAvailableAsync(identity, cancellationToken) ||
             !await IsBoundAsync(identity, NativeFieldTarget.User, user.Id, cancellationToken)) return false;
         ValidateValues(values, user);
+        var originalValues = values;
+        MappingDocument? mappingDocument;
+        try { mappingDocument = await ReadMappingDocumentAsync(cancellationToken); }
+        catch (NativeFieldPolicyException exception) when (!fillOnly && exception.Code == "invalid_stored_state")
+        {
+            // Optional native synchronization must not turn damaged mapping configuration into
+            // an authentication or claims-snapshot outage. Administrative reads still report it.
+            return false;
+        }
+        if (mappingDocument is not null)
+        {
+            values = mappingDocument.Mappings.Where(x => x.Source == identity.Source && x.ProviderNamespace == identity.ProviderNamespace)
+                .ToDictionary(x => x.Field, x => originalValues.GetValueOrDefault(PropertyField(x.SourceProperty)));
+        }
         // Proof values have already passed contract assurance validation. Never use Profile
         // snapshots, another source, or a stored nickname as fallback input.
         var firstNameFallback = false;
         if (identity.Source == NativeFieldSource.Proof &&
-            string.IsNullOrWhiteSpace(values.GetValueOrDefault(NativeField.FirstName)) &&
-            values.GetValueOrDefault(NativeField.Nickname) is { Length: <= 100 } displayName &&
+            (mappingDocument is null || mappingDocument.Mappings.Any(x => x.Field == NativeField.FirstName &&
+                x.Source == identity.Source && x.ProviderNamespace == identity.ProviderNamespace && x.SourceProperty == "givenName")) &&
+            string.IsNullOrWhiteSpace(originalValues.GetValueOrDefault(NativeField.FirstName)) &&
+            originalValues.GetValueOrDefault(NativeField.Nickname) is { Length: <= 100 } displayName &&
             !string.IsNullOrWhiteSpace(displayName))
         {
             var policy = await db.NativeFieldSourcePolicies.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Source == identity.Source.ToString(), cancellationToken);
-            firstNameFallback = policy?.FirstNameDisplayNameFallback == true &&
-                string.Equals(policy.FirstNameFallbackProviderNamespace, identity.ProviderNamespace, StringComparison.Ordinal);
+            firstNameFallback = mappingDocument is null
+                ? policy?.FirstNameDisplayNameFallback == true && policy.FirstNameFallbackProviderNamespace == identity.ProviderNamespace
+                : mappingDocument.FirstNameFallback.Enabled && mappingDocument.FirstNameFallback.ProviderNamespace == identity.ProviderNamespace;
             if (firstNameFallback)
                 values = new Dictionary<NativeField, string?>(values) { [NativeField.FirstName] = displayName };
         }
-        var changed = ApplySource(user, identity, values, true, firstNameFallback);
+        var changed = ApplySource(user, identity, values, true, firstNameFallback, fillOnly, decisions);
         if (person is not null && user.PersonId == person.Id &&
             await IsBoundAsync(identity, NativeFieldTarget.Person, person.Id, cancellationToken))
         {
             // A shared Person needs an explicit operator assignment before its first source claim.
             var soleAccount = await db.Users.CountAsync(x => x.PersonId == person.Id, cancellationToken) == 1;
-            changed |= ApplySource(person, identity, values, soleAccount, firstNameFallback);
+            changed |= ApplySource(person, identity, values, soleAccount, firstNameFallback, fillOnly, decisions);
         }
+        if (changed && !fillOnly) StageMappingGuard(identity.Source, guard);
         return changed;
     }
 
@@ -201,20 +239,34 @@ public sealed class NativeFieldPolicyService(
     }
 
     private static bool ApplySource(object entity, NativeFieldSourceIdentity identity,
-        IReadOnlyDictionary<NativeField, string?> values, bool canClaim, bool firstNameFallback)
+        IReadOnlyDictionary<NativeField, string?> values, bool canClaim, bool firstNameFallback,
+        bool fillOnly, List<ProfileSyncChangeDto>? decisions)
     {
         var state = Read(entity);
         var changed = false;
-        foreach (var (field, value) in values)
+        foreach (var field in decisions is null ? values.Keys : Fields)
         {
+            var mapped = values.TryGetValue(field, out var value);
+            var current = GetValue(entity, field);
+            var entry = state.Fields.GetValueOrDefault(field) ?? new FieldState();
+            if (decisions is not null)
+            {
+                var action = !mapped ? "mapping_disabled" : entry.ManualFixed ? "manual_fixed" :
+                    !string.IsNullOrWhiteSpace(current) ? "preserve" :
+                    entry.Owner is not null && entry.Owner != identity ? "owner_mismatch" :
+                    entry.Owner is null && !canClaim ? "shared_person" :
+                    string.IsNullOrWhiteSpace(value) ? "missing_source" :
+                    value.Length > MaximumLength(field, entity) ? "value_too_long" : "fill";
+                decisions.Add(new(entity is ApplicationUser ? "User" : "Person", field.ToString(),
+                    current, value, action == "fill" ? value : current, action));
+            }
             if (string.IsNullOrWhiteSpace(value)) continue;
             // Proof display names can fit User but exceed Person's established 100-character limit.
             // Optional display data must neither fail authentication nor be truncated.
-            if (entity is Person && field == NativeField.Nickname && value.Length > 100) continue;
-            var entry = state.Fields.GetValueOrDefault(field) ?? new FieldState();
+            if (value.Length > MaximumLength(field, entity)) continue;
             if (entry.ManualFixed || entry.Owner is not null && entry.Owner != identity || entry.Owner is null && !canClaim) continue;
-            if (!string.IsNullOrWhiteSpace(GetValue(entity, field)) &&
-                (!entry.AllowOverwrite || field == NativeField.FirstName && firstNameFallback)) continue;
+            if (!string.IsNullOrWhiteSpace(current) &&
+                (fillOnly || !entry.AllowOverwrite || field == NativeField.FirstName && firstNameFallback)) continue;
             entry.Owner = identity;
             entry.Attributed = true;
             state.Fields[field] = entry;
@@ -316,13 +368,14 @@ public sealed class NativeFieldPolicyService(
 
     private static void ValidateValue(NativeField field, string value, object entity)
     {
-        var maximum = field switch
+        Require(value.Length <= MaximumLength(field, entity), "value_too_long");
+    }
+
+    private static int MaximumLength(NativeField field, object entity) => field switch
         {
             NativeField.Nickname when entity is ApplicationUser => 256,
             NativeField.EmployeeId => 50, NativeField.Department or NativeField.JobTitle => 200, _ => 100
         };
-        Require(value.Length <= maximum, "value_too_long");
-    }
 
     private static FieldDocument Read(object entity)
     {

@@ -65,7 +65,7 @@
     }
     
     @* Sidebar *@
-    <div class="sidebar bg-white border-r border-gray-200">
+    <div class="sidebar bg-white border-r border-gray-200" id="admin-sidebar">
         <div class="sidebar-sticky flex flex-col h-screen overflow-y-auto">
             @* Logo *@
             <a href="/Admin" class="sidebar-brand flex items-center gap-3 p-6 border-b border-gray-200 no-underline hover:no-underline">
@@ -214,40 +214,32 @@
         <header class="top-header sticky top-0 z-30 bg-white border-b border-gray-200 px-3 py-3 sm:px-6">
             <div class="flex h-full items-center justify-between gap-3">
                 @* Mobile Menu Toggle *@
-                <button class="md:hidden shrink-0 p-1 text-gray-600 hover:text-gray-900 focus:outline-none" id="sidebar-toggle">
-                    <i class="bi bi-list text-2xl"></i>
+                <button type="button" class="lg:hidden shrink-0 p-1 text-gray-600 hover:text-gray-900 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-google-500" id="sidebar-toggle" aria-label="@Localizer["ToggleNavigation"]" aria-controls="admin-sidebar" aria-expanded="false">
+                    <i class="bi bi-list text-2xl" aria-hidden="true"></i>
                 </button>
                 
                 @* Breadcrumbs *@
                 <nav aria-label="breadcrumb" class="flex min-w-0 flex-1 items-center">
                     <ol class="flex min-w-0 items-center space-x-2 whitespace-nowrap text-sm text-gray-500">
-                        <li><a href="/Admin" class="text-gray-500 hover:text-google-500 no-underline">@Localizer["Admin"]</a></li>
+                        <li class="min-w-0 truncate"><a href="/Admin" class="text-gray-500 hover:text-google-500 no-underline">@Localizer["Admin"]</a></li>
                         @if (!string.IsNullOrEmpty(ViewData["Breadcrumb"]?.ToString()))
                         {
-                            <li><span class="text-gray-300">/</span></li>
-                            <li class="truncate font-medium text-gray-900" aria-current="page">@ViewData["Breadcrumb"]</li>
+                            <li class="shrink-0"><span class="text-gray-300">/</span></li>
+                            <li class="min-w-0 truncate font-medium text-gray-900" aria-current="page" title="@ViewData["Breadcrumb"]">@ViewData["Breadcrumb"]</li>
                         }
                     </ol>
                 </nav>
                 
                 @* Right Side *@
                 <div class="flex shrink-0 items-center gap-3 sm:gap-4">
-                    <a href="/" class="hidden sm:inline-flex! items-center gap-1 px-3 py-1.5 border border-google-500 text-google-500 rounded-md text-sm font-medium hover:bg-google-100 transition-colors no-underline" title="@Localizer["BackToHome"]">
-                      <svg class="icon icon-tabler icon-tabler-home" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                    <a href="/" class="inline-flex shrink-0 items-center justify-center gap-1 text-google-500 hover:text-google-600 sm:px-3 sm:py-1.5 sm:border sm:border-google-500 sm:rounded-md text-sm font-medium sm:hover:bg-google-100 transition-colors no-underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-google-500" title="@Localizer["BackToHome"]" aria-label="@Localizer["BackToHome"]">
+                      <svg class="icon icon-tabler icon-tabler-home h-6 w-6 shrink-0 sm:h-5 sm:w-5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
                         <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
                         <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
                         <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"></path>
                         <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path>
                       </svg>
-                      <span>@Localizer["BackToHome"]</span>
-                    </a>
-                    <a href="/" class="sm:hidden text-google-500 hover:text-google-600" title="@Localizer["BackToHome"]">
-                        <svg class="icon icon-tabler icon-tabler-home" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" fill="none" stroke-linecap="round" stroke-linejoin="round">
-                            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
-                            <path d="M5 12l-2 0l9 -9l9 9l-2 0"></path>
-                            <path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2 -2v-7"></path>
-                            <path d="M9 21v-6a2 2 0 0 1 2 -2h2a2 2 0 0 1 2 2v6"></path>
-                        </svg>
+                      <span class="hidden sm:inline! whitespace-nowrap">@Localizer["BackToHome"]</span>
                     </a>
                     <div class="w-28 sm:w-32">
                         <partial name="_LanguageSelector" />
@@ -257,7 +249,7 @@
         </header>
         
         @* Scrollable Content Wrapper *@
-        <div class="content-scroll-wrapper flex-grow flex flex-col pt-[65px] h-[calc(100vh-65px)] overflow-y-auto">
+        <div class="content-scroll-wrapper flex-grow flex flex-col h-[calc(100vh-65px)] overflow-y-auto">
             @* Main Content *@
             <main class="flex-grow p-6 w-full max-w-full">
                 @RenderBody()

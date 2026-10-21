@@ -1,0 +1,152 @@
+import { mount, flushPromises } from '@vue/test-utils'
+import { createI18n } from 'vue-i18n'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import ProfileSyncDialog from './ProfileSyncDialog.vue'
+import { profileSyncApi } from '@/services/profileSyncApi'
+import en from '@/i18n/locales/en-US/profile-sync.json'
+import zh from '@/i18n/locales/zh-TW/profile-sync.json'
+vi.mock('@/services/profileSyncApi', () => ({ profileSyncApi: { status: vi.fn(), accounts: vi.fn(), preview: vi.fn(), apply: vi.fn() } }))
+const accounts = [{ id: 'user-a', userName: 'example-a' }, { id: 'user-b', userName: 'example-b' }]
+const ready = id => ({ userId: id, status: 'ready', reason: null, providerNamespace: 'example.provider', previewToken: `token-${id}`,
+  changes: [{ target: 'User', field: 'FirstName', currentValue: null, sourceValue: 'Example name', proposedValue: 'Example name', action: 'fill' },
+    { target: 'Person', field: 'Nickname', currentValue: '', sourceValue: 'Source name', proposedValue: '', action: 'manual_fixed' }] })
+const modal = { name: 'BaseModal', template: '<div><slot name="body"/><slot name="footer"/></div>' }
+let wrapper
+async function mountDialog(props = {}, locale = 'en-US') {
+  wrapper = mount(ProfileSyncDialog, { props: { accounts: [accounts[0]], canSync: true, ...props }, global: { plugins: [createI18n({ legacy: false, locale, messages: { 'en-US': { 'profile-sync': en }, 'zh-TW': { 'profile-sync': zh } } })], stubs: { BaseModal: modal } } })
+  await flushPromises()
+}
+beforeEach(() => {
+  vi.resetAllMocks()
+  profileSyncApi.status.mockResolvedValue({ enabled: true })
+  profileSyncApi.preview.mockImplementation(async id => ready(id))
+  profileSyncApi.apply.mockResolvedValue({ status: 'applied', changedUserFields: ['FirstName'], changedPersonFields: [] })
+})
+afterEach(() => wrapper?.unmount())
+describe('Manual profile synchronization', () => {
+  it.each([['en-US', en], ['zh-TW', zh]])('previews before applying and preserves distinct target decisions in %s', async (locale, strings) => {
+    await mountDialog({}, locale)
+    expect(profileSyncApi.preview).not.toHaveBeenCalled()
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain(strings.targets.User)
+    expect(wrapper.text()).toContain(strings.targets.Person)
+    expect(wrapper.text()).toContain(strings.actions.manual_fixed)
+    expect(wrapper.findAll('dd').map(cell => cell.text()).filter(value => value === strings.blank)).toHaveLength(3)
+    expect(wrapper.get('[data-test="apply-sync"]').text()).toBe(strings.apply.replace('{count}', '1'))
+    expect(wrapper.findAll('details')[0].element.open).toBe(false)
+    await wrapper.get('[data-test="apply-sync"]').trigger('click'); await flushPromises()
+    expect(profileSyncApi.apply).toHaveBeenCalledExactlyOnceWith('user-a', 'token-user-a')
+    expect(wrapper.text()).toContain(strings.status.applied)
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+    expect(wrapper.emitted('changed')).toHaveLength(1)
+  })
+  it('hides inactive controls when deployment disables synchronization', async () => {
+    profileSyncApi.status.mockResolvedValue({ enabled: false, reason: 'disabled' })
+    await mountDialog()
+    expect(wrapper.get('[data-test="sync-disabled"]').text()).toBe(en.reasons.disabled)
+    expect(wrapper.find('[data-test="preview-sync"]').exists()).toBe(false)
+    expect(profileSyncApi.preview).not.toHaveBeenCalled()
+  })
+  it('does not request or expose mutation controls without both permissions', async () => {
+    await mountDialog({ canSync: false })
+    expect(profileSyncApi.status).not.toHaveBeenCalled()
+    expect(wrapper.text()).toContain(en.permission)
+    expect(wrapper.find('[data-test="preview-sync"]').exists()).toBe(false)
+  })
+  it('requires explicit linked account selection for a Person', async () => {
+    profileSyncApi.accounts.mockResolvedValue(accounts)
+    await mountDialog({ personId: 'person-a', accounts: [] })
+    expect(profileSyncApi.accounts).toHaveBeenCalledWith('person-a')
+    expect(wrapper.get('[data-test="sync-account"]').element.value).toBe('')
+    expect(wrapper.get('[data-test="preview-sync"]').element.disabled).toBe(true)
+    await wrapper.get('[data-test="sync-account"]').setValue('user-b')
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    expect(profileSyncApi.preview).toHaveBeenCalledExactlyOnceWith('user-b')
+    await wrapper.get('[data-test="sync-account"]').setValue('user-a')
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+  })
+  it('keeps failed and blocked batch results visible and applies only previewed ready accounts', async () => {
+    profileSyncApi.preview.mockRejectedValueOnce(new Error('source_unavailable'))
+      .mockResolvedValueOnce({ status: 'blocked', reason: 'binding_missing', changes: [], previewToken: null })
+      .mockResolvedValueOnce(ready('user-c'))
+    await mountDialog({ accounts: [...accounts, { id: 'user-c', userName: 'example-c' }] })
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    expect(profileSyncApi.preview.mock.calls.map(([id]) => id)).toEqual(['user-a', 'user-b', 'user-c'])
+    expect(wrapper.text()).toContain(en.reasons.source_unavailable)
+    expect(wrapper.text()).toContain(en.reasons.binding_missing)
+    await wrapper.get('[data-test="apply-sync"]').trigger('click'); await flushPromises()
+    expect(profileSyncApi.apply).toHaveBeenCalledExactlyOnceWith('user-c', 'token-user-c')
+    expect(wrapper.text()).toContain(en.status.failed)
+    expect(wrapper.text()).toContain(en.status.blocked)
+  })
+  it('runs requests sequentially and prevents duplicate apply and closing while busy', async () => {
+    let finish
+    profileSyncApi.apply.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    await mountDialog({ accounts })
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    await wrapper.get('[data-test="apply-sync"]').trigger('click')
+    expect(profileSyncApi.apply).toHaveBeenCalledTimes(1)
+    expect(wrapper.get('[data-test="preview-sync"]').element.disabled).toBe(true)
+    wrapper.findComponent({ name: 'BaseModal' }).vm.$emit('close')
+    expect(wrapper.emitted('close')).toBeUndefined()
+    if (wrapper.find('[data-test="apply-sync"]').exists()) await wrapper.get('[data-test="apply-sync"]').trigger('click')
+    expect(profileSyncApi.apply).toHaveBeenCalledTimes(1)
+    finish({ status: 'applied', changedUserFields: ['FirstName'], changedPersonFields: [] }); await flushPromises()
+    expect(profileSyncApi.apply).toHaveBeenCalledTimes(2)
+    expect(wrapper.emitted('changed')).toHaveLength(2)
+  })
+  it.each(['preview_stale', 'preview_invalid'])('requires a fresh preview after %s without automatically retrying', async code => {
+    profileSyncApi.apply.mockRejectedValueOnce(new Error(code))
+    await mountDialog()
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    await wrapper.get('[data-test="apply-sync"]').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain(en.reasons[code])
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+    expect(wrapper.emitted('changed')).toBeUndefined()
+    expect(profileSyncApi.apply).toHaveBeenCalledTimes(1)
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(true)
+    expect(profileSyncApi.preview).toHaveBeenCalledTimes(2)
+  })
+  it('retains an apply failure and does not claim no-changes or success', async () => {
+    profileSyncApi.apply.mockRejectedValueOnce(new Error('source_unavailable'))
+    await mountDialog()
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    await wrapper.get('[data-test="apply-sync"]').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain(en.status.failed)
+    expect(wrapper.text()).toContain(en.reasons.source_unavailable)
+    expect(wrapper.emitted('changed')).toBeUndefined()
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+  })
+  it('does not refresh the parent for a no-changes apply response', async () => {
+    profileSyncApi.apply.mockResolvedValue({ status: 'no_changes', changedUserFields: [], changedPersonFields: [] })
+    await mountDialog()
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    await wrapper.get('[data-test="apply-sync"]').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain(en.status.no_changes)
+    expect(wrapper.emitted('changed')).toBeUndefined()
+  })
+  it('previews sequentially and never exposes an unpreviewed account for apply', async () => {
+    let finish
+    profileSyncApi.preview.mockReturnValueOnce(new Promise(resolve => { finish = resolve }))
+    await mountDialog({ accounts })
+    await wrapper.get('[data-test="preview-sync"]').trigger('click')
+    expect(profileSyncApi.preview).toHaveBeenCalledExactlyOnceWith('user-a')
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+    finish(ready('user-a')); await flushPromises()
+    expect(profileSyncApi.preview).toHaveBeenCalledTimes(2)
+    expect(profileSyncApi.apply).not.toHaveBeenCalled()
+  })
+  it('shows no-changes preview without an apply control', async () => {
+    profileSyncApi.preview.mockResolvedValue({ status: 'no_changes', changes: [], previewToken: null })
+    await mountDialog()
+    await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+    expect(wrapper.text()).toContain(en.status.no_changes)
+    expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+  })
+  it('keeps both locale contracts aligned', () => {
+    const keys = object => Object.entries(object).flatMap(([key, value]) => typeof value === 'object' ? keys(value).map(child => `${key}.${child}`) : [key]).sort()
+    expect(keys(en)).toEqual(keys(zh))
+  })
+})

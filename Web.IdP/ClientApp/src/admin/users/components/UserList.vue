@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import ActionMenu from '@/components/common/ActionMenu.vue'
 import { Roles } from '@/utils/permissionService'
@@ -16,6 +16,7 @@ const props = defineProps({
   pageSize: { type: Number, required: true },
   totalCount: { type: Number, required: true },
   sort: { type: String, default: '' },
+  canSync: { type: Boolean, default: false },
   canUpdate: { type: Boolean, default: false },
   canResetMfa: { type: Boolean, default: false },
   canManageRoles: { type: Boolean, default: false },
@@ -28,6 +29,7 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'profile-sync',
   'field-policies',
   'edit',
   'manage-roles',
@@ -46,6 +48,11 @@ const emit = defineEmits([
   'update:search',
   'update:isActiveFilter'
 ])
+
+const selectedIds = ref([])
+watch(() => [props.users, props.loading, props.page, props.pageSize, props.search, props.isActiveFilter, props.sort, props.canSync], () => { selectedIds.value = [] })
+const selectedAccounts = computed(() => props.users.filter(user => selectedIds.value.includes(user.id)).slice(0, 50))
+const selectPage = event => { selectedIds.value = event.target.checked ? props.users.slice(0, 50).map(user => user.id) : [] }
 
 const totalPages = computed(() => {
   return Math.ceil(props.totalCount / props.pageSize)
@@ -134,6 +141,10 @@ const getSortIcon = (field) => {
         </div>
       </div>
 
+      <div v-if="canSync && !loading && users.length" class="flex flex-wrap items-center gap-3 border-b border-gray-200 px-4 py-3">
+        <span class="text-sm text-gray-600">{{ t('profile-sync.selected', { count: selectedAccounts.length }) }}</span>
+        <button data-test="preview-selected" type="button" :disabled="!selectedAccounts.length" class="rounded-md border border-gray-300 px-3 py-2 text-sm font-medium disabled:opacity-50" @click="emit('profile-sync', selectedAccounts)">{{ t('profile-sync.previewSelected') }}</button>
+      </div>
       <!-- Loading State -->
       <LoadingIndicator v-if="loading" :loading="loading" size="md" :message="$t('users.loading')" />
 
@@ -150,6 +161,7 @@ const getSortIcon = (field) => {
         <table class="min-w-full divide-y divide-gray-200">
           <thead class="bg-gray-50">
             <tr>
+              <th v-if="canSync" class="px-4 py-3"><input data-test="select-page" type="checkbox" :aria-label="t('profile-sync.selectPage')" :checked="selectedAccounts.length === Math.min(users.length, 50) && users.length > 0" @change="selectPage" /></th>
               <th
                 @click="handleSort('userName')"
                 class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100"
@@ -202,6 +214,7 @@ const getSortIcon = (field) => {
           </thead>
           <tbody class="bg-white divide-y divide-gray-200">
             <tr v-for="user in users" :key="user.id" class="hover:bg-gray-50" :data-test-id="`user-row-${user.id}`">
+              <td v-if="canSync" class="px-4 py-4"><input v-model="selectedIds" data-test="select-sync-user" type="checkbox" :value="user.id" :aria-label="t('profile-sync.selectAccount', { name: user.userName })" :disabled="selectedIds.length >= 50 && !selectedIds.includes(user.id)" /></td>
               <td class="px-6 py-4 whitespace-nowrap" :data-test-id="`user-email-${user.id}`">
                 <div class="text-sm font-medium text-gray-900">{{ user.displayName || user.userName }}</div>
                 <div v-if="user.displayName && user.displayName !== user.userName" class="text-sm text-gray-500">{{ user.userName }}</div>
@@ -271,6 +284,7 @@ const getSortIcon = (field) => {
                     </button>
                   </template>
                   <template #content="{ close }">
+                    <button v-if="canSync" data-test="manual-sync-action" type="button" class="text-left w-full block px-4 py-2 text-sm text-google-700 hover:bg-gray-100" @click="emit('profile-sync', [user]); close()">{{ t('profile-sync.menu') }}</button>
                     <button v-if="canRead" type="button" class="text-left w-full block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100" @click="emit('field-policies', user); close()">{{ t('native-fields.title') }}</button>
                     <button
                       v-if="canUpdate"

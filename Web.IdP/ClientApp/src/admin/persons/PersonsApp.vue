@@ -5,6 +5,7 @@ import PersonForm from './components/PersonForm.vue'
 import LinkedAccountsDialog from './components/LinkedAccountsDialog.vue'
 import TransferAssetsDialog from './components/TransferAssetsDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import ProfileSyncDialog from '@/components/ProfileSyncDialog.vue'
 import NativeFieldPolicyDialog from '@/components/NativeFieldPolicyDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
@@ -15,6 +16,8 @@ const persons = ref([])
 const loading = ref(true)
 const error = ref(null)
 const policyTarget = ref(null)
+const syncPerson = ref(null)
+const canManualSync = ref(false)
 const selectedPerson = ref(null)
 const showForm = ref(false)
 const showLinkedAccountsDialog = ref(false)
@@ -34,6 +37,7 @@ onMounted(async () => {
   await permissionService.loadPermissions()
   canCreate.value = permissionService.hasPermission(Permissions.Persons.Create)
   canUpdate.value = permissionService.hasPermission(Permissions.Persons.Update)
+  canManualSync.value = canUpdate.value && permissionService.hasPermission(Permissions.Users.Update)
   canDelete.value = permissionService.hasPermission(Permissions.Persons.Delete)
   canRead.value = permissionService.hasPermission(Permissions.Persons.Read)
   
@@ -470,6 +474,7 @@ watch([page, pageSize, search, sort], () => {
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     </button>
+                    <button v-if="canManualSync" data-test="person-manual-sync" type="button" class="text-sm text-google-700 hover:underline" @click="syncPerson = person">{{ t('profile-sync.menu') }}</button>
                     <button
                       v-if="canUpdate"
                       @click="handleTransferAssets(person)"
@@ -577,6 +582,8 @@ watch([page, pageSize, search, sort], () => {
       </div>
 
       <!-- Dialogs -->
+      <ProfileSyncDialog v-if="syncPerson" :person-id="syncPerson.id" :can-sync="canManualSync" @close="syncPerson = null" @changed="fetchPersons" />
+
       <NativeFieldPolicyDialog v-if="policyTarget" target="Person" :target-id="policyTarget.id" :target-label="personDisplayName(policyTarget)" :can-update="canUpdate" @close="policyTarget = null" @changed="fetchPersons" />
 
       <PersonForm

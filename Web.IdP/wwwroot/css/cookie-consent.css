@@ -24,3 +24,11 @@
   margin: 0;
   line-height: 1.5;
 }
+
+@media (max-width: 575.98px) {
+  #cookie-consent-banner {
+    left: 20px;
+    right: 20px;
+    margin-inline: auto;
+  }
+}

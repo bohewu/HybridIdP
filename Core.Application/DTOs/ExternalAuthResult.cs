@@ -21,7 +21,12 @@ public class ExternalAuthResult
     /// a new isolated account only; never an identity key or an account-linking signal.
     /// Browser/social registration leaves this null.
     /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
     public string? AssuredCanonicalAccount { get; set; }
+
+    // Server-set contract assurance, independent of local Email confirmation trust.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool ProofEmailAssured { get; set; }
     
     /// <summary>
     /// Email (primarily used to determine if it's the same Person)

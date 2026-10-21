@@ -185,6 +185,15 @@ public class SettingsServiceTests : IDisposable
 
     #region SetValueAsync Tests
 
+    [Theory]
+    [InlineData("system.nativeFieldMappings")]
+    [InlineData("SYSTEM.NATIVEFIELDMAPPINGS")]
+    public async Task SetValueAsync_ShouldRejectNativeMappingConfiguration(string key)
+    {
+        await Assert.ThrowsAsync<SystemManagedSettingException>(() => _service.SetValueAsync(key, "{}"));
+        Assert.Empty(await _context.Settings.ToListAsync());
+    }
+
     [Fact]
     public async Task SetValueAsync_WhenNewSetting_CreatesNew()
     {

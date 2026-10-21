@@ -27,13 +27,6 @@ body.admin-layout.is-impersonating {
     --impersonation-bar-height: 42px; /* Standard height for the banner */
 }
 
-/* Hide sidebar toggle on desktop - prevent FOUC */
-@media (min-width: 768px) {
-    #sidebar-toggle {
-        visibility: hidden !important;
-    }
-}
-
 /* Sidebar */
 .sidebar {
     position: fixed;
@@ -254,10 +247,12 @@ main {
     /* Hide sidebar by default on tablets and smaller */
     .sidebar {
         transform: translateX(-260px);
+        visibility: hidden;
     }
 
     .sidebar.show {
         transform: translateX(0);
+        visibility: visible;
     }
 
     .main-content {
@@ -313,6 +308,10 @@ main {
     .main-content {
         margin-left: 220px;
         width: calc(100vw - 220px);
+    }
+
+    .top-header {
+        left: 220px;
     }
 
     .sidebar-brand-text h1 {

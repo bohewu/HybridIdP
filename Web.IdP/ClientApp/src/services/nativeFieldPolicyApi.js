@@ -12,6 +12,8 @@ async function read(response) {
 }
 const targetPath = (target, id) => `${base}/${target === 'User' ? 'users' : 'persons'}/${encodeURIComponent(id)}`
 export const nativeFieldPolicyApi = {
+  mappings: () => adminApi.get(`${base}/mappings`, { cache: 'no-store' }).then(read),
+  saveMappings: request => adminApi.put(`${base}/mappings`, request).then(read),
   sources: () => adminApi.get(`${base}/sources`, { cache: 'no-store' }).then(read),
   pause: (source, request) => adminApi.put(`${base}/sources/${source}`, request).then(read),
   firstNameFallback: (source, request) => adminApi.put(`${base}/sources/${source}/first-name-fallback`, request).then(read),
@@ -22,6 +24,6 @@ export const nativeFieldPolicyApi = {
 export function policyError(t, error) {
   const known = ['session', 'forbidden', 'conflict', 'source_unavailable', 'binding_mismatch', 'owner_mismatch',
     'source_clear_unsupported', 'manual_value_required', 'value_too_long', 'not_found', 'invalid_stored_state',
-    'unsupported_source', 'unsupported_field_or_operation', 'unsupported_field', 'invalid_target', 'invalid_fields']
+    'unsupported_source', 'unsupported_field_or_operation', 'unsupported_field', 'invalid_target', 'invalid_fields', 'invalid_mapping']
   return t(`native-fields.errors.${known.includes(error.message) ? error.message : 'request_failed'}`)
 }

@@ -8,6 +8,7 @@ import UserSessions from './components/UserSessions.vue'
 import LoginHistoryDialog from './components/LoginHistoryDialog.vue'
 import RecoveryAssistanceDialog from './components/RecoveryAssistanceDialog.vue'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
+import ProfileSyncDialog from '@/components/ProfileSyncDialog.vue'
 import NativeFieldPolicyDialog from '@/components/NativeFieldPolicyDialog.vue'
 import PageHeader from '@/components/common/PageHeader.vue'
 import permissionService, { Permissions } from '@/utils/permissionService'
@@ -20,6 +21,9 @@ const users = ref([])
 const loading = ref(true)
 const error = ref(null)
 const policyTarget = ref(null)
+const syncAccounts = ref(null)
+const canManualSync = ref(false)
+const openProfileSync = accounts => { if (canManualSync.value) syncAccounts.value = accounts.slice(0, 50) }
 const selectedUser = ref(null)
 const showForm = ref(false)
 const showRoleDialog = ref(false)
@@ -47,6 +51,7 @@ onMounted(async () => {
   await permissionService.loadPermissions()
   canCreate.value = permissionService.hasPermission(Permissions.Users.Create)
   canUpdate.value = permissionService.hasPermission(Permissions.Users.Update)
+  canManualSync.value = canUpdate.value && permissionService.hasPermission(Permissions.Persons.Update)
   canResetMfa.value = permissionService.hasPermission(Permissions.Users.ResetMfa)
   canManageRoles.value = canUpdate.value &&
     permissionService.hasPermission(Permissions.Roles.Read) &&
@@ -532,6 +537,7 @@ const handleImpersonate = async (user) => {
         :page-size="pageSize"
         :total-count="totalCount"
         :sort="sort"
+        :can-sync="canManualSync"
         :can-update="canUpdate"
         :can-reset-mfa="canResetMfa"
         :can-manage-roles="canManageRoles"
@@ -541,6 +547,7 @@ const handleImpersonate = async (user) => {
         :current-user-id="currentUserId"
         v-model:search="search"
         v-model:is-active-filter="isActiveFilter"
+        @profile-sync="openProfileSync"
         @field-policies="policyTarget = $event"
         @edit="handleEdit"
         @manage-roles="handleManageRoles"
@@ -557,6 +564,8 @@ const handleImpersonate = async (user) => {
         @page-size-change="handlePageSizeChange"
         @sort-change="handleSortChange"
       />
+
+      <ProfileSyncDialog v-if="syncAccounts" :accounts="syncAccounts" :can-sync="canManualSync" @close="syncAccounts = null" @changed="fetchUsers" />
 
       <NativeFieldPolicyDialog v-if="policyTarget" target="User" :target-id="policyTarget.id" :target-label="policyTarget.userName" :can-update="canUpdate" @close="policyTarget = null" @changed="fetchUsers" />
 

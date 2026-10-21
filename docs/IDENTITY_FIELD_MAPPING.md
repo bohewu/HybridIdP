@@ -48,7 +48,7 @@ and profile assurance before passing an `ExternalAuthResult` to JIT provisioning
 | Proof field | Local target | Existing-account behavior |
 | --- | --- | --- |
 | `providerNamespace` + `stableSubject` | `AspNetUserLogins` exact provider/key | Resolve the original account first; no Email/name-based matching in the canonical-account provisioning path. |
-| `canonicalAccount` | New `ApplicationUser.UserName` | Used only at initial canonical-account creation, subject to local validation and uniqueness. Repeat login does not rename the account. Older Email-form usernames remain valid stored names. |
+| `canonicalAccount` | Default new `ApplicationUser.UserName`; source credential lookup hint | Used at creation unless the exact source has an explicit Email naming policy. Repeat login does not rename the account. A hint only routes Proof; its returned exact tuple must still identify the same account. |
 | `profile.email` | `ApplicationUser.Email`, `Person.Email` | With local Email trust off, fill missing values without newly confirming them. With trust on, existing verified-source update rules apply. An enrolled account Email OTP target is not replaced. |
 | Explicit Email assurance + exact local Email trust entry | `ApplicationUser.EmailConfirmed` | Both are required for new confirmation. Saving Email alone does not confirm it. This does not grant recovery-address trust or enroll MFA. |
 | `profile.givenName` | `ApplicationUser.FirstName`, `Person.FirstName` | Subject to the native-field policy below. An optional exact-source strategy can fill missing FirstName from assured `displayName` only when `givenName` is missing. |
@@ -62,6 +62,42 @@ Every nonblank Proof profile field must have its matching `assuredFields`
 entry. A valid contact Email can be stored independently of the additional
 local decision to confirm it. Profile extra properties do not substitute for
 a missing Proof Email in this path.
+
+### New-account username selection
+
+In the mapping dialog, **New-account username** independently selects **Source
+account** (`canonicalAccount`, default) or **Source Email** (`profile.email`)
+for the exact Proof namespace. Save uses the same revision and transaction as
+the mapping draft. It needs `settings.update` and the existing cookie CSRF check;
+read-only administrators cannot change it. No new environment flag is required.
+The actual Proof source must be enabled and trusted. Native-field pause and
+`NativeFieldPolicy:ProofEnabled` control native synchronization only, so they do
+not switch or disable username naming. A saved unavailable namespace is retained;
+changing the configured namespace does not transfer its naming choice.
+
+Email naming requires a fresh, explicitly assured, valid Proof Email that meets
+the local username length/character/uniqueness rules. Missing, invalid, disallowed,
+oversized or occupied names deny creation before account/person/link writes,
+without falling back to the source account or adopting an existing Email account.
+The normalized Email collision check is protected through the creation commit:
+SQL Server uses serializable isolation; PostgreSQL briefly blocks writes to
+`AspNetUsers` while checking and saving the new account. Upstream calls complete
+before this transaction. Later independent contact updates retain their existing rules.
+The choice never grants `EmailConfirmed`: its independent local trust rule still
+applies. Existing exact-bound accounts retain their UserName, UserId, PersonId,
+factors and links. EmployeeId remains an independently mapped source field.
+Normal native policy and Profile refresh continue under their own rules.
+Username is never a fill/overwrite/manual-sync target or previewed field change.
+
+Original source account sign-in continues to submit credential Proof and resolve
+the exact namespace/subject. For a local username that differs from the source
+account, server-owned login metadata supplies a lookup-only canonical source
+hint. The returned fresh Proof must match the original subject and UserId before
+profile writes. The hint cannot enable local credentials, recovery or credential
+migration, or select another identity. A historical operator-approved rename needs
+its explicitly approved source-login candidate preserved in the same operation,
+or one successful original-source sign-in to refresh that hint first. An Email or
+employee identifier must not be guessed as a source credential login.
 
 New and existing usernames can therefore have different presentation formats.
 Consumers must use the documented stable subject, not assume that a username
@@ -118,7 +154,9 @@ and [binding refresh](../Infrastructure/Services/Stage1BindingRefreshService.cs)
 ## Native-field policy and operator workflow
 
 Only `Nickname`, `FirstName`, `LastName`, `Department`, `JobTitle` and
-`EmployeeId` are supported, using the existing Proof and Stage 1 mappings above.
+`EmployeeId` are supported. The tables above describe the compatibility defaults;
+an explicit saved mapping can select any of `displayName`, `givenName`, `surname`,
+`department`, `title` or `employeeId` from the same assured structured source.
 There is no automatic fallback between sources or source-priority engine. Browser
 providers and Provider Profile extra properties are not selectable native sources.
 
@@ -140,16 +178,36 @@ UI pause/resume cannot enable or trust a deployment-disabled source. Pausing
 retains configuration, bindings, values and ownership, and stops only native
 synchronization. A temporary source outage preserves current native values.
 Source status describes configuration and pause state, not connectivity health.
+Pause/resume acts immediately beside an enabled source; disabled sources show
+one deployment-needed explanation without inactive action controls.
 
-At **Settings > Profile field synchronization > Sign-in verification source**,
-the **Use the full name to fill a missing first name** option
-defaults to off. Save it for the exact Proof provider namespace shown under the initially collapsed
-**Sources and sync rules** disclosure.
+At **Settings > Profile field synchronization > Adjust sync settings**, add a
+mapping in the upper row or edit the current mappings inline. Each row selects
+a native field, enabled/trusted/unpaused source and one of its six structured
+properties. Organization directory rows retain their exact namespace and bound
+directory-object checks. The optional **Use the full name to fill a missing
+first name** strategy defaults to off and is effective only for Proof FirstName
+mapped from `givenName` in that exact namespace.
 The selection is persisted in the database, not enabled by an additional `.env`
 flag. Existing Proof enablement/trust remains the deployment ceiling. Changing
 the configured namespace does not transfer the old namespace's selection.
 Pause/resume retains the selection; the strategy runs only while the source is
 enabled, trusted and unpaused.
+
+**Cancel** discards the draft. **Save for next login** atomically saves the full
+mapping draft and fallback selection without fetching source data or changing
+native values. **Save and sync now** first saves the same configuration, then
+opens explicit existing-account selection and the established read-only preview
+and token-only apply flow. It never synchronizes the whole account pool.
+
+Removing a row explicitly disables that target for its source and namespace;
+it does not restore a default mapping. An empty saved list disables all six
+native targets. Only absence of the entire configuration retains the old fixed
+mappings and legacy fallback selection. Distinct sources may have rows for the
+same field; the existing per-record owner decides which can write, without a
+priority or automatic source fallback. Unavailable saved rows remain visible and
+can be retained or removed; new/changed assignments require an available source.
+Changing the configured Proof namespace does not transfer old saved mappings.
 
 An assured nonblank `givenName` retains the existing FirstName mapping. Only a
 missing, null, empty or whitespace-only `givenName` permits the same validated
@@ -185,9 +243,18 @@ deliberately changed supported values or explicit empty clears; omitted/null
 fields and unchanged nonempty values do not acquire protection. Use the policy
 dialog to fix a value even when it has not changed.
 
+The dialog first shows the selected field, stored value, manual protection and
+assigned source. Choose **Set a fixed value** or **Change sync source** to open
+one form at a time. An empty manual input labels the action **Clear and fix**;
+**Unlock manual protection** is a separate action beside the current protection
+state. Assignment keeps manual protection and takes effect on the next eligible
+sync. Raw target and owner identifiers are under **Sources and sync rules**;
+the binding selector retains the exact account/namespace/subject to distinguish
+existing identities. Read-only operators see the summary and details only.
+
 | UI entry | Read / update permissions | Operation |
 | --- | --- | --- |
-| `/Admin/Settings`, Profile field synchronization section before Branding | `settings.read` / `settings.update` | Inspect supported fields and deployment/pause status; pause/resume an enabled source or select the exact Proof source's FirstName fill strategy. |
+| `/Admin/Settings`, Profile field synchronization section before Branding | `settings.read` / `settings.update` | Inspect source status and edit the full mapping/fallback draft; pause/resume an enabled source. Immediate sync also requires the existing User/Person update permissions. |
 | `/Admin/Users`, row action menu, Native field policies | `users.read` / `users.update` | Select a User field, save and fix a value, Unlock, or assign an exact existing binding with optional overwrite. |
 | `/Admin/People`, row Native field policies button | `persons.read` / `persons.update` | Manage the Person's independent field state. |
 
@@ -195,16 +262,40 @@ UI assignment also needs `settings.read` to load source availability; target man
 protection remains available with the target permission. Policy changes apply
 on the next eligible normal synchronization, with no immediate upstream fetch.
 On a concurrent-change conflict, reload current policy before submitting again.
-The protected API is `/api/admin/native-field-policies`: `GET sources`,
+The protected API is `/api/admin/native-field-policies`: `GET mappings`,
+`PUT mappings`, `GET sources`,
 `PUT sources/{source}`, `PUT sources/Proof/first-name-fallback`, and target `GET users/{id}` / `persons/{id}` plus
 `PUT users/{id}/{field}` / `persons/{id}/{field}`. Mutations require the current
 revision and existing administrative authorization/cookie CSRF checks.
 The fallback request contains `providerNamespace`, `enabled` and
 `expectedRevision`; a namespace mismatch or stale source revision returns
-`409 conflict`. Reload source status before resubmitting. Pause and strategy
-updates share the source revision and do not overwrite one another's settings.
+`409 conflict`. Reload source status before resubmitting. Pause and legacy
+strategy updates share the source revision. Once a mapping document is saved,
+the legacy fallback endpoint returns `mapping_configuration_required`; use the
+atomic mapping endpoint instead.
 
-These policies do not control Email trust or confirmation, enrolled Email MFA
+`GET mappings` returns `revision`, `mappings`, `firstNameFallback`, `userNamePolicies`, `sources`
+and `sourceProperties`. Each mapping contains `field`, `source`,
+`providerNamespace` and `sourceProperty`. `PUT mappings` accepts
+`expectedRevision`, the complete `mappings` array and `firstNameFallback`
+(`providerNamespace`, `enabled`), and returns the updated document. Duplicate
+field/source/namespace tuples, unknown fields/properties, undefined enums and
+new unavailable assignments are rejected. Stale drafts return `409 conflict`.
+`userNamePolicies` contains saved `{source: "Proof", providerNamespace,
+strategy: "CanonicalAccount" | "Email"}` rows; absent rows use the canonical
+default. Each source's `userNamePolicyAvailable` reflects actual Proof enablement
+and exact namespace trust independently of native pause. PUT saves the complete
+array; omission/null preserves current policies for older clients, while `[]`
+explicitly clears selections. Duplicate namespaces, Stage 1 and undefined
+strategies are rejected. A malformed stored naming selection denies new-account
+creation; existing bound accounts are not renamed or blocked by that selection.
+Every save invalidates existing manual-sync preview receipts. Normal native
+writes check source-policy concurrency in the same save as native values;
+manual apply also uses its existing bounded serializable transaction. Invalid
+stored mapping state blocks administrative reads/writes and skips optional
+native login writes while leaving login and Profile snapshot refresh independent.
+
+The six native-field policies do not control Email trust or confirmation, enrolled Email MFA
 targets, recovery, IID, roles, lifecycle, credentials, usernames, IDs or bindings.
 Claims Preview remains read-only. Successful normal login independently
 refreshes Provider Profile snapshots. Profile uses complete source-scoped
@@ -214,6 +305,44 @@ native missing-value preservation must not be applied to those snapshots.
 Implementation: [policy options](../Core.Application/Options/NativeFieldPolicyOptions.cs),
 [policy service](../Infrastructure/Services/NativeFieldPolicyService.cs) and
 [admin API](../Web.IdP/Controllers/Admin/NativeFieldPoliciesController.cs).
+
+## Administrator manual profile synchronization
+
+**Users > row action > Manual sync** opens **Sync source data**. Administrators
+with both `users.update` and `persons.update` can also select up to 50 accounts
+from the current page and choose **Preview selected**. Selection resets when the
+page, filters, sort or loaded results change; this is not an all-accounts job.
+**People > Manual sync** requires an explicit choice from that Person's linked
+accounts. No first account or shared Person owner is inferred.
+
+The deployment must enable manual synchronization separately. When disabled,
+the dialog shows the deployment-needed reason and offers no inactive preview or
+apply controls. It cannot enable or trust a source and does not report source
+connection health. Existing normal-login and policy-setting behavior is unchanged.
+
+Choose **Preview differences** to fetch and compare source data without writing
+User/Person fields. Each account has a separate result; expand it to compare
+**Current**, **Source** and **Proposed** values, with User and Person targets
+shown separately. Existing values, manually fixed blanks, ownership and Email
+MFA protections remain subject to server policy. This UI does not rename usernames.
+**Apply X field updates** explicitly applies only ready, previewed fill/confirmation
+changes. The displayed count is field decisions across both record types, not
+an account count. Protected, missing-source, blocked and failed outcomes remain
+visible and are not reported as successful updates.
+
+Batch preview/apply requests execute sequentially per account with progress.
+Closing and reentrant requests are disabled in flight. The server-issued preview
+token expires after five minutes and binds the proposed operation to its preview;
+apply sends only that token, never client-supplied replacement field values.
+A stale/invalid preview or failed apply requires **Preview again** before that
+account can be applied; there is no automatic conflict retry. Account lists refresh
+only after reported field changes. Source namespaces are optional technical details.
+
+The protected endpoints are `GET /api/admin/profile-sync/status`,
+`POST /api/admin/profile-sync/users/{id}/preview` and
+`POST /api/admin/profile-sync/users/{id}/apply`. All require both update permissions
+and mutating requests retain cookie CSRF validation. Person account selection uses
+the existing `GET /api/admin/people/{personId}/accounts` read permission boundary.
 
 ## Identity-document identifiers (IID): implemented storage and boundaries
 
