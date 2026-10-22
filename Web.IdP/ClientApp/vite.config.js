@@ -36,6 +36,7 @@ export default defineConfig(({ command }) => ({
         'admin-roles': './src/admin/roles/main.js',
         'admin-people': './src/admin/persons/main.js',
         'admin-settings': './src/admin/settings/main.js',
+        'admin-data-sources': './src/admin/data-sources/main.js',
         'admin-security': './src/admin/security/main.js',
         'admin-audit': './src/admin/audit/main.js',
         'admin-localization': './src/admin/localization/main.js',

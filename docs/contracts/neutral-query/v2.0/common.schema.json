@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Neutral query 2.0 common definitions",
+  "description": "Definitions only. Use capability request/response definitions. Runtime also checks normalization, UTF-16 lengths, duplicates, HTTP pairing, provenance and pending-request context.",
+  "type": "object",
+  "$defs": {
+    "requestId": {
+      "type": "string",
+      "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+    },
+    "namespace": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 200,
+      "pattern": "\\S",
+      "not": {
+        "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+      }
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "attributes"
+      ],
+      "properties": {
+        "queryRule": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9_.-]+$"
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": false,
+          "minProperties": 1,
+          "maxProperties": 3,
+          "properties": {
+            "employeeId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50,
+              "pattern": "\\S",
+              "not": {
+                "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+              }
+            },
+            "nationalIdHash": {
+              "type": "string",
+              "pattern": "^[0-9A-F]{64}$"
+            },
+            "accountName": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256,
+              "pattern": "\\S",
+              "not": {
+                "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+              }
+            }
+          }
+        }
+      }
+    },
+    "envelope": {
+      "type": "object",
+      "required": [
+        "contractType",
+        "contractVersion",
+        "requestId",
+        "providerNamespace"
+      ],
+      "properties": {
+        "contractType": {
+          "enum": [
+            "native-profile",
+            "profile",
+            "metadata",
+            "lifecycle-status",
+            "recovery-identity-verification",
+            "password-sync"
+          ]
+        },
+        "contractVersion": {
+          "const": "2.0"
+        },
+        "requestId": {
+          "$ref": "#/$defs/requestId"
+        },
+        "providerNamespace": {
+          "$ref": "#/$defs/namespace"
+        }
+      }
+    },
+    "request": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "$ref": "#/$defs/query"
+            }
+          }
+        }
+      ]
+    },
+    "response": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/envelope"
+        },
+        {
+          "type": "object",
+          "required": [
+            "queryOutcome"
+          ],
+          "properties": {
+            "queryOutcome": {
+              "enum": [
+                "Found",
+                "NotFound",
+                "Ambiguous",
+                "Unavailable",
+                "Unsupported"
+              ]
+            }
+          }
+        }
+      ],
+      "if": {
+        "properties": {
+          "queryOutcome": {
+            "const": "Found"
+          }
+        },
+        "required": [
+          "queryOutcome"
+        ]
+      },
+      "then": {
+        "required": [
+          "result"
+        ]
+      },
+      "else": {
+        "not": {
+          "required": [
+            "result"
+          ]
+        }
+      }
+    }
+  }
+}

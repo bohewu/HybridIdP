@@ -150,3 +150,16 @@ describe('Manual profile synchronization', () => {
     expect(keys(en)).toEqual(keys(zh))
   })
 })
+
+it('discards a preview after the selected accounts change without automatic retry', async () => {
+  await mountDialog()
+  await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+  expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(true)
+  await wrapper.setProps({ accounts: [accounts[1]] })
+  expect(wrapper.find('[data-test="apply-sync"]').exists()).toBe(false)
+  expect(profileSyncApi.apply).not.toHaveBeenCalled()
+  expect(profileSyncApi.preview).toHaveBeenCalledTimes(1)
+  await wrapper.get('[data-test="preview-sync"]').trigger('click'); await flushPromises()
+  await wrapper.get('[data-test="apply-sync"]').trigger('click'); await flushPromises()
+  expect(profileSyncApi.apply).toHaveBeenCalledExactlyOnceWith('user-b', 'token-user-b')
+})

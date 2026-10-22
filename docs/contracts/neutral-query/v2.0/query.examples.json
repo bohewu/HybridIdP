@@ -1,0 +1,48 @@
+{
+  "employeeOnly": {
+    "attributes": {
+      "employeeId": "SYNTH-0001"
+    }
+  },
+  "hashOnly": {
+    "attributes": {
+      "nationalIdHash": "CEABF5454AE0B6D99F033D4842C596CC3F17C0327BC9C1EE92D97664195A5DC4"
+    }
+  },
+  "accountOnly": {
+    "attributes": {
+      "accountName": "synthetic-account"
+    }
+  },
+  "employeeAndHash": {
+    "attributes": {
+      "employeeId": "SYNTH-0001",
+      "nationalIdHash": "CEABF5454AE0B6D99F033D4842C596CC3F17C0327BC9C1EE92D97664195A5DC4"
+    }
+  },
+  "employeeAndAccount": {
+    "attributes": {
+      "employeeId": "SYNTH-0001",
+      "accountName": "synthetic-account"
+    }
+  },
+  "hashAndAccount": {
+    "attributes": {
+      "nationalIdHash": "CEABF5454AE0B6D99F033D4842C596CC3F17C0327BC9C1EE92D97664195A5DC4",
+      "accountName": "synthetic-account"
+    }
+  },
+  "allThree": {
+    "attributes": {
+      "employeeId": "SYNTH-0001",
+      "nationalIdHash": "CEABF5454AE0B6D99F033D4842C596CC3F17C0327BC9C1EE92D97664195A5DC4",
+      "accountName": "synthetic-account"
+    }
+  },
+  "explicitRule": {
+    "queryRule": "example-rule",
+    "attributes": {
+      "employeeId": "SYNTH-0001"
+    }
+  }
+}

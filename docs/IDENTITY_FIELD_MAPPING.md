@@ -21,6 +21,24 @@ Profile fields exist on both `ApplicationUser` and `Person`. Native-field
 policy state and ownership are independent for each record and field; display
 projection does not merge their authority.
 
+Query inputs and synchronization outputs are separate configurations.
+**Data sources and sync > Sources and queries > Manage query fields** selects approved local values
+used to locate a record in an independent source for the six non-login services.
+**Data sources and sync > Field mappings > Manage field mappings** selects supported returned
+properties for native User/Person fields. A lookup match does not grant write
+ownership or change authentication bindings. Legacy modes retain their exact
+binding prerequisites; neutral-v2 uses trusted query inputs without requiring
+Proof login. See the [neutral query contract](NEUTRAL_QUERY_CONTRACT.md).
+
+The sidebar entry **Data sources and sync** (`/Admin/DataSources`) has three
+areas: **Sources and queries**, **Field mappings**, and **Manual sync**. The
+zh-TW labels are 資料來源與同步, 來源與查詢, 欄位對應, and 手動同步 respectively.
+Below 768px, source summaries use cards with query summary, status and a
+configuration action. General Settings retains branding, system, logging,
+Turnstile and mail settings; it no longer contains source or mapping forms.
+Source selection follows public capabilities and deployed source configuration;
+provider names and namespaces are informational, never routing heuristics.
+
 ## Which source and API supplies which data
 
 | Source boundary | Input and timing | Allowed purpose |
@@ -181,8 +199,8 @@ Source status describes configuration and pause state, not connectivity health.
 Pause/resume acts immediately beside an enabled source; disabled sources show
 one deployment-needed explanation without inactive action controls.
 
-At **Settings > Profile field synchronization > Adjust sync settings**, add a
-mapping in the upper row or edit the current mappings inline. Each row selects
+At **Data sources and sync > Field mappings > Manage field mappings**, edit
+the current mappings inline or open the optional Add form. Each row selects
 a native field, enabled/trusted/unpaused source and one of its six structured
 properties. Organization directory rows retain their exact namespace and bound
 directory-object checks. The optional **Use the full name to fill a missing
@@ -194,9 +212,9 @@ the configured namespace does not transfer the old namespace's selection.
 Pause/resume retains the selection; the strategy runs only while the source is
 enabled, trusted and unpaused.
 
-**Cancel** discards the draft. **Save for next login** atomically saves the full
+**Cancel** discards the draft. **Save mappings** atomically saves the full
 mapping draft and fallback selection without fetching source data or changing
-native values. **Save and sync now** first saves the same configuration, then
+native values. **Save and open manual sync** first saves the same configuration, then
 opens explicit existing-account selection and the established read-only preview
 and token-only apply flow. It never synchronizes the whole account pool.
 
@@ -220,7 +238,7 @@ The same established binding and ownership rules below apply. Nickname mapping,
 normal-login Profile refresh and read-only Claims Preview remain independent;
 neither stored Nickname nor Profile extra properties supplies fallback input.
 
-Every source write requires the exact persisted identity: Proof uses local account,
+Sign-in source writes require the exact persisted identity: Proof uses local account,
 provider namespace and opaque subject in `AspNetUserLogins`; Stage 1 additionally
 requires the persisted directory object in `ProviderSubjectDirectoryBinding`.
 Enablement or assignment never creates that binding. User and Person field
@@ -254,7 +272,7 @@ existing identities. Read-only operators see the summary and details only.
 
 | UI entry | Read / update permissions | Operation |
 | --- | --- | --- |
-| `/Admin/Settings`, Profile field synchronization section before Branding | `settings.read` / `settings.update` | Inspect source status and edit the full mapping/fallback draft; pause/resume an enabled source. Immediate sync also requires the existing User/Person update permissions. |
+| `/Admin/DataSources`, Sources and queries / Field mappings / Manual sync | Local application-cookie IdP Admin plus `settings.read`; configuration writes also need `settings.update` | Inspect sources, edit query/output configuration and pause/resume an enabled source. Manual sync also requires `users.update` and `persons.update`. |
 | `/Admin/Users`, row action menu, Native field policies | `users.read` / `users.update` | Select a User field, save and fix a value, Unlock, or assign an exact existing binding with optional overwrite. |
 | `/Admin/People`, row Native field policies button | `persons.read` / `persons.update` | Manage the Person's independent field state. |
 
@@ -267,6 +285,15 @@ The protected API is `/api/admin/native-field-policies`: `GET mappings`,
 `PUT sources/{source}`, `PUT sources/Proof/first-name-fallback`, and target `GET users/{id}` / `persons/{id}` plus
 `PUT users/{id}/{field}` / `persons/{id}/{field}`. Mutations require the current
 revision and existing administrative authorization/cookie CSRF checks.
+Global query configuration GET/PUT, mappings GET/PUT and source pause/fallback
+PUT additionally require `DataSourcesAdministration`: local IdP Admin or
+separately provisioned administrative M2M, still bounded by each route's granular
+permissions and the live M2M approval ceiling. The page instead uses
+`DataSourcesInteractiveAdmin` plus `settings.read` and requires the local
+application cookie. `GET sources` retains `settings.read` because per-record
+Native field policy dialogs share that catalog. Per-record User/Person routes
+and per-account query approvals keep their existing authority; this is not a
+controller-wide Admin-role requirement.
 The fallback request contains `providerNamespace`, `enabled` and
 `expectedRevision`; a namespace mismatch or stale source revision returns
 `409 conflict`. Reload source status before resubmitting. Pause and legacy
@@ -308,6 +335,41 @@ Implementation: [policy options](../Core.Application/Options/NativeFieldPolicyOp
 
 ## Administrator manual profile synchronization
 
+**Data sources and sync > Manual sync > Choose accounts** opens account selection,
+review, preview and explicit apply directly, independently of mapping editing.
+Saved query source and output-property choices govern each fresh Native
+preview/apply. Changing configuration invalidates earlier reviews and affected
+query approvals; reload, review and approve the current account/source context
+before a fresh query when required. A successful sync changes account/native
+state and can require renewed approval for a subsequent query; it does not
+automatically establish trust. Neutral Native sync remains fill-only, preserving
+populated values, manual fixed values and fixed blanks, IDs and identity links.
+
+The direct AD data source is separate from the bound Stage 1 sign-in source.
+Enable/trust is default-off under `DirectoryNativeProfile`; `DirectoryIntegration.Enabled`
+provides the connection while `AuthenticationEnabled` remains independent. The
+protected source catalog labels it **Organization directory (AD/LDAP)** with
+`sourceType: "directory"`. Choose **Profile sync > Configured fields** and its
+deployment-approved stored input, then approve the exact account/Person/value
+context. The input is explicitly configured as exact sAMAccountName: `accountName`
+uses `user.userName`; `employeeId` uses `person.employeeId` and/or `user.employeeId`
+only by explicit deployment agreement. Returned EmployeeId is actual AD employeeID,
+never an input alias. No prior Proof/SSO login or directory binding is required,
+and no identity binding, UserId, PersonId, username or credential is changed.
+
+Map only the six native targets and supported returned properties above. Explicit
+`FirstName -> displayName` is available independently of the default-off Proof
+givenName fallback. **Save mappings** and **Save and open manual sync** do not
+read AD or schedule its next-login sync; the latter opens explicit account
+selection. Direct AD reads occur only during explicit preview and explicit apply,
+with a fresh read at each step. Existing sign-in sources keep their normal timing.
+Directory Email supplies contact data under existing protections, never EmailConfirmed.
+Missing/unavailable data preserves values and cannot select an alternate source.
+Directory source policy, connection/scope, approvals and the resolved object identity
+participate in freshness checks alongside existing configuration/account/security
+state. Changed evidence invalidates apply and requires a fresh preview. See the
+[generic setup](DEPLOYMENT_GUIDE.md#direct-ad-source-for-manual-profile-synchronization).
+
 **Users > row action > Manual sync** opens **Sync source data**. Administrators
 with both `users.update` and `persons.update` can also select up to 50 accounts
 from the current page and choose **Preview selected**. Selection resets when the
@@ -318,7 +380,8 @@ accounts. No first account or shared Person owner is inferred.
 The deployment must enable manual synchronization separately. When disabled,
 the dialog shows the deployment-needed reason and offers no inactive preview or
 apply controls. It cannot enable or trust a source and does not report source
-connection health. Existing normal-login and policy-setting behavior is unchanged.
+connection health. Existing sign-in sources retain their normal-login and policy-setting behavior;
+direct AD data reads remain manual-only.
 
 Choose **Preview differences** to fetch and compare source data without writing
 User/Person fields. Each account has a separate result; expand it to compare

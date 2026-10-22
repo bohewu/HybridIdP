@@ -4,6 +4,7 @@ using System.Text;
 using System.Text.Json;
 using Core.Application.DTOs;
 using Core.Application.Ports;
+using Core.Application.Utilities;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
@@ -12,12 +13,122 @@ using Infrastructure.Services;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
 
 public sealed class LegacyPasswordSyncCoordinatorTests
 {
+    [Theory]
+    [InlineData("Success", LegacyPasswordSyncResultOutcome.Succeeded)]
+    [InlineData("CommitUnknown", LegacyPasswordSyncResultOutcome.Unknown)]
+    [InlineData("NotFound", LegacyPasswordSyncResultOutcome.Failed)]
+    [InlineData("Ambiguous", LegacyPasswordSyncResultOutcome.Failed)]
+    [InlineData("Unavailable", LegacyPasswordSyncResultOutcome.Unknown)]
+    public async Task NeutralSync_ShouldReserveApprovedQueryWithoutLegacyMappingAndPreserveSingleSend(string result, LegacyPasswordSyncResultOutcome expected)
+    {
+        await using var state = await TestState.CreateAsync((_, _) => throw new InvalidOperationException("Legacy must not send."));
+        var options = TestState.EnabledOptions();
+        options.Mappings.Clear();
+        var fingerprint = new string('A', 64);
+        var queries = QueryService(state.AccountId, () => fingerprint);
+        var sends = 0;
+        using var handler = new CallbackHandler(async (message, ct) =>
+        {
+            sends++;
+            Assert.Equal("password-sync/2.0", Assert.Single(message.Headers.GetValues("X-Provider-Contract")));
+            Assert.True(NeutralQueryJson.TryReadRequest("password-sync/2.0", await message.Content!.ReadAsByteArrayAsync(ct), out var request));
+            Assert.Equal("independent.provider", request!.ProviderNamespace);
+            Assert.Equal(TestState.Password, request.Password);
+            Assert.Equal("E01", request.Query.Attributes["employeeId"]);
+            var found = result is "Success" or "CommitUnknown";
+            var envelope = new Dictionary<string, object> { ["contractType"] = "password-sync", ["contractVersion"] = "2.0",
+                ["requestId"] = request.RequestId, ["operationId"] = request.OperationId!,
+                ["providerNamespace"] = request.ProviderNamespace, ["queryOutcome"] = found ? "Found" : result };
+            if (found) envelope["result"] = new { outcome = result };
+            return new HttpResponseMessage(result == "Unavailable" ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK)
+                { Content = JsonContent.Create(envelope) };
+        });
+        using var client = new HttpClient(handler);
+        var transport = new LegacyPasswordSyncHttpTransport(new FixedHttpClientFactory(client), Options.Create(options), queries: queries.Object);
+        var store = new LegacyPasswordSyncAttemptStore(state.Db, new ConfiguredLegacyPasswordSyncTargetResolver(Options.Create(options)), queries: queries.Object);
+        var coordinator = new LegacyPasswordSyncCoordinator(state.Db, store, state.RequestFactory, transport, queries.Object, Options.Create(options));
+        async Task<LegacyPasswordSyncResult> Run(LegacyPasswordSyncSourceReference source) => await coordinator.SynchronizeAsync(source,
+            LegacyPasswordSyncCohort.CompletedDirectoryRequiredChange, state.AccountId, state.BindingId,
+            state.ConcurrencyStamp, state.SecurityStamp, TestState.Password);
+        var first = await Run(state.Source);
+        Assert.Equal(expected, first.Outcome);
+        var attempt = await store.FindAsync(first.OperationId!.Value);
+        Assert.Equal("neutral-v2:" + fingerprint, attempt!.Identity.MappingVersion);
+        Assert.Equal(state.AccountId, attempt.Identity.AccountIdentity);
+        Assert.Equal(LegacyPasswordSyncResultOutcome.DuplicateSource, (await Run(state.Source)).Outcome);
+        Assert.Equal(1, sends);
+        if (expected == LegacyPasswordSyncResultOutcome.Unknown)
+        {
+            fingerprint = new string('B', 64);
+            Assert.Equal(LegacyPasswordSyncResultOutcome.Blocked, (await Run(await state.AddNewerRequiredChangeAsync())).Outcome);
+            Assert.Equal(1, sends);
+            Assert.Equal(LegacyPasswordSyncAttemptStatus.Unknown, (await store.FindAsync(first.OperationId.Value))!.Status);
+        }
+    }
+
+    [Theory]
+    [InlineData("MissingInput")]
+    [InlineData("Unavailable")]
+    [InlineData("stale")]
+    [InlineData("cohort-disabled")]
+    public async Task NeutralSync_ShouldNotFallBackOrSendWithoutCurrentAuthorizedQuery(string failure)
+    {
+        await using var state = await TestState.CreateAsync((_, _) => throw new InvalidOperationException("Legacy must not send."));
+        var options = TestState.EnabledOptions();
+        options.CompletedDirectoryRequiredChangeEnabled = failure != "cohort-disabled";
+        var queries = QueryService(state.AccountId, () => new string('A', 64));
+        if (failure is "MissingInput" or "Unavailable")
+            queries.Setup(x => x.ResolveAsync("password-sync", state.AccountId, null, null, It.IsAny<CancellationToken>())).ReturnsAsync(new NeutralQueryResolution(failure));
+        if (failure == "stale") queries.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var store = new LegacyPasswordSyncAttemptStore(state.Db, new ConfiguredLegacyPasswordSyncTargetResolver(Options.Create(options)), queries: queries.Object);
+        var coordinator = new LegacyPasswordSyncCoordinator(state.Db, store, state.RequestFactory, state.Transport, queries.Object, Options.Create(options));
+        var result = await coordinator.SynchronizeAsync(state.Source, LegacyPasswordSyncCohort.CompletedDirectoryRequiredChange,
+            state.AccountId, state.BindingId, state.ConcurrencyStamp, state.SecurityStamp, TestState.Password);
+        Assert.NotEqual(LegacyPasswordSyncResultOutcome.Succeeded, result.Outcome);
+        Assert.Equal(0, state.Transport.SendCount);
+        Assert.Empty(await state.Db.LegacyPasswordSyncAttempts.ToListAsync());
+    }
+
+    private static Mock<INeutralQueryService> QueryService(Guid accountId, Func<string> fingerprint)
+    {
+        var queries = new Mock<INeutralQueryService>();
+        queries.Setup(x => x.ResolveAsync("password-sync", accountId, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new NeutralQueryResolution("Ready", new(accountId, null, "synthetic-source",
+                new NeutralQueryRequest { ContractType = "password-sync", ProviderNamespace = "independent.provider",
+                    Query = new(new Dictionary<string, string> { ["employeeId"] = "E01" }) }, fingerprint(), Guid.NewGuid(),
+                new(new Uri("https://independent.invalid/password"), "synthetic-secret", TimeSpan.FromSeconds(1)), [])));
+        queries.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NeutralQueryContext context, CancellationToken _) => context.Fingerprint == fingerprint());
+        return queries;
+    }
+
+    [Fact]
+    public async Task NeutralSync_ShouldFailUnsentClaimWhenConfigurationChangesBeforeDispatch()
+    {
+        await using var state = await TestState.CreateAsync((_, _) => throw new InvalidOperationException("Must not send."));
+        var options = TestState.EnabledOptions();
+        var queries = QueryService(state.AccountId, () => new string('A', 64));
+        var checks = 0;
+        queries.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => ++checks <= 2); // Reserve and claim are current; the pre-send reread is stale.
+        var store = new LegacyPasswordSyncAttemptStore(state.Db, new ConfiguredLegacyPasswordSyncTargetResolver(Options.Create(options)), queries: queries.Object);
+        var coordinator = new LegacyPasswordSyncCoordinator(state.Db, store, state.RequestFactory, state.Transport, queries.Object, Options.Create(options));
+        var result = await coordinator.SynchronizeAsync(state.Source, LegacyPasswordSyncCohort.CompletedDirectoryRequiredChange,
+            state.AccountId, state.BindingId, state.ConcurrencyStamp, state.SecurityStamp, TestState.Password);
+        Assert.Equal(LegacyPasswordSyncResultOutcome.Failed, result.Outcome);
+        Assert.Equal(0, state.Transport.SendCount);
+        var attempt = await store.FindAsync(result.OperationId!.Value);
+        Assert.Equal("pre_dispatch_stale", attempt!.SanitizedOutcome);
+        Assert.Equal(LegacyPasswordSyncAttemptStatus.Failed, attempt.Status);
+    }
+
     [Fact]
     public async Task SynchronizeAsync_AggregateSuccessBecomesSucceeded()
     {

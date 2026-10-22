@@ -1,4 +1,5 @@
 import { computed, ref } from 'vue'
+import { queryConfigurationApi } from '@/services/queryConfigurationApi'
 import { nativeFieldPolicyApi } from '@/services/nativeFieldPolicyApi'
 
 export const nativeMappingFields = ['Nickname', 'FirstName', 'LastName', 'Department', 'JobTitle', 'EmployeeId']
@@ -7,6 +8,7 @@ const copy = value => JSON.parse(JSON.stringify(value))
 export function useProfileMappings(canUpdate) {
   const state = ref(null), rows = ref([]), fallback = ref(null), userNamePolicies = ref([]), loading = ref(true), saving = ref(false), error = ref(''), conflict = ref(false)
   const editing = ref(-1), editDraft = ref(null)
+  const querySources = ref([])
   const sources = computed(() => state.value?.sources || [])
   const availableSources = computed(() => sources.value.filter(s => s.enabled && !s.paused && s.providerNamespace))
   const userNameSources = computed(() => {
@@ -32,6 +34,8 @@ export function useProfileMappings(canUpdate) {
     error.value = ''
     try {
       const result = await nativeFieldPolicyApi.mappings()
+      querySources.value = result.sources.some(source => source.source === 'NeutralQuery')
+        ? (await queryConfigurationApi.get()).sources.filter(source => source.capability === 'native-profile') : []
       state.value = result
       rows.value = copy(result.mappings)
       fallback.value = copy(result.firstNameFallback)
@@ -62,5 +66,5 @@ export function useProfileMappings(canUpdate) {
     } catch (e) { error.value = e.message; conflict.value = e.message === 'conflict'; return false }
     finally { saving.value = false }
   }
-  return { state, rows, fallback, userNamePolicies, userNameSources, changeUserNamePolicy, loading, saving, error, conflict, editing, editDraft, sources, availableSources, properties, sourceFor, available, fieldsFor, allMapped, load, add, edit, complete, remove, save }
+  return { state, rows, fallback, userNamePolicies, userNameSources, changeUserNamePolicy, loading, saving, error, conflict, editing, editDraft, sources, querySources, availableSources, properties, sourceFor, available, fieldsFor, allMapped, load, add, edit, complete, remove, save }
 }

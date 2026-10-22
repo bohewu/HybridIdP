@@ -4,6 +4,8 @@ namespace Infrastructure.Options;
 
 public sealed class ProviderNativeProfileOptions
 {
+    public Dictionary<string, NeutralQuerySourceOptions> QuerySources { get; set; } = new(StringComparer.Ordinal);
+
     public const string Section = "ProviderNativeProfile";
     public bool Enabled { get; set; }
     public string? TrustedProviderNamespace { get; set; }

@@ -21,20 +21,46 @@ using Microsoft.Extensions.Options;
 using Moq;
 using OpenIddict.Abstractions;
 using Web.IdP.Controllers.Admin;
+using Web.IdP.Services;
 
 namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public sealed class NativeFieldPoliciesControllerTests
 {
     [Theory]
-    [InlineData(null, false, false, HttpStatusCode.Unauthorized)]
-    [InlineData("settings.read", false, true, HttpStatusCode.Forbidden)]
-    [InlineData("users.update", false, true, HttpStatusCode.Forbidden)]
-    [InlineData("settings.update", true, true, HttpStatusCode.Forbidden)]
-    [InlineData("settings.update", false, false, HttpStatusCode.BadRequest)]
-    [InlineData("settings.update", false, true, HttpStatusCode.OK)]
+    [InlineData("sources", false, HttpStatusCode.OK)]
+    [InlineData("mappings", false, HttpStatusCode.Forbidden)]
+    [InlineData("mappings", true, HttpStatusCode.OK)]
+    public async Task CatalogRead_ShouldPreserveDelegatedDialogAccessWhileProtectingGlobalMappings(
+        string route, bool admin, HttpStatusCode expected)
+    {
+        var policies = new Mock<INativeFieldPolicyService>(MockBehavior.Strict);
+        policies.Setup(x => x.GetSourcesAsync(It.IsAny<CancellationToken>())).ReturnsAsync([]);
+        policies.Setup(x => x.GetMappingsAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NativeFieldMappingsDto(Guid.NewGuid(), [], new("example.provider", false), [], []));
+        await using var app = CreateApp(policies.Object, Mock.Of<IAuditService>());
+        await app.StartAsync();
+        try
+        {
+            using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(app.Urls.Single()) };
+            client.DefaultRequestHeaders.Add("X-Fixture-Permission", "settings.read,users.read,users.update");
+            if (admin) client.DefaultRequestHeaders.Add("X-Fixture-Admin", "true");
+            using var response = await client.GetAsync("/api/admin/native-field-policies/" + route);
+            Assert.Equal(expected, response.StatusCode);
+        }
+        finally { await app.StopAsync(); }
+    }
+
+    [Theory]
+    [InlineData(null, false, false, HttpStatusCode.Unauthorized, true)]
+    [InlineData("settings.read", false, true, HttpStatusCode.Forbidden, true)]
+    [InlineData("users.update", false, true, HttpStatusCode.Forbidden, true)]
+    [InlineData("settings.update", true, true, HttpStatusCode.Forbidden, true)]
+    [InlineData("settings.update", false, false, HttpStatusCode.BadRequest, true)]
+    [InlineData("settings.update", false, true, HttpStatusCode.OK, true)]
+    [InlineData("settings.update", false, true, HttpStatusCode.Forbidden, false)]
     public async Task Mappings_ShouldRequireSettingsAuthorityAndCsrfAndAuditOnlyCount(
-        string? permission, bool bearer, bool csrf, HttpStatusCode expected)
+        string? permission, bool bearer, bool csrf, HttpStatusCode expected, bool admin)
     {
         var policies = new Mock<INativeFieldPolicyService>(MockBehavior.Strict);
         var audit = new Mock<IAuditService>(MockBehavior.Strict);
@@ -56,6 +82,7 @@ public sealed class NativeFieldPoliciesControllerTests
             using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(app.Urls.Single()) };
             if (permission is not null) client.DefaultRequestHeaders.Add("X-Fixture-Permission", permission);
             if (bearer) client.DefaultRequestHeaders.Add("Authorization", "Bearer fixture-only");
+            if (admin) client.DefaultRequestHeaders.Add("X-Fixture-Admin", "true");
             if (csrf) client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", await client.GetStringAsync("/fixture-antiforgery"));
             using var response = await client.PutAsJsonAsync("/api/admin/native-field-policies/mappings", request);
             Assert.Equal(expected, response.StatusCode);
@@ -73,14 +100,15 @@ public sealed class NativeFieldPoliciesControllerTests
     }
 
     [Theory]
-    [InlineData(null, false, false, HttpStatusCode.Unauthorized)]
-    [InlineData("settings.read", false, true, HttpStatusCode.Forbidden)]
-    [InlineData("users.update", false, true, HttpStatusCode.Forbidden)]
-    [InlineData("settings.update", true, true, HttpStatusCode.Forbidden)]
-    [InlineData("settings.update", false, false, HttpStatusCode.BadRequest)]
-    [InlineData("settings.update", false, true, HttpStatusCode.NoContent)]
+    [InlineData(null, false, false, HttpStatusCode.Unauthorized, true)]
+    [InlineData("settings.read", false, true, HttpStatusCode.Forbidden, true)]
+    [InlineData("users.update", false, true, HttpStatusCode.Forbidden, true)]
+    [InlineData("settings.update", true, true, HttpStatusCode.Forbidden, true)]
+    [InlineData("settings.update", false, false, HttpStatusCode.BadRequest, true)]
+    [InlineData("settings.update", false, true, HttpStatusCode.NoContent, true)]
+    [InlineData("settings.update", false, true, HttpStatusCode.Forbidden, false)]
     public async Task FirstNameFallback_ShouldRequireSettingsAuthorityAndCsrf(
-        string? permission, bool bearer, bool csrf, HttpStatusCode expected)
+        string? permission, bool bearer, bool csrf, HttpStatusCode expected, bool admin)
     {
         var policies = new Mock<INativeFieldPolicyService>(MockBehavior.Strict);
         var audit = new Mock<IAuditService>(MockBehavior.Strict);
@@ -99,6 +127,7 @@ public sealed class NativeFieldPoliciesControllerTests
             using var client = new HttpClient(new HttpClientHandler { UseProxy = false }) { BaseAddress = new Uri(app.Urls.Single()) };
             if (permission is not null) client.DefaultRequestHeaders.Add("X-Fixture-Permission", permission);
             if (bearer) client.DefaultRequestHeaders.Add("Authorization", "Bearer fixture-only");
+            if (admin) client.DefaultRequestHeaders.Add("X-Fixture-Admin", "true");
             if (csrf) client.DefaultRequestHeaders.Add("X-CSRF-TOKEN", await client.GetStringAsync("/fixture-antiforgery"));
             using var response = await client.PutAsJsonAsync("/api/admin/native-field-policies/sources/Proof/first-name-fallback", request);
             Assert.Equal(expected, response.StatusCode);
@@ -175,7 +204,11 @@ public sealed class NativeFieldPoliciesControllerTests
     public void Endpoints_ShouldUseTargetSpecificLeastPrivilege(string action, string permission)
     {
         var attributes = typeof(NativeFieldPoliciesController).GetMethod(action)!.GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>();
-        Assert.Equal(permission, Assert.Single(attributes).Policy);
+        Assert.Contains(attributes, x => x.Policy == permission);
+        var global = action is nameof(NativeFieldPoliciesController.GetMappings) or nameof(NativeFieldPoliciesController.SetMappings)
+            or nameof(NativeFieldPoliciesController.SetPaused) or nameof(NativeFieldPoliciesController.SetFirstNameFallback);
+        Assert.Equal(global, attributes.Any(x => x.Policy == DataSourceAdministrationRequirement.AdministrationPolicy));
+        Assert.Equal(global ? 2 : 1, attributes.Count());
     }
 
     private static WebApplication CreateApp(INativeFieldPolicyService policies, IAuditService audit)
@@ -192,11 +225,16 @@ public sealed class NativeFieldPoliciesControllerTests
             .AddScheme<AuthenticationSchemeOptions, FixtureAuthentication>(AdministrativeAuthorizationBoundary.BearerScheme, _ => { });
         builder.Services.AddAuthorization(o =>
         {
+            o.AddPolicy(DataSourceAdministrationRequirement.AdministrationPolicy,
+                p => p.AddRequirements(new DataSourceAdministrationRequirement(true)));
+            o.AddPolicy(DataSourceAdministrationRequirement.InteractivePolicy,
+                p => p.AddRequirements(new DataSourceAdministrationRequirement(false)));
             foreach (var permission in new[] { Permissions.Settings.Read, Permissions.Settings.Update, Permissions.Users.Read, Permissions.Users.Update, Permissions.Persons.Read, Permissions.Persons.Update })
                 o.AddPolicy(permission, p => p.AddRequirements(new PermissionRequirement(permission)));
         });
         builder.Services.AddScoped<IAdministrativeAuthorizationBoundary, AdministrativeAuthorizationBoundary>();
         builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        builder.Services.AddScoped<IAuthorizationHandler, DataSourceAdministrationAuthorizationHandler>();
         builder.Services.AddSingleton(new Mock<RoleManager<ApplicationRole>>(Mock.Of<IRoleStore<ApplicationRole>>(), null, null, null, null).Object);
         builder.Services.AddSingleton(Mock.Of<IOpenIddictApplicationManager>());
         builder.Services.AddSingleton(policies);
@@ -216,8 +254,11 @@ public sealed class NativeFieldPoliciesControllerTests
             if (!Request.Headers.ContainsKey("X-Fixture-Permission")) return Task.FromResult(AuthenticateResult.NoResult());
             var bearer = Request.Headers.Authorization.Count > 0;
             if (bearer != (Scheme.Name == AdministrativeAuthorizationBoundary.BearerScheme)) return Task.FromResult(AuthenticateResult.NoResult());
-            var identity = new ClaimsIdentity([new Claim(ClaimTypes.NameIdentifier, "11111111-1111-1111-1111-111111111111"),
-                new Claim("permission", Request.Headers["X-Fixture-Permission"].ToString())], Scheme.Name);
+            var claims = Request.Headers["X-Fixture-Permission"].ToString().Split(',').Select(x => new Claim("permission", x)).ToList();
+            claims.Add(new(ClaimTypes.NameIdentifier, "11111111-1111-1111-1111-111111111111"));
+            claims.Add(new("active_role", "Delegated"));
+            if (Request.Headers.ContainsKey("X-Fixture-Admin")) claims.Add(new(ClaimTypes.Role, AuthConstants.Roles.Admin));
+            var identity = new ClaimsIdentity(claims, Scheme.Name);
             return Task.FromResult(AuthenticateResult.Success(new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name)));
         }
     }

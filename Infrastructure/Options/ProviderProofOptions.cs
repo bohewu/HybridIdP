@@ -1,3 +1,4 @@
+using Core.Application.Options;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Options;
@@ -21,10 +22,19 @@ public sealed class ProviderProofOptions
 public sealed class ProviderProofOptionsValidator : IValidateOptions<ProviderProofOptions>
 {
     private readonly IOptions<DirectoryIntegrationOptions> _directoryOptions;
+    private readonly IOptions<DirectoryNativeProfileOptions>? _directoryNativeOptions;
+    private readonly IOptions<NativeFieldPolicyOptions>? _nativeFieldOptions;
+    private readonly IOptions<CredentialMigrationOptions>? _migrationOptions;
 
-    public ProviderProofOptionsValidator(IOptions<DirectoryIntegrationOptions> directoryOptions)
+    public ProviderProofOptionsValidator(IOptions<DirectoryIntegrationOptions> directoryOptions,
+        IOptions<DirectoryNativeProfileOptions>? directoryNativeOptions = null,
+        IOptions<NativeFieldPolicyOptions>? nativeFieldOptions = null,
+        IOptions<CredentialMigrationOptions>? migrationOptions = null)
     {
         _directoryOptions = directoryOptions;
+        _directoryNativeOptions = directoryNativeOptions;
+        _nativeFieldOptions = nativeFieldOptions;
+        _migrationOptions = migrationOptions;
     }
 
     public ValidateOptionsResult Validate(string? name, ProviderProofOptions options)
@@ -36,7 +46,14 @@ public sealed class ProviderProofOptionsValidator : IValidateOptions<ProviderPro
             failures.Add("Provider proof timeout must be between zero and thirty seconds.");
         }
 
-        if (options.Enabled || _directoryOptions.Value.Enabled)
+        var directory = _directoryOptions.Value;
+        // Only the explicit data-only deployment may omit Proof transport entirely. A configured
+        // or partial transport, or any existing staged credential/native flow, retains its requirements.
+        var dataOnlyDirectory = _directoryNativeOptions?.Value is { Enabled: true, Trusted: true } &&
+            !options.Enabled && string.IsNullOrWhiteSpace(options.Endpoint) && string.IsNullOrWhiteSpace(options.SharedSecret) &&
+            !directory.AuthenticationEnabled && !directory.TemporaryCredentialCapabilityEnabled &&
+            _nativeFieldOptions?.Value.Stage1Enabled != true && _migrationOptions?.Value.Enabled != true;
+        if (options.Enabled || directory.Enabled && !dataOnlyDirectory)
         {
             if (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
                 (endpoint.Scheme != Uri.UriSchemeHttps &&

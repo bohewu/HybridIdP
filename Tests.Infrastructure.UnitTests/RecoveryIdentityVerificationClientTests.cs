@@ -4,6 +4,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using Core.Application.DTOs;
+using Core.Application.Ports;
 using Core.Application.Utilities;
 using Infrastructure.Options;
 using Infrastructure.Services;
@@ -15,6 +16,36 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class RecoveryIdentityVerificationClientTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NeutralVerify_ShouldUseIndependentTransportAndRejectWrongCorrelation(bool wrongRequest)
+    {
+        var context = new NeutralQueryContext(Guid.NewGuid(), null, "synthetic-source",
+            new NeutralQueryRequest { ContractType = "recovery-identity-verification", ProviderNamespace = "independent.provider",
+                Query = new(new Dictionary<string, string> { ["employeeId"] = "E01" }),
+                Scheme = "identity-identifier", Evidence = new(" raw-document ") }, new string('A', 64), Guid.NewGuid(),
+            new(new Uri("https://independent.invalid/riv"), "independent-secret", TimeSpan.FromSeconds(1)), []);
+        using var handler = new Handler(async (message, ct) =>
+        {
+            Assert.Equal(context.Transport.Endpoint, message.RequestUri);
+            Assert.Equal("recovery-identity-verification/2.0", Assert.Single(message.Headers.GetValues("X-Provider-Contract")));
+            Assert.Equal(context.Transport.SharedSecret, Assert.Single(message.Headers.GetValues("X-Internal-Secret")));
+            Assert.True(NeutralQueryJson.TryReadRequest("recovery-identity-verification/2.0",
+                await message.Content!.ReadAsByteArrayAsync(ct), out var wire));
+            Assert.Equal(" raw-document ", wire!.Evidence!.IdentityIdentifier);
+            return Response(JsonSerializer.Serialize(new { contractType = context.Request.ContractType, contractVersion = "2.0",
+                requestId = wrongRequest ? Guid.NewGuid().ToString("D") : context.Request.RequestId,
+                providerNamespace = context.Request.ProviderNamespace, queryOutcome = "Found",
+                result = new { outcome = "Verified", scheme = "identity-identifier" } }));
+        });
+        using var http = new HttpClient(handler);
+        var client = new RecoveryIdentityVerificationClient(http, Options.Create(Settings()));
+        var response = await client.VerifyAsync(context);
+        Assert.Equal(!wrongRequest, response is not null);
+        Assert.Equal(1, handler.Calls);
+    }
+
     private static RecoveryIdentityVerificationRequest Request(string evidence = " test-ID-0001 ") => new()
     {
         RequestId = "73aab4b5-2dfa-471a-8c2b-1d70d7540092",

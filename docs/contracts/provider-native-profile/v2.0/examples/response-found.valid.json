@@ -1,0 +1,18 @@
+{
+  "contractType": "native-profile",
+  "contractVersion": "2.0",
+  "requestId": "11111111-1111-4111-8111-111111111111",
+  "providerNamespace": "example.provider",
+  "queryOutcome": "Found",
+  "result": {
+    "profile": {
+      "displayName": "Example Person",
+      "employeeId": "SYNTH-0001",
+      "assuredFields": [
+        "DisplayName",
+        "EmployeeId"
+      ]
+    },
+    "emailTrustOrigin": "Unknown"
+  }
+}

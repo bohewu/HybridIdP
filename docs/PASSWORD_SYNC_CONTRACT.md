@@ -1,4 +1,59 @@
-# Legacy Password Sync Contract
+# Legacy Password Sync contracts (unversioned and 2.0)
+
+The original sections below describe the unversioned compatibility mode.
+For independently selected neutral queries, see [version 2.0](#neutral-query-version-20)
+and the [common contract](NEUTRAL_QUERY_CONTRACT.md). Neither format is inferred
+from a failed request; all original authority limits continue to apply.
+
+## Neutral query version 2.0
+
+The [common neutral-query contract](NEUTRAL_QUERY_CONTRACT.md) is normative for
+selection, typed candidates, queryRule, approved mappings, comparison, unique
+matching, transport, response correlation and mutation invalidation. Legacy
+formats remain unchanged under explicit compatibility selection.
+
+Neutral-v2 uses `password-sync/2.0`. Its availableCandidates are typed
+`employeeId` (String), `nationalIdHash` (Sha256Hex), and `accountName` (String).
+The seven nonempty sets in the common contract may be explicitly agreed. They
+must AND-match one exact authorized destination account/write scope, using the
+common approved value sources and comparison rules. No public accountIdentity,
+SSO UUID, previous Proof login or UUID mapping database is required. A person
+identifier resolving several credential targets is Ambiguous, not fan-out.
+
+The request adds the existing nonzero `operationId` and nonempty `password` to
+the v2 query envelope. requestId correlates this HTTP call; operationId owns durable
+single-send/idempotency. Found returns `result: { outcome }` with the original
+NoOp/Success/PartialSuccess/Failed/CommitUnknown vocabulary; every admitted response
+also echoes operationId. Internal source/target IDs and writer topology remain
+private. A valid 200 NotFound/Ambiguous proves no write was attempted and becomes
+local Failed. These outcomes and Unsupported never authorize a weaker query or
+legacy fallback. Unavailable/non-200/malformed/mismatched/timeout responses after
+possible dispatch retain the existing Unknown barrier.
+
+The independently approved source-operation/cohort gates, destination authority,
+current local account/security stamps and operation reservation remain required.
+Instead of a legacy tuple-to-accountIdentity prerequisite, v2 reserves the exact
+approved query/rule/configuration revision and destination scope; admin selection
+alone does not authorize a write. Consumer checks current mapping/approval/value
+concurrency before send, and never retargets a reserved attempt. Producer resolves
+the unique authorized target and durably binds it and the query to operationId
+before its writer executes; competing mapping changes cannot change that reserved
+target. Exact replay returns its stored aggregate receipt without another write;
+conflicting operationId reuse rejects without write. Never store plaintext
+passwords or include them in logs/receipts. Possibly sent/claimed/Unknown attempts
+are never automatically resent, cleared or replaced after configuration changes.
+Existing settlement, both-destination ordering and aggregate outcome rules remain.
+`MappingVersion` still means local mapping concurrency, not wire version.
+
+Wire definitions: [request](contracts/password-sync/v2.0/contract.schema.json#/$defs/request)
+and [response](contracts/password-sync/v2.0/contract.schema.json#/$defs/response).
+[Synthetic examples](contracts/password-sync/v2.0/examples/) cover Found, NotFound,
+Ambiguous, Unavailable, Unsupported, missing inputs and forbidden mixed shapes.
+Their validity proves structure only; semantic, authority and live product checks
+remain separate. queryRule is omitted in these unambiguous agreed-rule examples.
+
+## Unversioned compatibility contract
+
 
 Legacy Password Sync is one optional, unversioned password-write endpoint. It
 is disabled by default and is independent of [Provider Proof Contract 1.0](PROVIDER_PROOF_CONTRACT.md)
@@ -109,7 +164,7 @@ LegacyPasswordSync__Enabled=false
 LegacyPasswordSync__CompletedDirectoryRecoveryEnabled=false
 LegacyPasswordSync__CompletedDirectoryRequiredChangeEnabled=false
 LegacyPasswordSync__Stage2MigrationEnabled=false
-LegacyPasswordSync__Endpoint=https://provider.example.org/api/password-sync
+LegacyPasswordSync__Endpoint=https://example.provider/api/password-sync
 LegacyPasswordSync__SharedSecret=<PROVISION_THROUGH_SECRET_CONFIGURATION>
 LegacyPasswordSync__AllowPrivateNetworkHttp=false
 LegacyPasswordSync__Timeout=00:00:05

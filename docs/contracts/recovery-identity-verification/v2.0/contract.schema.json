@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "recovery-identity-verification neutral-query 2.0",
+  "description": "Root validates responses; #/$defs/request validates requests. Semantic and authority rules are in NEUTRAL_QUERY_CONTRACT.md.",
+  "$comment": "No mixed legacy/v2 shape acceptance.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "request": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/request"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "recovery-identity-verification"
+            },
+            "scheme": {
+              "const": "identity-identifier"
+            },
+            "evidence": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "identityIdentifier"
+              ],
+              "properties": {
+                "identityIdentifier": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 128,
+                  "pattern": "\\S",
+                  "not": {
+                    "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+                  }
+                }
+              }
+            }
+          },
+          "required": [
+            "scheme",
+            "evidence"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "response": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/response"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "recovery-identity-verification"
+            },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "outcome",
+                "scheme"
+              ],
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "Verified",
+                    "Denied"
+                  ]
+                },
+                "scheme": {
+                  "const": "identity-identifier"
+                }
+              }
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

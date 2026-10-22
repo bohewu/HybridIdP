@@ -9,7 +9,7 @@ import { profileSyncApi } from '@/services/profileSyncApi'
 import LoadingPlaceholder from '@/components/common/LoadingPlaceholder.vue'
 import { nativeFieldPolicyApi, policyError } from '@/services/nativeFieldPolicyApi'
 
-const props = defineProps({ canUpdate: Boolean })
+const props = defineProps({ canUpdate: Boolean, mode: { type: String, default: 'mappings' } })
 const { t } = useI18n()
 const showMappings = ref(false), showPicker = ref(false), syncAccounts = ref(null), nativeEnabled = ref(false)
 const canReadUsers = computed(() => permissionService.hasPermission(Permissions.Users.Read))
@@ -49,19 +49,24 @@ onMounted(async () => {
 </script>
 
 <template>
-  <section class="bg-white shadow-sm rounded-lg border border-gray-200">
+  <section data-test="profile-sync-settings" class="bg-white shadow-sm rounded-lg border border-gray-200">
     <div class="border-b border-gray-200 p-4">
-      <h2 class="text-lg font-semibold text-gray-900">{{ t('native-fields.mapping.title') }}</h2>
+      <h2 class="text-lg font-semibold text-gray-900">{{ t(mode === 'manual' ? 'data-sources.manual' : 'data-sources.mappings') }}</h2>
     </div>
     <LoadingPlaceholder v-if="loading" :message="t('native-fields.loading')" />
     <div v-else class="p-4 space-y-4">
       <p v-if="error" role="alert" class="rounded-md bg-red-50 p-3 text-sm text-red-700">{{ error }}</p>
       <p v-if="success" role="status" class="text-sm text-green-700">{{ t('native-fields.saved') }}</p>
-      <div class="flex flex-wrap items-center justify-between gap-3">
+      <div v-if="mode !== 'manual'" class="flex flex-wrap items-center justify-between gap-3">
         <p class="text-sm text-gray-600">{{ t('native-fields.mapping.help') }}</p>
         <button data-test="open-mappings" type="button" class="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-google-600 focus:ring-2 focus:ring-google-500" @click="showMappings = true">{{ t('native-fields.mapping.manage') }}</button>
       </div>
-      <details class="border-t border-gray-100 pt-3 text-sm text-gray-600">
+      <div v-if="mode === 'manual'" class="space-y-4">
+        <p class="text-sm text-gray-600">{{ t('data-sources.manualHelp') }}</p>
+        <button data-test="open-manual-sync" type="button" :disabled="!canSync" class="min-h-10 rounded-md bg-google-500 px-4 py-2 text-sm font-medium text-white focus:ring-2 focus:ring-google-500 disabled:opacity-50" @click="openPicker">{{ t('data-sources.chooseAccounts') }}</button>
+        <p v-if="!canSync" class="text-sm text-gray-500">{{ t('native-fields.mapping.syncUnavailable') }}</p>
+      </div>
+      <details v-if="mode !== 'manual'" class="border-t border-gray-100 pt-3 text-sm text-gray-600">
         <summary class="cursor-pointer font-medium text-gray-700">{{ t('native-fields.syncRules') }}</summary>
         <div class="mt-4 space-y-4">
           <p>{{ t('native-fields.mapping.sourceHelp') }}</p>

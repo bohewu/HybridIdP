@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
+using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
@@ -20,6 +21,20 @@ namespace Tests.Web.IdP.UnitTests.Services;
 
 public class ExternalSignInCoordinatorTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CompleteAsync_ShouldRefreshNeutralMetadataOnlyAfterEligibilityPasses(bool denied)
+    {
+        var user = CreateUser();
+        var metadata = new Mock<IProviderMetadataRefreshService>();
+        var harness = new CoordinatorHarness(user, metadata: metadata.Object);
+        if (denied) harness.LoginService.Setup(x => x.ValidateExternalUserSignInAsync(user, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(LoginResult.UserInactive());
+        await harness.Coordinator.CompleteAsync(harness.HttpContext, user);
+        metadata.Verify(x => x.RefreshAsync(user.Id, It.IsAny<CancellationToken>()), denied ? Times.Never() : Times.Once());
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
@@ -217,7 +232,7 @@ public class ExternalSignInCoordinatorTests
 
     private sealed class CoordinatorHarness
     {
-        public CoordinatorHarness(ApplicationUser user, DateTimeOffset? now = null)
+        public CoordinatorHarness(ApplicationUser user, DateTimeOffset? now = null, IProviderMetadataRefreshService? metadata = null)
         {
             var userStore = new Mock<IUserStore<ApplicationUser>>();
             UserManager = new Mock<UserManager<ApplicationUser>>(
@@ -311,7 +326,7 @@ public class ExternalSignInCoordinatorTests
                 passkeyService.Object,
                 MigrationIssuanceGuard.Object,
                 Mock.Of<ILogger<ExternalSignInCoordinator>>(),
-                new FixedTimeProvider(now ?? new DateTimeOffset(2026, 7, 30, 3, 0, 0, TimeSpan.Zero)));
+                new FixedTimeProvider(now ?? new DateTimeOffset(2026, 7, 30, 3, 0, 0, TimeSpan.Zero)), metadata);
         }
 
         public Mock<ICurrentUserLifecycleEligibility> Lifecycle { get; } = new();

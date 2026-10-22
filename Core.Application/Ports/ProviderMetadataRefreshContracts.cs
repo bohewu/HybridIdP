@@ -2,6 +2,8 @@ namespace Core.Application.Ports;
 
 public interface IProviderMetadataRefreshService
 {
+    Task<ProviderMetadataRefreshOutcome> RefreshAsync(Guid userId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(ProviderMetadataRefreshOutcome.Legacy);
     Task<ProviderMetadataRefreshOutcome> RefreshAsync(
         string providerNamespace,
         string stableSubject,
@@ -20,5 +22,6 @@ public enum ProviderMetadataRefreshOutcome
     Unsupported,
     Untrusted,
     AuthenticationFailed,
-    TimedOut
+    TimedOut,
+    Legacy
 }

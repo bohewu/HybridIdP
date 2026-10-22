@@ -13,6 +13,31 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class ProviderLifecycleClientTests
 {
+    [Fact]
+    public async Task NeutralLookup_ShouldKeepUnavailableWithoutBindingOrLegacyEndpoint()
+    {
+        var context = new NeutralQueryContext(Guid.NewGuid(), null, "source", new NeutralQueryRequest
+        {
+            ContractType = "lifecycle-status", ProviderNamespace = "example.provider",
+            Query = new(new Dictionary<string, string> { ["employeeId"] = "SYNTH-001" })
+        }, "fingerprint", Guid.NewGuid(), new(new Uri("https://example.test/lifecycle"), "synthetic-secret", TimeSpan.FromSeconds(5)), []);
+        var options = Settings();
+        options.Endpoint = null;
+        options.QuerySources["source"] = new() { Enabled = true, Trusted = true };
+        using var handler = new Handler(async (message, ct) =>
+        {
+            Assert.Equal("lifecycle-status/2.0", message.Headers.GetValues("X-Provider-Contract").Single());
+            using var json = JsonDocument.Parse(await message.Content!.ReadAsStringAsync(ct));
+            Assert.False(json.RootElement.TryGetProperty("stableSubject", out var ignoredSubject));
+            return Response(JsonSerializer.Serialize(new { contractType = "lifecycle-status", contractVersion = "2.0",
+                requestId = context.Request.RequestId, providerNamespace = "example.provider", queryOutcome = "Unavailable" }), 503);
+        });
+        var result = await new ProviderLifecycleClient(new HttpClient(handler), Options.Create(options)).LookupNeutralAsync(context);
+        Assert.Equal("Unavailable", result!.QueryOutcome);
+        Assert.Null(result.Result);
+        Assert.Equal(1, handler.Calls);
+    }
+
     private static ProviderLifecycleBinding Binding => new() { ProviderNamespace = "example.provider", StableSubject = "subject-001" };
     private static ProviderLifecycleOptions Settings() => new()
     {

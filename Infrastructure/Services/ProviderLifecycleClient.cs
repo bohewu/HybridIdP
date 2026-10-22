@@ -26,7 +26,7 @@ public sealed class ProviderLifecycleClient : IProviderLifecycleClient
             typeof(ProviderLifecycleOptions), validation.Failures);
         _httpClient = httpClient;
         _enabled = value.Enabled;
-        _endpoint = _enabled ? new Uri(value.Endpoint!, UriKind.Absolute) : null;
+        _endpoint = _enabled && !string.IsNullOrWhiteSpace(value.Endpoint) ? new Uri(value.Endpoint, UriKind.Absolute) : null;
         _secret = value.SharedSecret;
         _timeout = TimeSpan.FromSeconds(value.TimeoutSeconds);
     }
@@ -44,6 +44,7 @@ public sealed class ProviderLifecycleClient : IProviderLifecycleClient
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (!_enabled) return Failed(ProviderLifecycleFailure.Disabled);
+        if (_endpoint is null) return Failed(ProviderLifecycleFailure.Unavailable);
         var request = new ProviderLifecycleRequest { RequestId = Guid.NewGuid().ToString("D"), Binding = binding };
         if (!ProviderLifecycleJson.TrySerializeRequest(request, out var body)) return Failed(ProviderLifecycleFailure.Malformed);
         var started = Stopwatch.GetTimestamp();
@@ -111,4 +112,34 @@ public sealed class ProviderLifecycleClient : IProviderLifecycleClient
     }
 
     private static ProviderLifecycleLookupResult Failed(ProviderLifecycleFailure failure) => new() { Failure = failure };
+
+    public async Task<NeutralQueryResponse?> LookupNeutralAsync(NeutralQueryContext context,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (context.Transport is null || context.DirectoryTransport is not null || !_enabled || context.Request.ContractType != "lifecycle-status" ||
+            !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return null;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(context.Transport.Timeout);
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, context.Transport.Endpoint) { Content = new ByteArrayContent(body) };
+            message.Content.Headers.ContentType = new("application/json");
+            message.Headers.Add("X-Internal-Secret", context.Transport.SharedSecret);
+            message.Headers.Add("X-Provider-Contract", "lifecycle-status/2.0");
+            message.Headers.CacheControl = new() { NoStore = true };
+            using var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+            if (response.Content.Headers.ContentEncoding.Count != 0) return null;
+            using var bounded = await BoundedUpstreamResponse.ReadAsync(response.Content, 8192, deadline.Token);
+            var bytes = await bounded.ReadAsByteArrayAsync(deadline.Token);
+            var valid = NeutralQueryJson.TryReadResponse((int)response.StatusCode, response.Content.Headers.ContentType?.ToString(),
+                bytes, context.Request, out var result);
+            cancellationToken.ThrowIfCancellationRequested();
+            return valid && !deadline.IsCancellationRequested && Stopwatch.GetElapsedTime(started) < context.Transport.Timeout ? result : null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception ex) when (ex is HttpRequestException or IOException or OperationCanceledException or FormatException) { return null; }
+        finally { Array.Clear(body); }
+    }
 }

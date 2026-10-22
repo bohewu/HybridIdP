@@ -5,13 +5,19 @@ namespace Core.Domain.Constants;
 /// </summary>
 public static class SettingKeys
 {
+    public const string NeutralQueryConfiguration = "system.neutralQuery.configuration";
+    public const string NeutralQueryApprovalPrefix = "system.neutralQuery.approval.";
+    public const string NeutralMetadataEvidencePrefix = "neutralQuery.metadataEvidence.";
     public const string NativeFieldMappings = "system.nativeFieldMappings";
     public const string OperationalAdminBootstrapCompleted =
         "system.operationalAdminBootstrap.completed";
 
     public static bool IsSystemOwned(string key)
     {
-        return string.Equals(key, NativeFieldMappings, StringComparison.OrdinalIgnoreCase) || string.Equals(
+        return string.Equals(key, NeutralQueryConfiguration, StringComparison.OrdinalIgnoreCase) ||
+            key.StartsWith(NeutralQueryApprovalPrefix, StringComparison.OrdinalIgnoreCase) ||
+            key.StartsWith(NeutralMetadataEvidencePrefix, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, NativeFieldMappings, StringComparison.OrdinalIgnoreCase) || string.Equals(
             key,
             OperationalAdminBootstrapCompleted,
             StringComparison.Ordinal);

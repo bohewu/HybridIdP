@@ -5,6 +5,8 @@ namespace Infrastructure.Options;
 
 public sealed class LegacyPasswordSyncOptions
 {
+    public Dictionary<string, NeutralQuerySourceOptions> QuerySources { get; set; } = new(StringComparer.Ordinal);
+
     public const string Section = "LegacyPasswordSync";
 
     public bool Enabled { get; set; }
@@ -61,6 +63,11 @@ public sealed class LegacyPasswordSyncOptionsValidator : IValidateOptions<Legacy
         {
             failures.Add("Enabled Legacy password sync requires an eligible cohort.");
         }
+
+        // Neutral destinations are selected by their independent source policy. The legacy
+        // tuple map is still mandatory whenever the legacy endpoint is configured.
+        if (string.IsNullOrWhiteSpace(options.Endpoint) && options.QuerySources.Values.Any(x => x.Enabled && x.Trusted))
+            return failures.Count == 0 ? ValidateOptionsResult.Success : ValidateOptionsResult.Fail(failures);
 
         if (!IsProtectedEndpoint(options.Endpoint, options.AllowPrivateNetworkHttp))
         {

@@ -12,7 +12,8 @@ namespace Infrastructure.Services;
 
 public sealed partial class NativeFieldPolicyService(
     IApplicationDbContext db, IOptions<NativeFieldPolicyOptions> options,
-    IOptions<ProviderProofOptions> proofOptions, IOptions<DirectoryIntegrationOptions> directoryOptions)
+    IOptions<ProviderProofOptions> proofOptions, IOptions<DirectoryIntegrationOptions> directoryOptions,
+    Func<INeutralQueryService>? neutralQueries = null)
     : INativeFieldPolicyService
 {
     private static readonly NativeField[] Fields = Enum.GetValues<NativeField>();
@@ -22,10 +23,12 @@ public sealed partial class NativeFieldPolicyService(
     {
         var policies = await db.NativeFieldSourcePolicies.AsNoTracking().ToListAsync(cancellationToken);
         var mappings = await ReadMappingDocumentAsync(cancellationToken);
-        return Enum.GetValues<NativeFieldSource>().Select(source =>
+        var neutralSources = neutralQueries is null ? [] : (await neutralQueries().GetConfigurationAsync(cancellationToken)).Sources
+            .Where(x => x.Capability == "native-profile").ToArray();
+        return Enum.GetValues<NativeFieldSource>().Where(source => source != NativeFieldSource.NeutralQuery || neutralSources.Length > 0).Select(source =>
         {
             var policy = policies.SingleOrDefault(x => x.Source == source.ToString());
-            var enabled = IsEnabled(source);
+            var enabled = source == NativeFieldSource.NeutralQuery ? neutralSources.Any(x => x.Available) : IsEnabled(source);
             var providerNamespace = source == NativeFieldSource.Proof ? proofOptions.Value.TrustedProviderNamespace : null;
             return new NativeFieldSourceStatusDto(source, enabled, policy?.Paused == true,
                 enabled ? null : "Deployment has not enabled and trusted this native-field source.",
@@ -62,7 +65,9 @@ public sealed partial class NativeFieldPolicyService(
     public async Task SetPausedAsync(NativeFieldSource source, NativeFieldPauseRequest request, CancellationToken cancellationToken = default)
     {
         Require(Enum.IsDefined(source), "unsupported_source");
-        Require(IsEnabled(source), "source_unavailable");
+        Require(source == NativeFieldSource.NeutralQuery
+            ? (await GetSourcesAsync(cancellationToken)).Any(x => x.Source == source && x.Enabled)
+            : IsEnabled(source), "source_unavailable");
         var row = await db.NativeFieldSourcePolicies.SingleOrDefaultAsync(x => x.Source == source.ToString(), cancellationToken);
         Require((row?.Revision ?? Guid.Empty) == request.ExpectedRevision, "conflict");
         if (row is null)
@@ -288,6 +293,9 @@ public sealed partial class NativeFieldPolicyService(
 
     private async Task<bool> IsAvailableAsync(NativeFieldSourceIdentity identity, CancellationToken cancellationToken)
     {
+        if (identity.Source == NativeFieldSource.NeutralQuery)
+            return await IsNeutralOwnerAvailableAsync(identity, cancellationToken) && !await db.NativeFieldSourcePolicies.AsNoTracking()
+                .AnyAsync(x => x.Source == nameof(NativeFieldSource.NeutralQuery) && x.Paused, cancellationToken);
         if (!IsEnabled(identity.Source) || identity.LocalAccountId == Guid.Empty ||
             string.IsNullOrWhiteSpace(identity.ProviderNamespace) || identity.ProviderNamespace.Length > 200 ||
             string.IsNullOrWhiteSpace(identity.StableSubject) || identity.StableSubject.Length > 256) return false;
@@ -304,6 +312,7 @@ public sealed partial class NativeFieldPolicyService(
         if (target == NativeFieldTarget.User && identity.LocalAccountId != targetId) return false;
         if (target == NativeFieldTarget.Person && !await db.Users.AsNoTracking()
             .AnyAsync(x => x.Id == identity.LocalAccountId && x.PersonId == targetId, cancellationToken)) return false;
+        if (identity.Source == NativeFieldSource.NeutralQuery) return await IsNeutralOwnerAvailableAsync(identity, cancellationToken);
         if (identity.Source == NativeFieldSource.Proof)
         {
             if (identity.DirectoryObjectId is not null) return false;
@@ -325,11 +334,21 @@ public sealed partial class NativeFieldPolicyService(
         var ids = await accounts.Select(x => x.Id).ToListAsync(cancellationToken);
         var logins = await db.UserLogins.AsNoTracking().Where(x => ids.Contains(x.UserId)).ToListAsync(cancellationToken);
         var bindings = await db.ProviderSubjectDirectoryBindings.AsNoTracking().Where(x => ids.Contains(x.LocalAccountId)).ToListAsync(cancellationToken);
+        var neutralOwners = new List<NativeFieldSourceIdentity>();
+        if (neutralQueries is not null)
+        {
+            var configuration = await neutralQueries().GetConfigurationAsync(cancellationToken);
+            foreach (var mapping in configuration.Configurations.Where(x => x.Capability == "native-profile" && x.WireMode == "neutral-v2" &&
+                         configuration.Sources.Any(source => source.Capability == x.Capability && source.SourceId == x.SourceId &&
+                             source.ProviderNamespace == x.ProviderNamespace && source.Available)))
+                neutralOwners.AddRange(ids.Select(id => new NativeFieldSourceIdentity(NativeFieldSource.NeutralQuery, id,
+                    mapping.ProviderNamespace, string.Empty, QuerySourceId: mapping.SourceId)));
+        }
         return logins.Where(x => x.LoginProvider == proofOptions.Value.TrustedProviderNamespace)
             .Select(x => new NativeFieldSourceIdentity(NativeFieldSource.Proof, x.UserId, x.LoginProvider, x.ProviderKey))
             .Concat(bindings.Where(x => options.Value.TrustedStage1ProviderNamespaces.Contains(x.ProviderNamespace, StringComparer.Ordinal))
                 .Select(x => new NativeFieldSourceIdentity(NativeFieldSource.Stage1, x.LocalAccountId, x.ProviderNamespace, x.StableSubject, x.DirectoryObjectId)))
-            .ToArray();
+            .Concat(neutralOwners).ToArray();
     }
 
     private async Task<object> FindTargetAsync(NativeFieldTarget target, Guid id, CancellationToken cancellationToken)

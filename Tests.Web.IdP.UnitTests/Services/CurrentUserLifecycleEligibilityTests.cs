@@ -9,11 +9,51 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Web.IdP.Services;
+using Moq;
+using System.Text.Json;
 
 namespace Tests.Web.IdP.UnitTests.Services;
 
 public sealed class CurrentUserLifecycleEligibilityTests
 {
+    [Theory]
+    [InlineData("enabled", true)]
+    [InlineData("unavailable", false)]
+    [InlineData("authority", false)]
+    [InlineData("stale", false)]
+    [InlineData("changed-query", false)]
+    [InlineData("inactive", false)]
+    public async Task NeutralLifecycle_ShouldRequireIndependentAuthorityFreshnessAndCurrentLocalStateWithoutBinding(string scenario, bool expected)
+    {
+        using var fixture = new Fixture();
+        fixture.Database.ProviderSubjectDirectoryBindings.RemoveRange(fixture.Database.ProviderSubjectDirectoryBindings);
+        await fixture.Database.SaveChangesAsync();
+        fixture.Options.RequiredAccounts[0].BindingKind = ProviderLifecycleRequiredAccount.NeutralQuery;
+        var context = new NeutralQueryContext(fixture.User.Id, fixture.Person.Id, "source", new NeutralQueryRequest
+        {
+            ContractType = "lifecycle-status", ProviderNamespace = "issuer", Query = new(new Dictionary<string, string> { ["employeeId"] = "SYNTH-001" })
+        }, "fingerprint", Guid.NewGuid(), new(new Uri("https://example.test/lifecycle"), "synthetic-secret", TimeSpan.FromSeconds(5)), []);
+        var query = new Mock<INeutralQueryService>();
+        query.Setup(x => x.ResolveAsync("lifecycle-status", fixture.User.Id, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NeutralQueryResolution("Ready", context));
+        query.Setup(x => x.IsCurrentAsync(context, It.IsAny<CancellationToken>())).ReturnsAsync(scenario != "changed-query");
+        var client = new Mock<IProviderLifecycleClient>(MockBehavior.Strict);
+        client.Setup(x => x.LookupNeutralAsync(context, It.IsAny<CancellationToken>())).Returns(async () =>
+        {
+            if (scenario == "inactive") await fixture.ChangeLocalAsync("inactive");
+            var evidence = fixture.Response.Evidence! with { SourceAuthority = scenario == "authority" ? "other" : "authority",
+                ObservedAt = scenario == "stale" ? Fixture.Now.AddHours(-1) : Fixture.Now.AddSeconds(-1) };
+            return new NeutralQueryResponse("lifecycle-status", context.Request.RequestId, "issuer",
+                scenario == "unavailable" ? "Unavailable" : "Found",
+                scenario == "unavailable" ? null : JsonSerializer.SerializeToElement(new NeutralLifecycleResult("Enabled", evidence), JsonSerializerOptions.Web));
+        });
+        var service = new CurrentUserLifecycleEligibility(fixture.Database, Microsoft.Extensions.Options.Options.Create(fixture.Options), client.Object,
+            new ProviderLifecycleClock(fixture.Time), query.Object);
+        Assert.Equal(expected, await service.IsEligibleAsync(fixture.User.Id));
+        Assert.Empty(await fixture.Database.UserLogins.ToListAsync());
+        Assert.Empty(await fixture.Database.ProviderSubjectDirectoryBindings.ToListAsync());
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

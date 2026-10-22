@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Text.RegularExpressions;
+using System.Text.Json;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
@@ -24,6 +25,60 @@ namespace Tests.Infrastructure.UnitTests;
 public sealed class RecoveryPrecheckServiceTests
 {
     private static readonly NativeRecoveryContext Browser = new("browser", "csrf", "budget");
+
+    [Theory]
+    [InlineData("none", true)]
+    [InlineData("during-verification", false)]
+    [InlineData("before-otp", false)]
+    [InlineData("before-verify", true)]
+    [InlineData("missing", false)]
+    public async Task NeutralPrecheck_ShouldUseIndependentEvidenceAndInvalidateChangedQueries(string mutation, bool sends)
+    {
+        await using var f = await Fixture.CreateAsync();
+        f.Identity.Enabled = true;
+        f.Identity.RequireForLocalAccounts = true;
+        var query = new NeutralQueryContext(f.User.Id, null, "synthetic-source",
+            new NeutralQueryRequest { ContractType = "recovery-identity-verification", ProviderNamespace = "independent.provider",
+                Query = new(new Dictionary<string, string> { ["employeeId"] = "employee-1" }) },
+            new string('D', 64), Guid.NewGuid(), new(new Uri("https://source.invalid/riv"), "synthetic-secret", TimeSpan.FromSeconds(1)), []);
+        var fingerprint = query.Fingerprint;
+        var service = new Mock<INeutralQueryService>();
+        service.Setup(x => x.ResolveAsync("recovery-identity-verification", f.User.Id, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => mutation == "missing" ? new("MissingInput") : new("Ready", query with { Fingerprint = fingerprint }));
+        service.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync((NeutralQueryContext context, CancellationToken _) => context.Fingerprint == fingerprint);
+        f.Queries = service.Object;
+        if (mutation == "during-verification") f.Provider.After = () => { fingerprint = new string('E', 64); return Task.CompletedTask; };
+        var prepared = await f.PrepareAsync();
+        Assert.Empty(await f.Db.ProviderSubjectDirectoryBindings.ToListAsync());
+        Assert.Empty(await f.Db.UserLogins.ToListAsync());
+        if (mutation is "during-verification" or "missing") Assert.Null(prepared.GrantId);
+        else
+        {
+            Assert.NotNull(prepared.GrantId);
+            Assert.Equal("  synthetic-id  ", f.Provider.LastNeutral!.Request.Evidence!.IdentityIdentifier);
+            Assert.Equal("employee-1", f.Provider.LastNeutral.Request.Query.Attributes["employeeId"]);
+            Assert.Null(f.Provider.Last);
+            Assert.Empty(await f.Db.UserSessions.ToListAsync());
+            if (mutation == "before-otp") fingerprint = new string('E', 64);
+            await f.Service.SendOtpAsync(new(prepared.GrantId.Value, Browser, "127.0.0.1"));
+            if (mutation == "before-verify")
+            {
+                fingerprint = new string('E', 64);
+                var challenge = await f.Db.RecoveryProofChallenges.SingleAsync();
+                var code = Regex.Match(f.Mail.Body!, @"\b[0-9]{6}\b").Value;
+                var proof = new NativePasswordRecoveryProofService(f.Db, Mock.Of<IEmailService>(),
+                    new PasswordHasher<ApplicationUser>(), new UpperInvariantLookupNormalizer(),
+                    Mock.Of<IRecoveryVerificationPolicyEvaluator>(), new ForgotPasswordRoutingEvaluator(Options.Create(f.Native)),
+                    Options.Create(f.Native), f.Time, Options.Create(f.Identity),
+                    Options.Create(new RecoveryEmailSelectionOptions { Enabled = true }), f.Service);
+                var verified = await proof.VerifyAsync(new(challenge.Id, code, Browser));
+                Assert.Equal(NativeRecoveryVerificationOutcome.Denied, verified.Outcome);
+                Assert.Null(verified.Proof);
+            }
+        }
+        Assert.Equal(sends ? 1 : 0, f.Mail.Count);
+    }
 
     [Theory]
     [InlineData(null)]
@@ -334,6 +389,7 @@ public sealed class RecoveryPrecheckServiceTests
         public Mail Mail { get; } = new();
         public EmailOptions EmailOptions { get; } = new() { SmtpHost = "fake-only" };
         public RecoveryIdentityVerificationOptions Identity { get; } = new();
+        public INeutralQueryService? Queries { get; set; }
         public ForgotPasswordRecoveryOptions Native { get; } = new() { NativeRecoveryEnabled = true,
             NativeDirectoryRecoveryEnabled = true, DeploymentCeiling = ForgotPasswordMode.Native };
         public string ThrottleKey { get; } = Guid.NewGuid().ToString("N");
@@ -353,7 +409,7 @@ public sealed class RecoveryPrecheckServiceTests
                 new RecoveryThrottleService(db, Options.Create(new RecoveryThrottleOptions { HashKey = ThrottleKey }), Time),
                 new RecoveryOtpDeliveryService(Mail, mailOptions.Object), new PasswordHasher<ApplicationUser>(),
                 new UpperInvariantLookupNormalizer(), new ForgotPasswordRoutingEvaluator(native), Options.Create(Identity),
-                Options.Create(new RecoveryEmailSelectionOptions { Enabled = true }), native, Time);
+                Options.Create(new RecoveryEmailSelectionOptions { Enabled = true }), native, Time, Queries);
         }
 
         public static async Task<Fixture> CreateAsync(bool directory = false)
@@ -397,6 +453,14 @@ public sealed class RecoveryPrecheckServiceTests
     private sealed class Provider : IRecoveryIdentityVerificationClient
     {
         public RecoveryIdentityVerificationRequest? Last { get; private set; }
+        public NeutralQueryContext? LastNeutral { get; private set; }
+        public async Task<NeutralQueryResponse?> VerifyAsync(NeutralQueryContext context, CancellationToken cancellationToken = default)
+        {
+            LastNeutral = context;
+            if (After is not null) await After();
+            return new(context.Request.ContractType, context.Request.RequestId, context.Request.ProviderNamespace, "Found",
+                JsonSerializer.SerializeToElement(new { outcome = Denied ? "Denied" : "Verified", scheme = "identity-identifier" }));
+        }
         public Func<Task>? After { get; set; }
         public bool Denied { get; set; }
         public bool WrongTuple { get; set; }

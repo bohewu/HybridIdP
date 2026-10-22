@@ -1,5 +1,44 @@
 # Provider API capability inventory
 
+## Neutral query delivery (version 2.0)
+
+The [common neutral non-login query contract](NEUTRAL_QUERY_CONTRACT.md) defines
+the new explicit `neutral-v2` mode for all six non-login capabilities. This is
+contract-first agreement, not a claim of deployed consumer/producer support.
+The existing inventory below records each compatibility mode. Authentication
+Proof and durable namespace-plus-subject identity remain unchanged.
+
+| Capability / contractType | v2 request additions | Found result / preserved authority |
+| --- | --- | --- |
+| Native Profile / `native-profile` | None | `profile`, `emailTrustOrigin`; administrator-reviewed fresh fill-only writes, manual-fixed/owner/MFA/Email guards |
+| Profile / `profile` | None | Complete `extraProperties`; approved types, source/account-scoped confirmation and claims disclosure |
+| Metadata / `metadata` | None | `email`, `emailTrustOrigin`, `verifiedAt`; independent Email trust and current-period recovery policy |
+| Lifecycle / `lifecycle-status` | None | `accountState`, `evidence`; unique account authority, real freshness and local denial; missing independent authority stays Unavailable |
+| Recovery / `recovery-identity-verification` | `scheme`, independent submitted `evidence` | Verified/Denied `outcome`, `scheme`; query match never verifies identity or replaces grant/OTP/reset authorization |
+| Password Sync / `password-sync` | `operationId`, `password` | Aggregate `outcome`; exact authorized target, operationId dedup/single-send and durable Unknown barrier |
+
+All six use typed availableCandidates `employeeId` (String), `nationalIdHash`
+(Sha256Hex) and `accountName` (String), with explicitly selected trusted/approved
+existing value sources. Every nonempty subset may be agreed per deployed source;
+unsupported sets never trigger weaker lookup. Person.NationalId is an approved
+PidHasher digest, never raw IID. `queryRule` is optional and needed only to choose
+among otherwise ambiguous agreed rule sets. Upstream maps properties to its own
+storage; no SSO prerequisite, UUID mapping database, AD IID support or producer
+assembly dependency is introduced.
+
+The strict v2 envelope has contractType, contractVersion `2.0`, requestId,
+providerNamespace and query.attributes; the exact contract header selects v2.
+Responses correlate to the immutable pending query/configuration context through
+requestId, type, version and data-source namespace, plus operationId for writes.
+Query/configuration/value-source mutation invalidates snapshots and protected
+receipts before reuse. See the common schema and each capability's v2 schema
+and synthetic examples. Explicit legacy mode retains the existing 1.0 and
+unversioned shapes; mixed formats and silent downgrade are forbidden. The UI
+selects enabled/trusted deployed sources and approved mappings; deployment
+configuration retains secrets, full endpoints and trust/feature/cohort ceilings.
+
+## Existing compatibility inventory
+
 Source review: local checkout, updated for Proof/Profile on 2026-10-08. Contracts retain their
 own formats, configuration and admission rules. No deployment is inferred.
 The [Lifecycle Status 1.0 draft](PROVIDER_LIFECYCLE_CONTRACT.md) adds a separate

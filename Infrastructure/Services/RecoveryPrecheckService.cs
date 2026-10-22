@@ -16,7 +16,8 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
     IRecoveryIdentityVerificationClient verifier, RecoveryThrottleService throttle, RecoveryOtpDeliveryService delivery,
     IPasswordHasher<ApplicationUser> hasher, ILookupNormalizer normalizer, IForgotPasswordRoutingEvaluator routing,
     IOptions<RecoveryIdentityVerificationOptions> identityOptions, IOptions<RecoveryEmailSelectionOptions> selectionOptions,
-    IOptions<ForgotPasswordRecoveryOptions> nativeOptions, TimeProvider? timeProvider = null) : IRecoveryPrecheckService
+    IOptions<ForgotPasswordRecoveryOptions> nativeOptions, TimeProvider? timeProvider = null,
+    INeutralQueryService? queries = null) : IRecoveryPrecheckService
 {
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
     public bool Enabled => identityOptions.Value.Enabled || selectionOptions.Value.Enabled;
@@ -42,17 +43,34 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
             if (before is null) return new();
             if (before.IdentityRequired)
             {
-                if (before.Binding is null || !RecoveryIdentityVerificationContract.IsText(request.IdentityIdentifier, 128, true)) return new();
-                var wire = new RecoveryIdentityVerificationRequest
+                if (!RecoveryIdentityVerificationContract.IsText(request.IdentityIdentifier, 128, true)) return new();
+                if (before.Query is { } query)
                 {
-                    RequestId = Guid.NewGuid().ToString("D"), ProviderNamespace = before.Binding.ProviderNamespace,
-                    StableSubject = before.Binding.StableSubject,
-                    Evidence = new() { IdentityIdentifier = request.IdentityIdentifier }
-                };
-                var response = await verifier.VerifyAsync(wire, cancellationToken);
-                if (response is null || !response.IsValid() || response.Outcome != RecoveryIdentityVerificationOutcome.Verified ||
-                    response.RequestId != wire.RequestId || response.Binding?.ProviderNamespace != wire.ProviderNamespace ||
-                    response.Binding.StableSubject != wire.StableSubject || response.Binding.Scheme != wire.Scheme) return new();
+                    var pending = query with { Request = query.Request with { Scheme = identityOptions.Value.Scheme,
+                        Evidence = new(request.IdentityIdentifier) } };
+                    if (!await queries!.IsCurrentAsync(pending, cancellationToken)) return new();
+                    var response = await verifier.VerifyAsync(pending, cancellationToken);
+                    if (response is not { QueryOutcome: "Found", Result: { } result } ||
+                        response.ContractType != pending.Request.ContractType || response.RequestId != pending.Request.RequestId ||
+                        response.ProviderNamespace != pending.Request.ProviderNamespace ||
+                        result.GetProperty("outcome").GetString() != "Verified" ||
+                        result.GetProperty("scheme").GetString() != pending.Request.Scheme ||
+                        !await queries.IsCurrentAsync(pending, cancellationToken)) return new();
+                }
+                else
+                {
+                    if (before.Binding is null) return new();
+                    var wire = new RecoveryIdentityVerificationRequest
+                    {
+                        RequestId = Guid.NewGuid().ToString("D"), ProviderNamespace = before.Binding.ProviderNamespace,
+                        StableSubject = before.Binding.StableSubject,
+                        Evidence = new() { IdentityIdentifier = request.IdentityIdentifier }
+                    };
+                    var response = await verifier.VerifyAsync(wire, cancellationToken);
+                    if (response is null || !response.IsValid() || response.Outcome != RecoveryIdentityVerificationOutcome.Verified ||
+                        response.RequestId != wire.RequestId || response.Binding?.ProviderNamespace != wire.ProviderNamespace ||
+                        response.Binding.StableSubject != wire.StableSubject || response.Binding.Scheme != wire.Scheme) return new();
+                }
             }
             // Fresh detached reads after the external call; provider success cannot override local changes.
             var after = await ResolveStateAsync(before.User.Id, cancellationToken);
@@ -63,6 +81,7 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
                 after.User.SecurityStamp!, request.Context.ContextHash, request.Context.CsrfHash, after.PolicyDigest,
                 after.Destination.SelectionEpoch, after.Destination.Kind, after.Destination.Fingerprint,
                 after.Destination.Version, now, now.AddMinutes(lifetime));
+            if (after.Query is { } currentQuery && !await queries!.IsCurrentAsync(currentQuery, cancellationToken)) return new();
             db.RecoveryPrecheckGrants.Add(grant);
             await db.SaveChangesAsync(cancellationToken);
             return new(grant.Id, nativeOptions.Value.PrecheckHintsEnabled ? after.Destination.MaskedAddress : null);
@@ -121,11 +140,13 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
                     c.Purpose == RecoveryProofPurpose.NativePasswordRecovery && c.RevokedAtUtc == null && c.ConsumedAtUtc == null)
                     .ToListAsync(cancellationToken);
                 foreach (var old in previous) old.Revoke(now);
+                if (state.Query is { } currentQuery && !await queries!.IsCurrentAsync(currentQuery, cancellationToken)) return denied;
                 db.RecoveryProofChallenges.Add(challenge);
                 await db.SaveChangesAsync(cancellationToken);
                 await transaction.CommitAsync(cancellationToken);
             }
             // SMTP is outside the reservation transaction. A crash/cancellation leaves Reserved unredeemable.
+            if (state.Query is { } query && !await queries!.IsCurrentAsync(query, cancellationToken)) return denied;
             var sent = await delivery.SendAsync(state.Destination.Address, code, nativeOptions.Value.NativeOtpLifetimeMinutes, cancellationToken);
             if (!challenge.TryCompleteDelivery(_time.GetUtcNow(), sent)) return denied;
             await db.SaveChangesAsync(cancellationToken);
@@ -157,7 +178,14 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
         var directory = binding is not null || migration is not null;
         var identity = identityOptions.Value;
         var required = identity.Enabled && (directory ? identity.RequireForDirectoryAccounts : identity.RequireForLocalAccounts);
-        if (required && binding is null) return null;
+        NeutralQueryContext? query = null;
+        if (required)
+        {
+            var resolution = queries is null ? new NeutralQueryResolution("Legacy") :
+                await queries.ResolveAsync("recovery-identity-verification", accountId, cancellationToken: cancellationToken);
+            if (resolution.Status == "Ready" && resolution.Context is not null) query = resolution.Context;
+            else if (resolution.Status != "Legacy" || binding is null) return null;
+        }
         if (directory ? !native.NativeDirectoryRecoveryEnabled || binding is null || migration is null ||
             migration.State != CredentialMigrationState.LocalFinalized || migration.ProviderSubjectDirectoryBindingId != binding.Id
             : string.IsNullOrWhiteSpace(user.PasswordHash)) return null;
@@ -170,9 +198,10 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
             native.NativeRecoveryEnabled.ToString(), native.NativeDirectoryRecoveryEnabled.ToString(), native.DeploymentCeiling.ToString(),
             policy?.ForgotPasswordMode.ToString(), native.NativeOtpLifetimeMinutes.ToString(CultureInfo.InvariantCulture),
             native.NativeOtpMaxAttempts.ToString(CultureInfo.InvariantCulture), native.NativeOtpResendCooldownSeconds.ToString(CultureInfo.InvariantCulture));
+        if (query is not null) policyDigest = RecoveryDestinationBinding.ComputeDigest("recovery-neutral-query-v2", policyDigest, query.Fingerprint);
         var securityDigest = RecoveryDestinationBinding.ComputeDigest("recovery-account-v1", accountId.ToString("D"), user.SecurityStamp,
             bindingDigest, directory.ToString(), policyDigest);
-        return new(user, binding, directory, required, destination, bindingDigest, policyDigest, securityDigest);
+        return new(user, binding, directory, required, destination, bindingDigest, policyDigest, securityDigest, query);
     }
 
     internal static string BindingDigest(ProviderSubjectDirectoryBinding binding) => RecoveryDestinationBinding.ComputeDigest(
@@ -201,4 +230,5 @@ public sealed class RecoveryPrecheckService(ApplicationDbContext db, IRecoveryDe
 }
 
 internal sealed record RecoveryCeremonyState(ApplicationUser User, ProviderSubjectDirectoryBinding? Binding,
-    bool IsDirectory, bool IdentityRequired, RecoveryDestination Destination, string? BindingDigest, string PolicyDigest, string SecurityDigest);
+    bool IsDirectory, bool IdentityRequired, RecoveryDestination Destination, string? BindingDigest, string PolicyDigest, string SecurityDigest,
+    NeutralQueryContext? Query = null);

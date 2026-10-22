@@ -1,0 +1,134 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "native-profile neutral-query 2.0",
+  "description": "Root validates responses; #/$defs/request validates requests. Semantic and authority rules are in NEUTRAL_QUERY_CONTRACT.md.",
+  "$comment": "No mixed legacy/v2 shape acceptance.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "request": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/request"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "native-profile"
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "response": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/response"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "native-profile"
+            },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "profile",
+                "emailTrustOrigin"
+              ],
+              "properties": {
+                "profile": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "assuredFields"
+                  ],
+                  "properties": {
+                    "displayName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 256
+                    },
+                    "givenName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 100
+                    },
+                    "surname": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 100
+                    },
+                    "email": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 256
+                    },
+                    "department": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 200
+                    },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 200
+                    },
+                    "employeeId": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "maxLength": 50
+                    },
+                    "assuredFields": {
+                      "type": "array",
+                      "uniqueItems": true,
+                      "maxItems": 7,
+                      "items": {
+                        "enum": [
+                          "DisplayName",
+                          "GivenName",
+                          "Surname",
+                          "Email",
+                          "Department",
+                          "Title",
+                          "EmployeeId"
+                        ]
+                      }
+                    }
+                  }
+                },
+                "emailTrustOrigin": {
+                  "enum": [
+                    "Unknown",
+                    "SourceVerified",
+                    "PolicyTrusted"
+                  ]
+                }
+              }
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

@@ -3,16 +3,20 @@ import { createI18n } from 'vue-i18n'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import ProfileMappingDialog from './ProfileMappingDialog.vue'
 import { nativeFieldPolicyApi } from '@/services/nativeFieldPolicyApi'
+import queryEn from '@/i18n/locales/en-US/query-fields.json'
+import queryZh from '@/i18n/locales/zh-TW/query-fields.json'
+import { queryConfigurationApi } from '@/services/queryConfigurationApi'
 import en from '@/i18n/locales/en-US/native-fields.json'
 import zh from '@/i18n/locales/zh-TW/native-fields.json'
 vi.mock('@/services/nativeFieldPolicyApi', async original => ({ ...await original(), nativeFieldPolicyApi: { mappings: vi.fn(), saveMappings: vi.fn() } }))
+vi.mock('@/services/queryConfigurationApi', () => ({ queryConfigurationApi: { get: vi.fn() } }))
 const source = { source: 'Proof', providerNamespace: 'example.provider', enabled: true, paused: false, userNamePolicyAvailable: true }
 const row = { ...source, field: 'FirstName', sourceProperty: 'givenName' }
 delete row.enabled; delete row.paused; delete row.userNamePolicyAvailable
 const fixture = () => ({ revision: 'revision-a', mappings: [{ ...row }], firstNameFallback: { providerNamespace: source.providerNamespace, enabled: false }, sources: [source, { source: 'Stage1', providerNamespace: 'directory.example', enabled: false, paused: false }], sourceProperties: ['displayName', 'givenName', 'surname', 'department', 'title', 'employeeId', 'EmailConfirmed', 'NationalId'] })
 let wrapper
 async function render(props = {}, locale = 'en-US') {
-  wrapper = mount(ProfileMappingDialog, { props: { canUpdate: true, canSync: true, ...props }, global: { plugins: [createI18n({ legacy: false, locale, messages: { 'en-US': { 'native-fields': en }, 'zh-TW': { 'native-fields': zh } }, missingWarn: false })], stubs: { BaseModal: { template: '<div><slot name="body"/><slot name="footer"/></div>' } } } })
+  wrapper = mount(ProfileMappingDialog, { props: { canUpdate: true, canSync: true, ...props }, global: { plugins: [createI18n({ legacy: false, locale, messages: { 'en-US': { 'native-fields': en, 'query-fields': queryEn }, 'zh-TW': { 'native-fields': zh, 'query-fields': queryZh } }, missingWarn: false })], stubs: { BaseModal: { template: '<div><slot name="body"/><slot name="footer"/></div>' } } } })
   await flushPromises()
 }
 beforeEach(() => { vi.resetAllMocks(); nativeFieldPolicyApi.mappings.mockResolvedValue(fixture()); nativeFieldPolicyApi.saveMappings.mockResolvedValue(fixture()) })
@@ -232,4 +236,30 @@ describe('Profile mapping draft', () => {
     expect(wrapper.findAll('[data-test="edit-mapping"]')).toHaveLength(2)
     expect(wrapper.get('[data-test="add-field"]').text()).not.toContain('First name')
   })
+})
+
+it.each([['en-US', en, queryEn], ['zh-TW', zh, queryZh]])('saves and reopens explicit AD displayName mapping without Proof fallback in %s', async (locale, words, queryWords) => {
+  const data = fixture()
+  data.sources = [{ source: 'NeutralQuery', providerNamespace: 'directory.example', enabled: true, paused: false }]
+  data.mappings = []
+  queryConfigurationApi.get.mockResolvedValue({ sources: [{ capability: 'native-profile', providerNamespace: 'directory.example', sourceId: 'directory-records', sourceType: 'directory' }] })
+  nativeFieldPolicyApi.mappings.mockResolvedValue(data)
+  await render({}, locale)
+  expect(wrapper.get('[data-test="add-source"]').text()).toContain(queryWords.sourceTypes.directory)
+  await wrapper.get('[data-test="add-source"]').setValue('0')
+  await wrapper.get('[data-test="add-field"]').setValue('FirstName')
+  await wrapper.get('[data-test="add-property"]').setValue('displayName')
+  await wrapper.get('[data-test="add-mapping"]').trigger('click')
+  expect(wrapper.find('[data-test="mapping-fallback"]').exists()).toBe(false)
+  expect(wrapper.get('[data-test="save-mappings"]').text()).toBe(words.mapping.save)
+  await wrapper.get('[data-test="save-mappings"]').trigger('click'); await flushPromises()
+  const request = nativeFieldPolicyApi.saveMappings.mock.calls[0][0]
+  expect(request.mappings).toEqual([{ source: 'NeutralQuery', providerNamespace: 'directory.example', field: 'FirstName', sourceProperty: 'displayName' }])
+  expect(request.firstNameFallback.enabled).toBe(false)
+  expect(wrapper.emitted('sync')).toBeUndefined()
+  wrapper.unmount()
+  nativeFieldPolicyApi.mappings.mockResolvedValue({ ...data, mappings: request.mappings })
+  await render({}, locale)
+  await wrapper.get('[data-test="edit-mapping"]').trigger('click')
+  expect(wrapper.get('[data-test="edit-property"]').element.value).toBe('displayName')
 })

@@ -13,15 +13,17 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
     private readonly IApplicationDbContext _dbContext;
     private readonly RecoveryVerificationPolicyOptions _options;
     private readonly TimeProvider _timeProvider;
+    private readonly INeutralMetadataEvidenceReader? _neutralEvidence;
 
     public RecoveryVerificationPolicyEvaluator(
         IApplicationDbContext dbContext,
         IOptions<RecoveryVerificationPolicyOptions> options,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, INeutralMetadataEvidenceReader? neutralEvidence = null)
     {
         _dbContext = dbContext;
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _neutralEvidence = neutralEvidence;
     }
 
     public async Task<RecoveryVerificationPolicyDecision> EvaluateAsync(
@@ -33,13 +35,7 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
             return DisabledDecision();
         }
 
-        var bindingIds = await _dbContext.ProviderSubjectDirectoryBindings.AsNoTracking()
-            .Where(binding => binding.LocalAccountId == localAccountId)
-            .Select(binding => binding.Id)
-            .ToListAsync(cancellationToken);
-        var snapshots = await _dbContext.ProviderMetadataSnapshots.AsNoTracking()
-            .Where(snapshot => bindingIds.Contains(snapshot.ProviderSubjectDirectoryBindingId))
-            .ToListAsync(cancellationToken);
+        var snapshots = await ReadEvidenceAsync(localAccountId, cancellationToken);
         var localRecoveryEmail = await _dbContext.RecoveryEmails.AsNoTracking()
             .SingleOrDefaultAsync(record => record.LocalAccountId == localAccountId, cancellationToken);
         var sourceBootstrapRevoked = await _dbContext.Users.AsNoTracking()
@@ -89,12 +85,7 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
         CancellationToken cancellationToken = default)
     {
         if (!_options.Enabled) return null;
-        var bindingIds = await _dbContext.ProviderSubjectDirectoryBindings.AsNoTracking()
-            .Where(binding => binding.LocalAccountId == localAccountId)
-            .Select(binding => binding.Id).ToListAsync(cancellationToken);
-        var snapshots = await _dbContext.ProviderMetadataSnapshots.AsNoTracking()
-            .Where(snapshot => bindingIds.Contains(snapshot.ProviderSubjectDirectoryBindingId))
-            .ToListAsync(cancellationToken);
+        var snapshots = await ReadEvidenceAsync(localAccountId, cancellationToken);
         var revoked = await _dbContext.Users.AsNoTracking().Where(user => user.Id == localAccountId)
             .Select(user => user.RecoverySourceBootstrapRevokedAtUtc != null).SingleOrDefaultAsync(cancellationToken);
         var decision = EvaluateRecoveryEmail(null, snapshots, revoked);
@@ -102,12 +93,12 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
             return null;
 
         var evidence = snapshots.Where(snapshot => TryCreateSourceCandidate(snapshot) is not null)
-            .OrderBy(snapshot => snapshot.Id).ToArray();
+            .OrderBy(snapshot => snapshot.SourceKey, StringComparer.Ordinal).ToArray();
         var fields = new List<string?> { "recovery-default-v1", localAccountId.ToString("D"), decision.Address };
         foreach (var snapshot in evidence)
         {
-            fields.Add(snapshot.Id.ToString("D"));
-            fields.Add(snapshot.ProviderSubjectDirectoryBindingId.ToString("D"));
+            fields.Add(snapshot.SourceKey);
+            fields.Add(snapshot.QueryFingerprint);
             fields.Add(snapshot.Email);
             fields.Add(snapshot.EmailTrustOrigin.ToString());
             fields.Add(snapshot.RefreshedAtUtc.ToString("O", CultureInfo.InvariantCulture));
@@ -120,7 +111,7 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
 
     private RecoveryEmailPolicyDecision EvaluateRecoveryEmail(
         RecoveryEmailRecord? localRecoveryEmail,
-        IReadOnlyCollection<ProviderMetadataSnapshot> snapshots,
+        IReadOnlyCollection<MetadataEmailEvidence> snapshots,
         bool sourceBootstrapRevoked)
     {
         var sourceCandidates = sourceBootstrapRevoked
@@ -188,7 +179,7 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
             true);
     }
 
-    private SourceEmailCandidate? TryCreateSourceCandidate(ProviderMetadataSnapshot snapshot)
+    private SourceEmailCandidate? TryCreateSourceCandidate(MetadataEmailEvidence snapshot)
     {
         if (GetEvidenceState(snapshot) != ProviderMetadataEvidenceState.Available)
         {
@@ -212,7 +203,7 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
         return new SourceEmailCandidate(address, normalizedAddress, acceptedOrigin);
     }
 
-    private ProviderMetadataEvidenceState GetEvidenceState(ProviderMetadataSnapshot snapshot)
+    private ProviderMetadataEvidenceState GetEvidenceState(MetadataEmailEvidence snapshot)
     {
         if (snapshot.EvidenceState != ProviderMetadataEvidenceState.Available)
         {
@@ -230,6 +221,23 @@ public sealed class RecoveryVerificationPolicyEvaluator : IRecoveryVerificationP
         return snapshot.RefreshedAtUtc < _options.EffectiveAtUtc!.Value
             ? ProviderMetadataEvidenceState.Stale
             : ProviderMetadataEvidenceState.Available;
+    }
+
+    private async Task<IReadOnlyList<MetadataEmailEvidence>> ReadEvidenceAsync(Guid userId, CancellationToken ct)
+    {
+        if (_neutralEvidence is not null)
+        {
+            var neutral = await _neutralEvidence.ReadAsync(userId, ct);
+            // A failed or missing neutral result never revives old tuple evidence.
+            if (neutral.Configured) return neutral.Evidence;
+        }
+        var bindings = await _dbContext.ProviderSubjectDirectoryBindings.AsNoTracking()
+            .Where(x => x.LocalAccountId == userId).Select(x => x.Id).ToListAsync(ct);
+        var snapshots = await _dbContext.ProviderMetadataSnapshots.AsNoTracking()
+            .Where(x => bindings.Contains(x.ProviderSubjectDirectoryBindingId)).ToListAsync(ct);
+        return snapshots.Select(x => new MetadataEmailEvidence(x.Id.ToString("D"),
+            x.ProviderSubjectDirectoryBindingId.ToString("D"), x.EvidenceState, x.Email, x.EmailTrustOrigin,
+            x.VerifiedAt, x.RefreshedAtUtc)).ToArray();
     }
 
     private RecoveryPeriodDisposition GetPeriodDisposition(

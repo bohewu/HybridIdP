@@ -7,7 +7,7 @@ import settings from '@/i18n/locales/en-US/settings.json'
 
 vi.mock('@/utils/permissionService', () => ({
   default: { loadPermissions: vi.fn(), hasPermission: vi.fn() },
-  Permissions: { Settings: { Read: 'settings.read', Update: 'settings.update' } }
+  Permissions: { Settings: { Read: 'settings.read', Update: 'settings.update' }, Users: { Read: 'users.read', Update: 'users.update' }, Persons: { Update: 'persons.update' } }
 }))
 const response = data => ({ ok: true, json: async () => data })
 const mountApp = () => mount(SettingsApp, { global: {
@@ -52,6 +52,7 @@ describe('Settings loading ownership', () => {
     await flushPromises()
     expect(wrapper.findAll('[aria-busy="true"]')).toHaveLength(2)
     expect(wrapper.find('.animate-spin').exists()).toBe(false)
+    expect(wrapper.find('[data-test="external-data-sources"]').exists()).toBe(false)
     expect(wrapper.get('#globalLevel').attributes('disabled')).toBeUndefined()
     await wrapper.get('#globalLevel').setValue('Warning')
     expect(wrapper.get('#globalLevel').element.value).toBe('Warning')
@@ -80,6 +81,8 @@ describe('Settings loading ownership', () => {
     expect(wrapper.get('#appName').attributes('disabled')).toBeDefined()
     expect(wrapper.get('#globalLevel').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-testid="open-email-test"]').exists()).toBe(false)
-    expect(wrapper.findAll('button')).toHaveLength(0)
+    expect(wrapper.find('[data-test="open-query-fields"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="open-mappings"]').exists()).toBe(false)
+    expect(wrapper.find('[data-test="toggle-source"]').exists()).toBe(false)
   })
 })

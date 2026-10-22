@@ -1,4 +1,48 @@
-# Provider Metadata Contract 1.0
+# Provider Metadata contracts (1.0 and 2.0)
+
+The original sections below describe the 1.0 compatibility mode.
+For independently selected neutral queries, see [version 2.0](#neutral-query-version-20)
+and the [common contract](NEUTRAL_QUERY_CONTRACT.md). Neither format is inferred
+from a failed request; all original authority limits continue to apply.
+
+## Neutral query version 2.0
+
+The [common neutral-query contract](NEUTRAL_QUERY_CONTRACT.md) is normative for
+selection, typed candidates, queryRule, approved mappings, comparison, unique
+matching, transport, response correlation and mutation invalidation. Legacy
+formats remain unchanged under explicit compatibility selection.
+
+Neutral-v2 uses `metadata/2.0`. Its availableCandidates are typed `employeeId`
+(String), `nationalIdHash` (Sha256Hex), and `accountName` (String). The seven
+nonempty sets in the common contract may be explicitly agreed; every supplied
+property must match the same unique eligible source record using the common
+approved value sources and normalization. No previous Proof/SSO login or UUID
+mapping is required. A query does not create the authentication identity.
+
+Found returns `result: { email, emailTrustOrigin, verifiedAt }`; all three members
+are required in 2.0, with null email/time and Unknown trust representable. Trust
+origins use exact canonical strings. A nonnull verifiedAt requires SourceVerified
+and an ISO timestamp with Z or numeric offset; date-only/offsetless timestamps and
+legacy enum/name tolerances do not apply to 2.0. Mailbox validity, independent
+source/Email trust and local freshness/recovery policy remain mandatory.
+
+Unlike legacy 1.0's deliberately indistinguishable unknown-evidence response,
+v2 explicitly reports authoritative NotFound, Ambiguous and Unavailable without
+result. These internal outcomes must not become public account enumeration.
+Missing inputs, query/configuration mutations, failed transport/correlation or
+untrusted/stale evidence invalidate the corresponding usable snapshot. Neither a
+Found match nor trusted source Email alone grants current-period recovery-email
+verification, changes MFA/recovery destinations, or authorizes recovery/reset.
+
+Wire definitions: [request](contracts/provider-metadata/v2.0/contract.schema.json#/$defs/request)
+and [response](contracts/provider-metadata/v2.0/contract.schema.json#/$defs/response).
+[Synthetic examples](contracts/provider-metadata/v2.0/examples/) cover Found, NotFound,
+Ambiguous, Unavailable, Unsupported, missing inputs and forbidden mixed shapes.
+Their validity proves structure only; semantic, authority and live product checks
+remain separate. queryRule is omitted in these unambiguous agreed-rule examples.
+
+## Version 1.0 compatibility contract
+
 
 This is the first formal public version of the password-free provider metadata
 contract. It is independent of Provider Proof Contract 1.0 and the optional,
@@ -23,7 +67,7 @@ not verified email evidence or permission to recover an account.
 ## HTTP exchange
 
 Send `POST /api/authenticate/metadata` to the selected provider's configured
-endpoint, for example `https://provider.example.org/api/authenticate/metadata`.
+endpoint, for example `https://example.provider/api/authenticate/metadata`.
 HybridIdP uses the full `ProviderMetadataRefresh:Endpoint` URI verbatim; it does
 not discover a provider, append a route or choose an alternative provider.
 HybridIdP is the consumer, not the host of this endpoint.
@@ -59,7 +103,7 @@ Response (`200`, `application/json`):
   "contractVersion": "1.0",
   "providerNamespace": "example.provider",
   "stableSubject": "opaque-subject-7f2a",
-  "email": "person@example.org",
+  "email": "person@example.test",
   "emailTrustOrigin": "SourceVerified",
   "verifiedAt": "2026-09-01T10:30:00Z"
 }
@@ -206,7 +250,7 @@ use the `ProviderMetadataRefresh` vocabulary. Use these deployment keys:
 
 ```text
 ProviderMetadataRefresh__Enabled=false
-ProviderMetadataRefresh__Endpoint=https://provider.example.org/api/authenticate/metadata
+ProviderMetadataRefresh__Endpoint=https://example.provider/api/authenticate/metadata
 ProviderMetadataRefresh__SharedSecret=<PROVISION_THROUGH_SECRET_CONFIGURATION>
 ProviderMetadataRefresh__AllowPrivateNetworkHttp=false
 ProviderMetadataRefresh__Timeout=00:00:05

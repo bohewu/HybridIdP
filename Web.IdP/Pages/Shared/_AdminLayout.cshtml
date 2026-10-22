@@ -2,6 +2,7 @@
 @using Core.Domain.Constants
 @using Microsoft.AspNetCore.Identity
 @using Web.IdP.Helpers
+@using Web.IdP.Extensions
 @using Core.Application
 @using Web.IdP.Services
 @inject UserManager<ApplicationUser> UserManager
@@ -164,6 +165,13 @@
                         <i class="bi bi-gear text-lg"></i>
                         <span>@Localizer["Settings"]</span>
                     </a>
+                    @if (User.IsAdmin())
+                    {
+                        <a href="/Admin/DataSources" data-test="nav-data-sources" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/DataSources" ? "active bg-google-100 text-google-500 border-google-500" : "")">
+                            <i class="bi bi-database text-lg"></i>
+                            <span>@Localizer["DataSourcesAndSync"]</span>
+                        </a>
+                    }
                     <a href="/Admin/SecurityPolicies" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SecurityPolicies" ? "active bg-google-100 text-google-500 border-google-500" : "")">
                         <i class="bi bi-lock text-lg"></i>
                         <span>@Localizer["SecurityPolicies"]</span>

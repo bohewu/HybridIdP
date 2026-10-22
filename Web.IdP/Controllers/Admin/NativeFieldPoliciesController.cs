@@ -5,6 +5,7 @@ using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Web.IdP.Attributes;
+using Web.IdP.Services;
 
 namespace Web.IdP.Controllers.Admin;
 
@@ -15,11 +16,13 @@ namespace Web.IdP.Controllers.Admin;
 public sealed class NativeFieldPoliciesController(INativeFieldPolicyService policies, IAuditService audit) : ControllerBase
 {
     [HttpGet("mappings")]
+    [Authorize(Policy = DataSourceAdministrationRequirement.AdministrationPolicy)]
     [Authorize(Policy = Permissions.Settings.Read)]
     public Task<IActionResult> GetMappings(CancellationToken cancellationToken) =>
         ExecuteAsync(async () => Ok(await policies.GetMappingsAsync(cancellationToken)));
 
     [HttpPut("mappings")]
+    [Authorize(Policy = DataSourceAdministrationRequirement.AdministrationPolicy)]
     [Authorize(Policy = Permissions.Settings.Update)]
     public Task<IActionResult> SetMappings(NativeFieldMappingsRequest request, CancellationToken cancellationToken) =>
         ExecuteAsync(async () =>
@@ -36,6 +39,7 @@ public sealed class NativeFieldPoliciesController(INativeFieldPolicyService poli
         ExecuteAsync(async () => Ok(await policies.GetSourcesAsync(cancellationToken)));
 
     [HttpPut("sources/{source}")]
+    [Authorize(Policy = DataSourceAdministrationRequirement.AdministrationPolicy)]
     [Authorize(Policy = Permissions.Settings.Update)]
     public Task<IActionResult> SetPaused(NativeFieldSource source, NativeFieldPauseRequest request, CancellationToken cancellationToken) =>
         ExecuteAsync(async () =>
@@ -51,6 +55,7 @@ public sealed class NativeFieldPoliciesController(INativeFieldPolicyService poli
     public Task<IActionResult> GetUser(Guid id, CancellationToken cancellationToken) => GetTargetAsync(NativeFieldTarget.User, id, cancellationToken);
 
     [HttpPut("sources/{source}/first-name-fallback")]
+    [Authorize(Policy = DataSourceAdministrationRequirement.AdministrationPolicy)]
     [Authorize(Policy = Permissions.Settings.Update)]
     public Task<IActionResult> SetFirstNameFallback(NativeFieldSource source, NativeFieldFirstNameFallbackRequest request,
         CancellationToken cancellationToken) => ExecuteAsync(async () =>

@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "password-sync neutral-query 2.0",
+  "description": "Root validates responses; #/$defs/request validates requests. Semantic and authority rules are in NEUTRAL_QUERY_CONTRACT.md.",
+  "$comment": "No mixed legacy/v2 shape acceptance.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "request": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/request"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "password-sync"
+            },
+            "operationId": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            },
+            "password": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "required": [
+            "operationId",
+            "password"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "response": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/response"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "password-sync"
+            },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "outcome"
+              ],
+              "properties": {
+                "outcome": {
+                  "enum": [
+                    "NoOp",
+                    "Success",
+                    "PartialSuccess",
+                    "Failed",
+                    "CommitUnknown"
+                  ]
+                }
+              }
+            },
+            "operationId": {
+              "type": "string",
+              "pattern": "^(?!00000000-0000-0000-0000-000000000000$)[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
+            }
+          },
+          "required": [
+            "operationId"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

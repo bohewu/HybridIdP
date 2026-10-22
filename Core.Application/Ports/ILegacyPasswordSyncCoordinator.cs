@@ -34,6 +34,10 @@ public enum LegacyPasswordSyncResultOutcome
 
 public interface ILegacyPasswordSyncTransport
 {
+    Task<LegacyPasswordSyncTransportResult> SendAsync(NeutralQueryContext context,
+        CancellationToken cancellationToken = default) =>
+        Task.FromResult(new LegacyPasswordSyncTransportResult(LegacyPasswordSyncTransportOutcome.PreDispatchRejected));
+
     Task<LegacyPasswordSyncTransportResult> SendAsync(
         LegacyPasswordSyncRequest request,
         CancellationToken cancellationToken = default);
@@ -41,7 +45,8 @@ public interface ILegacyPasswordSyncTransport
 
 public sealed record LegacyPasswordSyncTransportResult(
     LegacyPasswordSyncTransportOutcome Outcome,
-    string? ResponseJson = null);
+    string? ResponseJson = null,
+    NeutralQueryResponse? NeutralResponse = null);
 
 public enum LegacyPasswordSyncTransportOutcome
 {
