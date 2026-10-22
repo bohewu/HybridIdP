@@ -13,7 +13,7 @@ COPY Web.IdP/Views/ /src/Web.IdP/Views/
 RUN npm run build
 RUN test -f /src/Web.IdP/wwwroot/dist/.vite/manifest.json
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS backend-publish
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2 AS backend-publish
 
 WORKDIR /src
 COPY Core.Domain/Core.Domain.csproj Core.Domain/
