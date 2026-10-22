@@ -23,6 +23,86 @@ public class EmailServiceTests
     }
 
     [Fact]
+    public async Task SendEmailWithConfirmationAsync_ShouldAwaitDispatcherWithoutQueueing()
+    {
+        var accepted = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _mockDispatcher.Setup(dispatcher => dispatcher.SendConfirmedAsync(
+            It.Is<EmailMessage>(message => message.To == "to@example.test" && message.IsHtml), It.IsAny<CancellationToken>()))
+            .Returns(accepted.Task);
+        var sending = _service.SendEmailWithConfirmationAsync("to@example.test", "Subject", "Body", true);
+        try
+        {
+            Assert.False(sending.IsCompleted);
+            accepted.SetResult();
+            await sending;
+            _mockQueue.VerifyNoOtherCalls();
+            _mockDispatcher.Verify(dispatcher => dispatcher.SendConfirmedAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+            _mockDispatcher.Verify(dispatcher => dispatcher.SendAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+        finally { accepted.TrySetResult(); }
+    }
+
+    [Fact]
+    public async Task SendEmailWithConfirmationAsync_ShouldFailWithoutQueueFallback_WhenDispatchFails()
+    {
+        _mockDispatcher.Setup(dispatcher => dispatcher.SendConfirmedAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new System.IO.IOException("Injected connection failure"));
+
+        var failure = await Assert.ThrowsAsync<EmailDeliveryException>(() =>
+            _service.SendEmailWithConfirmationAsync("to@example.test", "Subject", "Body"));
+
+        Assert.Equal("smtp_confirmation_unavailable", failure.Code);
+        _mockQueue.VerifyNoOtherCalls();
+        _mockDispatcher.Verify(dispatcher => dispatcher.SendConfirmedAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Fact]
+    public async Task SendEmailWithConfirmationAsync_ShouldBoundUnconfirmedDispatchAndCancelIt()
+    {
+        var pending = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        CancellationToken dispatchToken = default;
+        _mockDispatcher.Setup(dispatcher => dispatcher.SendConfirmedAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()))
+            .Callback<EmailMessage, CancellationToken>((_, ct) => dispatchToken = ct).Returns(pending.Task);
+        try
+        {
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            var failure = await Assert.ThrowsAsync<EmailDeliveryException>(() =>
+                _service.SendEmailWithConfirmationAsync("to@example.test", "Subject", "Body"));
+            Assert.Equal("smtp_confirmation_unavailable", failure.Code);
+            Assert.InRange(timer.Elapsed.TotalSeconds, 14, 20);
+            Assert.True(dispatchToken.IsCancellationRequested);
+            _mockQueue.VerifyNoOtherCalls();
+            _mockDispatcher.Verify(dispatcher => dispatcher.SendConfirmedAsync(It.IsAny<EmailMessage>(), It.IsAny<CancellationToken>()), Times.Once);
+        }
+        finally { pending.TrySetResult(); }
+    }
+
+    [Fact]
+    public async Task ConfirmationInterfaces_ShouldFailClosed_ForLegacyNotificationAdapters()
+    {
+        IEmailService service = new LegacyEmailService();
+        IEmailDispatcher dispatcher = new LegacyDispatcher();
+        await Assert.ThrowsAsync<EmailDeliveryException>(() => service.SendEmailWithConfirmationAsync("to@example.test", "Subject", "Body"));
+        await Assert.ThrowsAsync<EmailDeliveryException>(() => dispatcher.SendConfirmedAsync(new EmailMessage("to@example.test", "Subject", "Body")));
+    }
+
+    private sealed class LegacyEmailService : IEmailService
+    {
+        public Task SendEmailAsync(string to, string subject, string body, bool isHtml = false, CancellationToken ct = default) =>
+            throw new System.InvalidOperationException("Must not fall back to queueing.");
+        public Task SendTestEmailAsync(MailSettingsDto settings, string to, CancellationToken ct = default) =>
+            throw new System.InvalidOperationException("Must not fall back to test sending.");
+    }
+
+    private sealed class LegacyDispatcher : IEmailDispatcher
+    {
+        public Task SendAsync(EmailMessage message, CancellationToken ct = default) =>
+            throw new System.InvalidOperationException("Must not fall back to unconfirmed sending.");
+        public Task SendTestAsync(EmailMessage message, MailSettingsDto settings, CancellationToken ct = default) =>
+            throw new System.InvalidOperationException("Must not fall back to test sending.");
+    }
+
+    [Fact]
     public async Task SendEmailAsync_ShouldQueueMessage()
     {
         // Arrange

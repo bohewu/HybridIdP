@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', function() {
         msg.classList.add(tone);
         msg.setAttribute('role', tone === 'text-red-600' ? 'alert' : 'status');
 
-        messageTimeout = setTimeout(() => msg.classList.add('hidden'), 5000);
+        if (tone !== 'text-red-600') messageTimeout = setTimeout(() => msg.classList.add('hidden'), 5000);
     }
 
     async function sendCode() {
@@ -58,7 +58,6 @@ document.addEventListener('DOMContentLoaded', function() {
         
         btn.disabled = true;
         btn.setAttribute('aria-busy', 'true');
-        const originalText = btnText.textContent;
         btnText.textContent = i18n.sending;
         
         try {
@@ -84,19 +83,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 startCountdown(data.remainingSeconds || 60);
             } else {
                 // Handle error (e.g. rate limit hit)
-                if (data.remainingSeconds) {
+                if (response.status === 429 && data.remainingSeconds) {
                     startCountdown(data.remainingSeconds);
                     showMessage(codeSent ? i18n.pleaseWaitThenRetry : i18n.codeUnavailable, 'text-amber-600');
                 } else {
-                    btn.disabled = false;
-                    btnText.textContent = originalText;
+                    // Failure may follow a reserved cooldown or an accepted SMTP message
+                    // whose reply was lost. Keep the send gate even when its state is unknown.
+                    if (Number.isFinite(data.remainingSeconds) && data.remainingSeconds === 0) resetButton();
+                    else startCountdown(data.remainingSeconds || 60);
                     showMessage(data.error === 'temporarily_unavailable' && data.message ? data.message : i18n.sendFailed, 'text-red-600');
                 }
             }
         } catch (e) { 
             console.error(e); 
-            btn.disabled = false;
-            btnText.textContent = originalText;
+            startCountdown(60);
             showMessage(i18n.sendFailed, 'text-red-600');
         } finally {
             btn.removeAttribute('aria-busy');

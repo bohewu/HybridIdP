@@ -86,6 +86,8 @@ public class MfaServiceTests : IDisposable
         _brandingServiceMock.Setup(x => x.GetAppNameAsync()).ReturnsAsync("TestApp");
         
         _emailServiceMock = new Mock<IEmailService>();
+        _emailServiceMock.Setup(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
         _emailTemplateServiceMock = new Mock<IEmailTemplateService>();
         _emailTemplateServiceMock
             .Setup(x => x.RenderMfaCodeEmailAsync(It.IsAny<string>(), It.IsAny<int>()))
@@ -603,6 +605,45 @@ public class MfaServiceTests : IDisposable
     #region Email MFA Tests (Phase 20.3)
 
     [Theory]
+    [InlineData("smtp_not_configured")]
+    [InlineData("smtp_rejected")]
+    [InlineData("smtp_confirmation_unavailable")]
+    public async Task SendEmailMfaCodeAsync_ShouldRetainPendingCodeAndCooldown_WhenDeliveryFailsOrIsUnconfirmed(string failureCode)
+    {
+        var user = CreateTestUser();
+        byte[]? deadline = null;
+        _distributedCacheMock.Setup(cache => cache.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(() => Task.FromResult(deadline));
+        _distributedCacheMock.Setup(cache => cache.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+            .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>((_, value, _, _) => deadline = value)
+            .Returns(Task.CompletedTask);
+        _passwordHasherMock.Setup(hasher => hasher.HashPassword(user, It.IsAny<string>())).Returns("HASHED_CODE");
+        _emailServiceMock.Setup(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new EmailDeliveryException(failureCode, "Injected delivery failure"));
+
+        await Assert.ThrowsAsync<EmailDeliveryException>(() => _sut.SendEmailMfaCodeAsync(user));
+
+        Assert.Equal("HASHED_CODE", user.EmailMfaCode);
+        Assert.Equal(_time.GetUtcNow().UtcDateTime.AddMinutes(10), user.EmailMfaCodeExpiry);
+        Assert.Equal(0, user.EmailMfaVerificationAttempts);
+        Assert.Equal((false, 60), await _sut.SendEmailMfaCodeAsync(user));
+        _time.Now = _time.Now.AddSeconds(59);
+        Assert.Equal((false, 1), await _sut.SendEmailMfaCodeAsync(user));
+        _distributedCacheMock.Verify(cache => cache.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
+        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _emailServiceMock.Verify(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
+
+        _time.Now = _time.Now.AddSeconds(1);
+        _emailServiceMock.Setup(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>())).Returns(Task.CompletedTask);
+        Assert.Equal((true, 60), await _sut.SendEmailMfaCodeAsync(user));
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task SendEmailMfaCodeAsync_ShouldNotChangeCodeOrSend_WhenCooldownCannotBeConfirmed(bool writing)
@@ -620,7 +661,7 @@ public class MfaServiceTests : IDisposable
         await Assert.ThrowsAsync<EmailMfaCooldownUnavailableException>(() => _sut.SendEmailMfaCodeAsync(user));
         Assert.Equal("existing-code", user.EmailMfaCode);
         _userManagerMock.Verify(manager => manager.UpdateAsync(user), Times.Never);
-        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+        _emailServiceMock.Verify(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -640,7 +681,7 @@ public class MfaServiceTests : IDisposable
         unavailable = false;
         Assert.Equal((true, 60), await _sut.SendEmailMfaCodeAsync(user));
         Assert.Equal((false, 60), await _sut.SendEmailMfaCodeAsync(user));
-        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+        _emailServiceMock.Verify(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
     }
 
@@ -662,7 +703,7 @@ public class MfaServiceTests : IDisposable
             await Assert.ThrowsAsync<EmailMfaCooldownUnavailableException>(() => _sut.SendEmailMfaCodeAsync(user));
             Assert.InRange(timer.Elapsed.TotalSeconds, 4, 8);
             Assert.Null(user.EmailMfaCode);
-            _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            _emailServiceMock.Verify(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
         }
         finally { pending.TrySetResult(null); }
@@ -686,7 +727,7 @@ public class MfaServiceTests : IDisposable
             It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()), Times.Never);
         _distributedCacheMock.Verify(cache => cache.RemoveAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
         _userManagerMock.Verify(manager => manager.UpdateAsync(It.IsAny<ApplicationUser>()), Times.Never);
-        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+        _emailServiceMock.Verify(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -706,7 +747,7 @@ public class MfaServiceTests : IDisposable
 
         Assert.Equal((false, 1), await _sut.SendEmailMfaCodeAsync(user));
         Assert.Null(user.EmailMfaCode);
-        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+        _emailServiceMock.Verify(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(),
             It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
     }
 
@@ -730,7 +771,7 @@ public class MfaServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task SendEmailMfaCodeAsync_ValidEmail_StoresHashedCodeAndQueuesEmail()
+    public async Task SendEmailMfaCodeAsync_ValidEmail_StoresHashedCodeAndConfirmsEmail()
     {
         // Arrange
         var user = CreateTestUser();
@@ -759,7 +800,7 @@ public class MfaServiceTests : IDisposable
         user.EmailMfaVerificationAttempts.Should().Be(0);
         generatedCode.Should().MatchRegex("^[0-9]{6}$");
         _userManagerMock.Verify(x => x.UpdateAsync(user), Times.Once);
-        emailServiceMock.Verify(x => x.SendEmailAsync(
+        emailServiceMock.Verify(x => x.SendEmailWithConfirmationAsync(
             user.Email!, 
             It.IsAny<string>(), 
             It.IsAny<string>(), 

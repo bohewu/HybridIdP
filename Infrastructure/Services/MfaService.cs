@@ -349,7 +349,7 @@ public class MfaService : IMfaService
             code,
             EmailMfaCodeLifetimeMinutes,
             user.Locale);
-        await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
+        await _emailService.SendEmailWithConfirmationAsync(user.Email, subject, body, isHtml: true, ct);
 
         return (true, EmailMfaCooldownSeconds);
     }
