@@ -154,7 +154,17 @@ builder.Services.AddCustomObservability(builder.Configuration, databaseProvider,
 // Phase 20.4: WebAuthn Service
 builder.Services.AddScoped<Core.Application.Interfaces.IPasskeyService, Infrastructure.Services.PasskeyService>();
 
-var app = builder.Build();
+WebApplication app;
+try
+{
+    app = await DataProtectionStartup.BuildApplicationAsync(builder);
+}
+catch (InvalidOperationException)
+{
+    Console.Error.WriteLine("Application startup failed. Category: data-protection.");
+    Environment.ExitCode = 1;
+    return;
+}
 
 try
 {

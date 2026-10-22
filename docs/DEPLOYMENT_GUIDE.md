@@ -549,6 +549,43 @@ Absent or empty required values fail compose validation before `deploy-idp.sh` c
 
 For an existing deployment, add the two public-origin values to the host-side `.env` before pulling or recreating the IdP service. Use the exact public URL already consumed by OIDC clients; changing it changes the token issuer and can break relying-party validation. This configuration update does not change the database schema and does not require a database reset, volume replacement, or credential change.
 
+### Shared Data Protection Keys at Startup
+
+Normal application startup coordinates the configured filesystem key repository
+before constructing application services. It holds an exclusive handle to
+`.hybrididp-keyring.lock` while the actual application Data Protection provider
+performs a protect/unprotect check. On an empty repository, ASP.NET Core creates
+the initial key before another node can build its cached key ring. No separate
+initialization command or new environment setting is required.
+
+All participating nodes must use the same physical `DataProtection:KeysDirectory`
+(environment variable `DataProtection__KeysDirectory`, default `/app/keys`) and
+`Branding:AppName` (`Branding__AppName`, default `HybridIdP`). The storage must
+provide cross-node exclusive file-handle locking and coherent file visibility;
+verify these semantics for the mounted filesystem before using multiple hosts.
+Process-local directories, asynchronous file replication and filesystems/mounts
+that ignore locks do not meet this requirement. Do not disable .NET file locking
+(`DOTNET_SYSTEM_IO_DISABLEFILELOCKING` / `System.IO.DisableFileLocking`). Each
+application identity needs read/write access to the key directory and lock file;
+restrict access to the same trusted identities that can already read the keys.
+
+Lock acquisition retries contention/I/O failures for at most 30 seconds, then
+startup exits unsuccessfully before serving requests. Directory/access failures
+or an unusable Data Protection provider also fail startup. No process-local key
+fallback is used for a configured shared repository. Investigate storage access
+and other starting nodes before retrying; do not delete keys or the lock file.
+The empty lock file remains on disk; the OS releases ownership when its handle
+closes or its process exits, so the file's existence is not a stale lock.
+
+Existing keys are retained, and ASP.NET Core continues to select, generate and
+rotate keys with its normal lifetimes and propagation/refresh behavior. Preserve
+the repository and its protection-at-rest configuration during upgrades. The
+schema-only `--migrate-only` path does not acquire this lock or initialize keys.
+Development retains its existing framework-default behavior when the configured
+key directory does not exist. This startup coordination addresses the empty-key
+cold-start gap; Redis outage handling, SignalR scale-out and background-job
+coordination still require separate work before full multi-instance qualification.
+
 ### Data-Service Network Exposure
 
 By default, MSSQL, PostgreSQL, and Redis are available only on their Docker networks: no database or Redis port is published on the host. Named `mssql-data`, `postgres-data`, `redis-data`, and (where used) `dataprotection-keys` volumes persist independently of this host-port choice.
