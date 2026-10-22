@@ -9,7 +9,8 @@ namespace Infrastructure.Services;
 public sealed class LegacyPasswordSyncAttemptStore(
     ApplicationDbContext dbContext,
     ILegacyPasswordSyncTargetResolver targetResolver,
-    TimeProvider? timeProvider = null) : ILegacyPasswordSyncAttemptStore
+    TimeProvider? timeProvider = null,
+    INeutralQueryService? queries = null) : ILegacyPasswordSyncAttemptStore
 {
     private readonly TimeProvider _timeProvider = timeProvider ?? TimeProvider.System;
 
@@ -32,7 +33,7 @@ public sealed class LegacyPasswordSyncAttemptStore(
         {
             return new(LegacyPasswordSyncReservationOutcome.SourceIneligible);
         }
-        if (!IsExactEnabledMapping(identity))
+        if (!await IsExactEnabledMappingAsync(identity, cancellationToken))
         {
             return new(LegacyPasswordSyncReservationOutcome.SourceIneligible);
         }
@@ -153,7 +154,7 @@ public sealed class LegacyPasswordSyncAttemptStore(
         {
             return new(LegacyPasswordSyncClaimOutcome.SourceIneligible);
         }
-        if (!IsExactEnabledMapping(identity))
+        if (!await IsExactEnabledMappingAsync(identity, cancellationToken))
         {
             return new(LegacyPasswordSyncClaimOutcome.SourceIneligible);
         }
@@ -186,7 +187,8 @@ public sealed class LegacyPasswordSyncAttemptStore(
         var hasBarrier = await dbContext.LegacyPasswordSyncAttempts.AnyAsync(
             candidate =>
                 candidate.LocalAccountId == identity.LocalAccountId &&
-                candidate.AccountIdentity == identity.AccountIdentity &&
+                (candidate.AccountIdentity == identity.AccountIdentity || identity.Query != null ||
+                 candidate.MappingVersion.StartsWith("neutral-v2:")) &&
                 candidate.OperationId != operationId &&
                 (candidate.Status == LegacyPasswordSyncAttemptStatus.Claimed ||
                  candidate.Status == LegacyPasswordSyncAttemptStatus.Unknown),
@@ -478,8 +480,12 @@ public sealed class LegacyPasswordSyncAttemptStore(
         !string.IsNullOrWhiteSpace(identity.MappingVersion) &&
         identity.MappingVersion.Length <= 128;
 
-    private bool IsExactEnabledMapping(LegacyPasswordSyncAttemptIdentity identity)
+    private async Task<bool> IsExactEnabledMappingAsync(LegacyPasswordSyncAttemptIdentity identity, CancellationToken cancellationToken)
     {
+        if (identity.Query is { } query)
+            return query.LocalAccountId == identity.LocalAccountId && query.Request.ContractType == "password-sync" &&
+                identity.AccountIdentity == identity.LocalAccountId && identity.MappingVersion == "neutral-v2:" + query.Fingerprint &&
+                queries is not null && await queries.IsCurrentAsync(query, cancellationToken);
         var resolution = targetResolver.Resolve(
             identity.Binding.ProviderNamespace,
             identity.Binding.StableSubject,

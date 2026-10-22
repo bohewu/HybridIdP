@@ -146,6 +146,21 @@ any association, role or ownership write; a denied transfer changes no owner.
 - `Permissions.Settings.Read` → `'settings.read'`
 - `Permissions.Settings.Update` → `'settings.update'`
 
+`/Admin/DataSources` (**Data sources and sync**) requires
+`DataSourcesInteractiveAdmin`: local application-cookie IdP Admin, plus
+`settings.read`. Settings permissions alone do not grant interactive global
+source/query/mapping access. Configuration controls retain `settings.update`;
+manual sync retains both `users.update` and `persons.update`.
+
+Global query configuration GET/PUT, Native mappings GET/PUT and source
+pause/fallback PUT also require `DataSourcesAdministration`: local Admin or
+separately provisioned administrative M2M, in addition to their existing granular
+permissions and cookie CSRF checks. M2M remains bounded by its live approved
+permission ceiling. Native `GET sources` retains `settings.read` for the shared
+per-record policy dialog. Per-record User/Person routes and per-account query
+approval routes retain their existing permissions; the new global policy is
+not applied to the entire controller.
+
 ## Common Patterns
 
 ### In Vue Components

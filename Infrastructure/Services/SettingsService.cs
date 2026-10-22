@@ -35,13 +35,19 @@ public class SettingsService : ISettingsService
 
     public async Task<string?> GetValueAsync(string key, CancellationToken ct = default)
     {
+        // These documents are exposed only through their dedicated administration APIs.
+        if (string.Equals(key, SettingKeys.NeutralQueryConfiguration, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(key, SettingKeys.NativeFieldMappings, StringComparison.OrdinalIgnoreCase) ||
+            key.StartsWith(SettingKeys.NeutralQueryApprovalPrefix, StringComparison.OrdinalIgnoreCase) ||
+            key.StartsWith(SettingKeys.NeutralMetadataEvidencePrefix, StringComparison.OrdinalIgnoreCase)) return null;
         var cacheKey = CachePrefix + key;
         if (_cache.TryGetValue(cacheKey, out string? value))
         {
             return value;
         }
 
-        var setting = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == key, ct);
+        var setting = await _db.Settings.AsNoTracking().FirstOrDefaultAsync(s => s.Key == key &&
+            s.Key != SettingKeys.NeutralQueryConfiguration && s.Key != SettingKeys.NativeFieldMappings, ct);
         if (setting == null) return null;
 
         var settingValue = setting.Value;
@@ -195,7 +201,9 @@ public class SettingsService : ISettingsService
     public async Task<IDictionary<string, string>> GetByPrefixAsync(string prefix, CancellationToken ct = default)
     {
         var results = await _db.Settings.AsNoTracking()
-            .Where(s => s.Key.StartsWith(prefix))
+            .Where(s => s.Key.StartsWith(prefix) && !s.Key.StartsWith(SettingKeys.NeutralQueryApprovalPrefix) &&
+                !s.Key.StartsWith(SettingKeys.NeutralMetadataEvidencePrefix) &&
+                s.Key != SettingKeys.NeutralQueryConfiguration && s.Key != SettingKeys.NativeFieldMappings)
             .ToListAsync(ct);
         var dict = results.ToDictionary(s => s.Key, s => s.Value ?? string.Empty);
 

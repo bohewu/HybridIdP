@@ -10,7 +10,7 @@ public enum NativeField { Nickname, FirstName, LastName, Department, JobTitle, E
 [JsonConverter(typeof(JsonStringEnumConverter<NativeFieldTarget>))]
 public enum NativeFieldTarget { User, Person }
 [JsonConverter(typeof(JsonStringEnumConverter<NativeFieldSource>))]
-public enum NativeFieldSource { Proof, Stage1 }
+public enum NativeFieldSource { Proof, Stage1, NeutralQuery }
 [JsonConverter(typeof(JsonStringEnumConverter<NativeFieldOperation>))]
 public enum NativeFieldOperation { AssignSource, Manual, Unlock }
 [JsonConverter(typeof(JsonStringEnumConverter<ProofUserNameStrategy>))]
@@ -23,8 +23,10 @@ public sealed record ProofUserNamePolicyDto([property: JsonRequired] NativeField
 public sealed record NativeFieldSourceIdentity(
     NativeFieldSource Source, Guid LocalAccountId,
     [Required, MaxLength(200)] string ProviderNamespace,
-    [Required, MaxLength(256)] string StableSubject,
-    Guid? DirectoryObjectId = null);
+    // NeutralQuery owners have no authentication subject; legacy availability checks still require it.
+    [MaxLength(256)] string StableSubject,
+    Guid? DirectoryObjectId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? QuerySourceId = null);
 
 public sealed record NativeFieldSourceStatusDto(NativeFieldSource Source, bool Enabled, bool Paused,
     string? UnavailableReason, IReadOnlyList<NativeField> SupportedFields, bool SupportsClear,
@@ -89,6 +91,9 @@ public interface INativeFieldPolicyService
     // Prepare only, including for detached preview entities. Always preserve populated fields, even with overwrite enabled.
     Task<IReadOnlyList<ProfileSyncChangeDto>> ApplyMissingSourceAsync(ApplicationUser user, Person person,
         NativeFieldSourceIdentity identity, IReadOnlyDictionary<NativeField, string?> values,
+        CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ProfileSyncChangeDto>> ApplyMissingNeutralSourceAsync(ApplicationUser user, Person person,
+        NeutralQueryContext context, IReadOnlyDictionary<NativeField, string?> values,
         CancellationToken cancellationToken = default);
     void ApplyManual(ApplicationUser user, IReadOnlyDictionary<NativeField, string?> values);
     void ApplyManual(Person person, IReadOnlyDictionary<NativeField, string?> values);

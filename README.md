@@ -13,6 +13,8 @@ A robust, enterprise-ready Identity Provider (IdP) built on .NET 10+ and OpenIdd
 - [Architecture Guide](docs/ARCHITECTURE.md)
 - [Authentication Integration Boundary](docs/AUTHENTICATION_INTEGRATION.md)
 - [Identity Source and Field Mapping](docs/IDENTITY_FIELD_MAPPING.md)
+- [Neutral Non-login Query Contract 2.0](docs/NEUTRAL_QUERY_CONTRACT.md)
+- [Optional AuthProxy Integration Recipe](docs/integrations/authproxy.md)
 - [Provider Proof Contract 1.0](docs/PROVIDER_PROOF_CONTRACT.md)
 - [Provider API Capability Inventory](docs/PROVIDER_API_CAPABILITIES.md)
 - [Provider Native Profile 1.0 and manual synchronization](docs/PROVIDER_NATIVE_PROFILE_CONTRACT.md)
@@ -52,6 +54,7 @@ Powered by **OpenIddict**:
 - **Observability**: Prometheus metrics and structured audit logging.
 - **Bot Protection**: Integrated Cloudflare Turnstile support.
 - **External Identity**: Seamless integration with Google & Microsoft accounts, including auto-linking and AMR support.
+- **External data sources**: Configure approved query inputs separately from profile synchronization output field mappings; independent producers implement the public non-login contracts.
 - **Branding**: Customizable UI with configurable Privacy Policy and Help documentation links.
 - **First administrator**: Disabled-by-default, one-time operational bootstrap for genuinely fresh deployments; see the [deployment guidance](docs/DEPLOYMENT_GUIDE.md#one-time-operational-first-administrator).
 

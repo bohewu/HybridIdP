@@ -5,6 +5,8 @@ namespace Infrastructure.Options;
 
 public sealed class ProviderProfileOptions
 {
+    public Dictionary<string, NeutralQuerySourceOptions> QuerySources { get; set; } = new(StringComparer.Ordinal);
+
     public const string Section = "ProviderProfile";
     public bool Enabled { get; set; }
     public TimeSpan MaximumAge { get; set; } = TimeSpan.FromMinutes(5);
@@ -39,7 +41,13 @@ public sealed class ProviderProfileOptionsValidator : IValidateOptions<ProviderP
                     p.Value is not ("String" or "Boolean" or "StringArray")))
                 return ValidateOptionsResult.Fail("Invalid profile source, timeout or approved property schema.");
 
-            if (options.Enabled && (!Uri.TryCreate(source.Endpoint, UriKind.Absolute, out var endpoint) ||
+            var neutralOnly = string.IsNullOrWhiteSpace(source.Endpoint) && options.QuerySources.TryGetValue(key, out var query) &&
+                query.Enabled && query.Trusted && !query.Paused && query.ProviderNamespace == source.ProviderNamespace &&
+                Uri.TryCreate(query.Endpoint, UriKind.Absolute, out var neutralEndpoint) &&
+                string.IsNullOrEmpty(neutralEndpoint.UserInfo) && string.IsNullOrEmpty(neutralEndpoint.Query) && string.IsNullOrEmpty(neutralEndpoint.Fragment) &&
+                (neutralEndpoint.Scheme == Uri.UriSchemeHttps || query.AllowPrivateNetworkHttp && neutralEndpoint.Scheme == Uri.UriSchemeHttp) &&
+                !string.IsNullOrWhiteSpace(query.SharedSecret) && query.Timeout > TimeSpan.Zero && query.Timeout <= TimeSpan.FromSeconds(30);
+            if (options.Enabled && !neutralOnly && (!Uri.TryCreate(source.Endpoint, UriKind.Absolute, out var endpoint) ||
                 !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Fragment) ||
                 (endpoint.Scheme != Uri.UriSchemeHttps &&
                  !(source.AllowPrivateNetworkHttp && endpoint.Scheme == Uri.UriSchemeHttp)) ||

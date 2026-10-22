@@ -5,7 +5,8 @@
   "saved": "Synchronization settings saved.",
   "sources": {
     "Proof": "Sign-in verification source",
-    "Stage1": "Organization directory (AD/LDAP)"
+    "Stage1": "Organization directory (AD/LDAP)",
+    "NeutralQuery": "Configured data source"
   },
   "sourceHelp": {
     "Proof": "Uses personal data verified during sign-in.",
@@ -121,8 +122,8 @@
     "noSources": "No supported sign-in verification source is configured."
   },
   "mapping": {
-    "title": "Profile sync",
-    "help": "Choose a source for each field. Existing values and manually fixed blanks stay protected.",
+    "title": "Profile sync output fields",
+    "help": "Map returned source properties to local profile output fields. Existing values and manually fixed blanks stay protected.",
     "manage": "Manage field mappings",
     "addTitle": "Add field mapping",
     "field": "Profile field",

@@ -5,6 +5,8 @@ namespace Infrastructure.Options;
 
 public sealed class ProviderLifecycleOptions
 {
+    public Dictionary<string, NeutralQuerySourceOptions> QuerySources { get; set; } = new(StringComparer.Ordinal);
+
     public const string Section = "ProviderLifecycle";
     public bool Enabled { get; set; }
     public string? Endpoint { get; set; }
@@ -19,6 +21,7 @@ public sealed class ProviderLifecycleRequiredAccount
 {
     public const string DirectoryBinding = "DirectoryBinding";
     public const string ExternalLogin = "ExternalLogin";
+    public const string NeutralQuery = "NeutralQuery";
     public Guid LocalAccountId { get; set; }
     public string BindingKind { get; set; } = string.Empty;
     public string ProviderNamespace { get; set; } = string.Empty;
@@ -34,12 +37,13 @@ public sealed class ProviderLifecycleOptionsValidator : IValidateOptions<Provide
     {
         if (!options.Enabled) return ValidateOptionsResult.Success;
         var failures = new List<string>();
-        if (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
+        var neutralOnly = string.IsNullOrWhiteSpace(options.Endpoint) && options.QuerySources.Values.Any(x => x.Enabled && x.Trusted);
+        if (!neutralOnly && (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
             endpoint.Scheme != Uri.UriSchemeHttps || string.IsNullOrEmpty(endpoint.Host) ||
             !string.IsNullOrEmpty(endpoint.UserInfo) || !string.IsNullOrEmpty(endpoint.Query) ||
-            !string.IsNullOrEmpty(endpoint.Fragment))
+            !string.IsNullOrEmpty(endpoint.Fragment)))
             failures.Add("Lifecycle requires a complete HTTPS endpoint without userinfo, query or fragment.");
-        if (string.IsNullOrEmpty(options.SharedSecret) || options.SharedSecret.Any(c => c < 0x21 || c > 0x7e))
+        if (!neutralOnly && (string.IsNullOrEmpty(options.SharedSecret) || options.SharedSecret.Any(c => c < 0x21 || c > 0x7e)))
             failures.Add("Lifecycle requires a header-safe secret from protected configuration.");
         if (options.TimeoutSeconds is < 1 or > 10) failures.Add("Lifecycle timeout must be 1 to 10 seconds.");
         if (options.MaxAgeSeconds is < 1 or > 300) failures.Add("Lifecycle max age must be 1 to 300 seconds.");
@@ -53,7 +57,8 @@ public sealed class ProviderLifecycleOptionsValidator : IValidateOptions<Provide
                 !ProviderLifecycleContract.IsOpaque(account.SourceAuthority, 200) ||
                 !ProviderLifecycleContract.IsOpaque(account.MappingVersion, 128) ||
                 (account.BindingKind != ProviderLifecycleRequiredAccount.DirectoryBinding &&
-                 account.BindingKind != ProviderLifecycleRequiredAccount.ExternalLogin) ||
+                 account.BindingKind != ProviderLifecycleRequiredAccount.ExternalLogin &&
+                 account.BindingKind != ProviderLifecycleRequiredAccount.NeutralQuery) ||
                 (account.BindingKind == ProviderLifecycleRequiredAccount.ExternalLogin
                     ? !ProviderLifecycleContract.IsOpaque(account.ExternalLoginProvider, 200)
                     : account.ExternalLoginProvider is not null))

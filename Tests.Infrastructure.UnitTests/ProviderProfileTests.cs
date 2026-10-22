@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using System.Text.Json;
 using Core.Application.DTOs;
+using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Entities;
 using Infrastructure;
@@ -10,6 +11,7 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
@@ -17,6 +19,94 @@ namespace Tests.Infrastructure.UnitTests;
 public sealed class ProviderProfileTests
 {
     private static readonly Dictionary<string, string> Schema = new() { ["flag"] = "Boolean", ["code"] = "String" };
+
+    [Fact]
+    public async Task LegacySnapshot_ShouldRequireFreshConfirmationAfterQueryConfigurationRevisionChanges()
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        db.Settings.Add(new Setting { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NeutralQueryConfiguration, Value = "{}" });
+        await db.SaveChangesAsync();
+        var revision = Guid.NewGuid();
+        var query = new Mock<INeutralQueryService>();
+        query.Setup(x => x.ResolveAsync("profile", user.Id, "source", null, It.IsAny<CancellationToken>())).ReturnsAsync(new NeutralQueryResolution("Legacy"));
+        query.Setup(x => x.GetConfigurationAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => new QueryConfigurationStateDto(revision, [], []));
+        var handler = new UpstreamStubHandler((_, _) => Task.FromResult(Response(Success("{\"code\":\"fresh\"}"))));
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)),
+            Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = Source() } }), queries: query.Object);
+        Assert.Single(await service.GetPropertiesAsync(user, "source"));
+        revision = Guid.NewGuid();
+        Assert.Empty((await service.ReadSnapshotAsync(user, "source")).Properties);
+        Assert.Single(await service.GetPropertiesAsync(user, "source"));
+        Assert.Equal(2, handler.CallCount);
+    }
+
+    [Fact]
+    public async Task NeutralProfile_ShouldRefreshWithoutLoginBindingAndKeepPreviewReadOnlyAndInvalidateChangedQuery()
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        db.UserLogins.RemoveRange(db.UserLogins);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+        var context = new NeutralQueryContext(user.Id, user.PersonId, "source", new NeutralQueryRequest
+        {
+            ContractType = "profile", ProviderNamespace = "provider", Query = new(new Dictionary<string, string> { ["employeeId"] = "SYNTH-001" })
+        }, "revision-1", Guid.NewGuid(), new(new Uri("https://example.test/query"), "synthetic-secret", TimeSpan.FromSeconds(5)), []);
+        var queries = new Mock<INeutralQueryService>();
+        queries.Setup(x => x.ResolveAsync("profile", user.Id, "source", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new NeutralQueryResolution("Ready", context));
+        queries.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var code = "initial";
+        var unavailable = false;
+        var handler = new UpstreamStubHandler(async (message, _) =>
+        {
+            Assert.Equal("profile/2.0", message.Headers.GetValues("X-Provider-Contract").Single());
+            using var body = JsonDocument.Parse(await message.Content!.ReadAsStringAsync());
+            Assert.False(body.RootElement.TryGetProperty("stableSubject", out var ignoredSubject));
+            var requestId = body.RootElement.GetProperty("requestId").GetString();
+            return Response(JsonSerializer.Serialize(new { contractType = "profile", contractVersion = "2.0", requestId,
+                providerNamespace = "provider", queryOutcome = unavailable ? "Unavailable" : "Found",
+                result = new { extraProperties = new { code, flag = true, unapproved = "ignored" } } }),
+                unavailable ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK);
+        });
+        var options = Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = Source() },
+            QuerySources = new() { ["source"] = new() } });
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)), options, queries: queries.Object);
+        await service.RefreshAfterLoginAsync(user, "unrelated-login", "unrelated-subject");
+        Assert.Equal("initial", (await service.ReadSnapshotAsync(user, "source")).Properties["code"].GetString());
+        var stored = (await db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson;
+        db.ChangeTracker.Clear();
+        code = "preview";
+        Assert.Equal("preview", (await service.ReadForPreviewAsync(user, "source")).Properties["code"].GetString());
+        Assert.Empty(db.ChangeTracker.Entries());
+        Assert.Equal(stored, (await db.Persons.AsNoTracking().SingleAsync()).ProviderProfilesJson);
+        Assert.Equal("initial", (await service.GetPropertiesAsync(user, "source"))["code"].GetString());
+        context = context with { Fingerprint = "revision-2" };
+        Assert.Empty((await service.ReadSnapshotAsync(user, "source")).Properties);
+        unavailable = true;
+        Assert.Empty(await service.GetPropertiesAsync(user, "source"));
+        Assert.Empty((await service.ReadSnapshotAsync(user, "source")).Properties);
+        Assert.Empty(await db.UserLogins.ToListAsync());
+    }
+
+    [Theory]
+    [InlineData("MissingInput")]
+    [InlineData("Unavailable")]
+    public async Task NeutralProfile_ShouldNotFallbackToLegacyOrContactSourceWhenQueryUnavailable(string status)
+    {
+        await using var db = Context();
+        var user = await SeedAsync(db);
+        var queries = new Mock<INeutralQueryService>();
+        queries.Setup(x => x.ResolveAsync("profile", user.Id, "source", null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NeutralQueryResolution(status));
+        var handler = new UpstreamStubHandler((_, _) => throw new InvalidOperationException("must not fetch"));
+        var service = new ProviderProfileService(db, new ProviderProfileClient(new HttpClient(handler)),
+            Options.Create(new ProviderProfileOptions { Enabled = true, Sources = new() { ["source"] = Source() } }), queries: queries.Object);
+        Assert.Empty(await service.GetPropertiesAsync(user, "source"));
+        Assert.Empty((await service.ReadForPreviewAsync(user, "source")).Properties);
+        Assert.Equal(0, handler.CallCount);
+    }
 
     [Fact]
     public async Task FetchAsync_ShouldPreserveMixedScalarTypesAndNormalizeArraySets()

@@ -255,6 +255,7 @@ public partial class LoginService : ILoginService
             }
 
             LogUserAuthenticated(user.UserName);
+            await TryRefreshNeutralProviderMetadataAsync(user, cancellationToken);
             return LoginResult.Success(user);
         }
 
@@ -367,6 +368,7 @@ public partial class LoginService : ILoginService
             catch (InvalidOperationException) { return LoginResult.InvalidCredentials(); }
         }
         await RefreshProviderProfileAsync(provisioned, proof.ProviderNamespace!, proof.StableSubject!, cancellationToken);
+        await TryRefreshNeutralProviderMetadataAsync(provisioned, cancellationToken);
         return LoginResult.LegacySuccess(provisioned);
     }
 
@@ -576,6 +578,14 @@ public partial class LoginService : ILoginService
         {
             LogProviderMetadataRefreshFailed();
         }
+    }
+
+    private async Task TryRefreshNeutralProviderMetadataAsync(ApplicationUser user, CancellationToken ct)
+    {
+        if (_providerMetadataRefreshService is null || !user.IsActive || user.IsDeleted) return;
+        try { await _providerMetadataRefreshService.RefreshAsync(user.Id, ct); }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+        catch { LogProviderMetadataRefreshFailed(); }
     }
 
     private bool IsDirectoryAuthenticationEnabled() =>

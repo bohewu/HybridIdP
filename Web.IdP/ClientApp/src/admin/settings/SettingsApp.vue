@@ -4,7 +4,6 @@ import { useI18n } from 'vue-i18n'
 import permissionService, { Permissions } from '@/utils/permissionService'
 import AccessDeniedDialog from '@/components/AccessDeniedDialog.vue'
 import BrandingSettings from './components/BrandingSettings.vue'
-import NativeFieldSources from './components/NativeFieldSources.vue'
 import EmailSettings from './components/EmailSettings.vue'
 import LoggingSettings from './components/LoggingSettings.vue'
 import SystemSettings from './components/SystemSettings.vue'
@@ -64,8 +63,6 @@ onMounted(async () => {
 
       <!-- Settings Sections -->
       <div v-if="!loading && !error && hasReadPermission" class="space-y-6">
-        <NativeFieldSources :can-update="hasUpdatePermission" />
-
         <!-- Branding Settings -->
         <BrandingSettings :can-update="hasUpdatePermission" />
 

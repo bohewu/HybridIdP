@@ -4,6 +4,8 @@ namespace Infrastructure.Options;
 
 public sealed class ProviderMetadataRefreshOptions
 {
+    public Dictionary<string, NeutralQuerySourceOptions> QuerySources { get; set; } = new(StringComparer.Ordinal);
+
     public const string Section = "ProviderMetadataRefresh";
 
     public bool Enabled { get; set; }
@@ -24,7 +26,8 @@ public sealed class ProviderMetadataRefreshOptionsValidator : IValidateOptions<P
             failures.Add("Provider metadata timeout must be between zero and thirty seconds.");
         }
 
-        if (options.Enabled)
+        if (options.Enabled && !(string.IsNullOrWhiteSpace(options.Endpoint) &&
+            options.QuerySources.Values.Any(x => x.Enabled && x.Trusted)))
         {
             if (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
                 (endpoint.Scheme != Uri.UriSchemeHttps &&

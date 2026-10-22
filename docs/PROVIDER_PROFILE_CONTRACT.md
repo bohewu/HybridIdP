@@ -1,4 +1,48 @@
-# Provider Profile Contract 1.0
+# Provider Profile contracts (1.0 and 2.0)
+
+The original sections below describe the 1.0 compatibility mode.
+For independently selected neutral queries, see [version 2.0](#neutral-query-version-20)
+and the [common contract](NEUTRAL_QUERY_CONTRACT.md). Neither format is inferred
+from a failed request; all original authority limits continue to apply.
+
+## Neutral query version 2.0
+
+The [common neutral-query contract](NEUTRAL_QUERY_CONTRACT.md) is normative for
+selection, typed candidates, queryRule, approved mappings, comparison, unique
+matching, transport, response correlation and mutation invalidation. Legacy
+formats remain unchanged under explicit compatibility selection.
+
+Neutral-v2 uses `profile/2.0`. Its availableCandidates are typed `employeeId`
+(String), `nationalIdHash` (Sha256Hex), and `accountName` (String). The seven
+nonempty sets in the common contract may be explicitly agreed per source. All
+attributes AND-match one source profile; zero/multiple records give NotFound/
+Ambiguous without a partial snapshot. Use the common approved value sources and
+normalization; no Proof login, existing source tuple or SSO UUID mapping is needed.
+
+Found returns `result: { extraProperties }`, a complete set with the same typed
+property limits and set normalization as 1.0. Import only deployment-approved
+property names/types. Claims keep scope/disclosure rules and cannot supply role,
+lifecycle, recovery, authentication or password authority.
+
+Store confirmation against the selected source, local source account/Person
+association and immutable query/configuration context, rather than manufacturing
+an authentication binding. Cross-account Person sharing never permits first-match
+selection. Query, value-source, approval or configuration-revision mutation
+invalidates confirmation before claims projection, even if values/hash happen to
+be unchanged. Missing inputs, stale/failed/ambiguous lookup or changed association
+omit new claims; historical stored data and already issued JWTs retain the existing
+storage/expiry rules. requestId and exact source/type/version correlate responses;
+a late old-query response cannot confirm the current configuration.
+
+Wire definitions: [request](contracts/provider-profile/v2.0/contract.schema.json#/$defs/request)
+and [response](contracts/provider-profile/v2.0/contract.schema.json#/$defs/response).
+[Synthetic examples](contracts/provider-profile/v2.0/examples/) cover Found, NotFound,
+Ambiguous, Unavailable, Unsupported, missing inputs and forbidden mixed shapes.
+Their validity proves structure only; semantic, authority and live product checks
+remain separate. queryRule is omitted in these unambiguous agreed-rule examples.
+
+## Version 1.0 compatibility contract
+
 
 This contract supplies display/profile properties for an already established
 provider identity. HybridIdP defines the contract; independent implementers

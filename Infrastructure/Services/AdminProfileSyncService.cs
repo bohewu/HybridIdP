@@ -20,7 +20,8 @@ namespace Infrastructure.Services;
 public sealed class AdminProfileSyncService(
     ApplicationDbContext db, INativeFieldPolicyService nativeFields, IProviderNativeProfileClient client,
     IOptions<ProviderNativeProfileOptions> options, IDataProtectionProvider protection,
-    ILookupNormalizer normalizer, IAuditService audit, TimeProvider? timeProvider = null) : IAdminProfileSyncService
+    ILookupNormalizer normalizer, IAuditService audit, TimeProvider? timeProvider = null,
+    INeutralQueryService? queries = null) : IAdminProfileSyncService
 {
     private readonly IDataProtector _protector = protection.CreateProtector("HybridIdP.AdminProfileSync.Preview.v1");
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
@@ -28,6 +29,18 @@ public sealed class AdminProfileSyncService(
     public async Task<ProfileSyncStatusDto> GetStatusAsync(CancellationToken cancellationToken = default)
     {
         if (!options.Value.Enabled) return new(false, "disabled");
+        if (queries is not null)
+        {
+            var configuration = await queries.GetConfigurationAsync(cancellationToken);
+            var configured = configuration.Configurations.Where(x => x.Capability == "native-profile").ToArray();
+            if (configured.Any(x => x.WireMode != NeutralQueryContract.Legacy))
+            {
+                if (configured.Length != 1 || !configuration.Sources.Any(x => x.Capability == "native-profile" &&
+                    x.SourceId == configured[0].SourceId && x.Available)) return new(false, "configuration_invalid");
+                var neutral = (await nativeFields.GetSourcesAsync(cancellationToken)).Single(x => x.Source == NativeFieldSource.NeutralQuery);
+                return new(neutral.Enabled && !neutral.Paused, !neutral.Enabled ? "source_disabled" : neutral.Paused ? "source_paused" : null);
+            }
+        }
         if (!options.Value.TryGetEndpoint(out _)) return new(false, "configuration_invalid");
         var source = (await nativeFields.GetSourcesAsync(cancellationToken)).Single(x => x.Source == NativeFieldSource.Proof);
         if (!source.Enabled) return new(false, "source_disabled");
@@ -41,7 +54,7 @@ public sealed class AdminProfileSyncService(
         RequireActor(actorKey);
         var context = await LoadAsync(userId, cancellationToken);
         if (context.Reason is not null) return Preview(context, [], null, context.Reason);
-        var source = await client.FetchAsync(Request(context.Identity!), cancellationToken);
+        var source = await FetchAsync(context, cancellationToken);
         var plan = await PlanAsync(context, source, cancellationToken);
         var token = HasChanges(plan.Changes)
             ? _protector.Protect(JsonSerializer.Serialize(new PreviewReceipt(actorKey, userId,
@@ -57,7 +70,7 @@ public sealed class AdminProfileSyncService(
         // No network request is made while holding database locks.
         var initial = await LoadAsync(userId, cancellationToken);
         if (initial.Reason is not null) throw new ProfileSyncException("preview_stale");
-        var source = await client.FetchAsync(Request(initial.Identity!), cancellationToken);
+        var source = await FetchAsync(initial, cancellationToken);
         if (!db.Database.IsRelational()) throw new ProfileSyncException("transaction_unavailable");
         // This operation must not flush mutations staged by another operation on the same scope.
         if (db.ChangeTracker.HasChanges()) throw new ProfileSyncException("preview_stale");
@@ -69,7 +82,7 @@ public sealed class AdminProfileSyncService(
         try
         {
             var context = await LoadAsync(userId, ct);
-            if (context.Reason is not null || context.Identity != initial.Identity ||
+            if (context.Reason is not null || context.Identity != initial.Identity || context.Query?.Fingerprint != initial.Query?.Fingerprint ||
                 receipt.ExpiresAt <= _time.GetUtcNow()) throw new ProfileSyncException("preview_stale");
             // LoadAsync is detached in both modes. Attach the untouched rows before preparing the
             // plan so EF retains the actual concurrency originals and updates only changed columns.
@@ -114,6 +127,21 @@ public sealed class AdminProfileSyncService(
             ?? throw new ProfileSyncException("user_not_found");
         var status = await GetStatusAsync(ct);
         if (!status.Enabled) return new(user, null, null, [], null, status.Reason);
+        if (queries is not null)
+        {
+            var resolved = await queries.ResolveAsync("native-profile", userId, cancellationToken: ct);
+            if (resolved.Status != "Legacy")
+            {
+                if (resolved.Status != "Ready" || resolved.Context is not { } query)
+                    return new(user, null, null, [], null, "query_unavailable");
+                var neutralPerson = user.PersonId is { } id ? await db.Persons.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id, ct) : null;
+                if (neutralPerson is null) return new(user, null, null, [], null, "person_missing");
+                var neutralAccounts = await db.Users.AsNoTracking().Where(x => x.PersonId == neutralPerson.Id).Select(x => x.Id).ToListAsync(ct);
+                var neutralPolicy = await db.NativeFieldSourcePolicies.AsNoTracking().SingleOrDefaultAsync(x => x.Source == "NeutralQuery", ct);
+                return new(user, neutralPerson, new(NativeFieldSource.NeutralQuery, userId, query.Request.ProviderNamespace,
+                    string.Empty, QuerySourceId: query.SourceId), neutralAccounts.OrderBy(x => x).ToArray(), neutralPolicy, null, query);
+            }
+        }
         var logins = await db.UserLogins.AsNoTracking().Where(x => x.UserId == userId).ToListAsync(ct);
         // Evaluate ordinal equality after the bounded lookup: SQL collation is not identity authority.
         var bindings = logins.Where(x => string.Equals(x.LoginProvider, options.Value.TrustedProviderNamespace,
@@ -134,6 +162,7 @@ public sealed class AdminProfileSyncService(
 
     private async Task<SyncPlan> PlanAsync(SyncContext context, ProviderNativeProfileResponse source, CancellationToken ct)
     {
+        if (context.Query is { } query && !await queries!.IsCurrentAsync(query, ct)) throw new ProfileSyncException("preview_stale");
         if (source.ProviderNamespace != context.Identity!.ProviderNamespace ||
             source.StableSubject != context.Identity.StableSubject) throw new ProfileSyncException("source_invalid_response");
         var user = context.User;
@@ -146,17 +175,19 @@ public sealed class AdminProfileSyncService(
                 user.JobTitle, user.EmployeeId, user.Email, user.NormalizedEmail, user.EmailConfirmed, user.EmailMfaEnabled },
             Person = new { person.Id, person.NativeFieldStateJson, person.Nickname, person.FirstName, person.LastName,
                 person.Department, person.JobTitle, person.EmployeeId, person.Email, person.Status, person.IsDeleted },
-            context.Identity, context.Accounts, context.Policy, Configuration = options.Value,
+            context.Identity, context.Accounts, context.Policy, QueryFingerprint = context.Query?.Fingerprint, Configuration = options.Value,
             Mappings = await nativeFields.GetMappingsAsync(ct)
         });
         var profile = source.Profile;
-        var changes = (await nativeFields.ApplyMissingSourceAsync(user, person, context.Identity,
-            new Dictionary<NativeField, string?>
+        var values = new Dictionary<NativeField, string?>
             {
                 [NativeField.Nickname] = profile.DisplayName, [NativeField.FirstName] = profile.GivenName,
                 [NativeField.LastName] = profile.Surname, [NativeField.Department] = profile.Department,
                 [NativeField.JobTitle] = profile.Title, [NativeField.EmployeeId] = profile.EmployeeId
-            }, ct)).ToList();
+            };
+        var changes = (context.Query is { } neutral
+            ? await nativeFields.ApplyMissingNeutralSourceAsync(user, person, neutral, values, ct)
+            : await nativeFields.ApplyMissingSourceAsync(user, person, context.Identity, values, ct)).ToList();
         if (changes.Count != 12) throw new ProfileSyncException("preview_stale");
         ApplyEmail(context, source, changes);
         return new(changes, Hash(new { localFingerprint, Source = source, Changes = changes }));
@@ -224,6 +255,13 @@ public sealed class AdminProfileSyncService(
             reason, changes, token);
     private static ProviderNativeProfileRequest Request(NativeFieldSourceIdentity identity) =>
         new(ProviderNativeProfileContract.Version, identity.ProviderNamespace, identity.StableSubject);
+    private async Task<ProviderNativeProfileResponse> FetchAsync(SyncContext context, CancellationToken ct)
+    {
+        if (context.Query is not { } query) return await client.FetchAsync(Request(context.Identity!), ct);
+        var result = await client.FetchNeutralAsync(query, ct);
+        if (!await queries!.IsCurrentAsync(query, ct)) throw new ProfileSyncException("preview_stale");
+        return new("2.0", query.Request.ProviderNamespace, string.Empty, result.Profile, result.EmailTrustOrigin);
+    }
     private static bool HasChanges(IReadOnlyList<ProfileSyncChangeDto> changes) => changes.Any(x => x.Action is "fill" or "confirm");
     private static string[] ChangedFields(IReadOnlyList<ProfileSyncChangeDto> changes, string target) =>
         changes.Where(x => x.Target == target && x.Action is "fill" or "confirm").Select(x => x.Field).ToArray();
@@ -233,7 +271,7 @@ public sealed class AdminProfileSyncService(
         if (string.IsNullOrWhiteSpace(actorKey)) throw new ProfileSyncException("unauthorized");
     }
     private sealed record SyncContext(ApplicationUser User, Person? Person, NativeFieldSourceIdentity? Identity,
-        Guid[] Accounts, NativeFieldSourcePolicy? Policy, string? Reason);
+        Guid[] Accounts, NativeFieldSourcePolicy? Policy, string? Reason, NeutralQueryContext? Query = null);
     private sealed record SyncPlan(IReadOnlyList<ProfileSyncChangeDto> Changes, string Fingerprint);
     private sealed record PreviewReceipt(string ActorKey, Guid UserId, DateTimeOffset ExpiresAt, string Fingerprint);
 }

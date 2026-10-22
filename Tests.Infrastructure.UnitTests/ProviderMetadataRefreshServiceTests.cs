@@ -1,12 +1,15 @@
 using System.Net;
 using System.Text;
+using System.Text.Json;
 using Core.Application;
+using Core.Application.DTOs;
 using Core.Application.Ports;
 using Core.Domain.Entities;
 using Infrastructure;
 using Infrastructure.Options;
 using Infrastructure.Services;
 using Microsoft.Data.Sqlite;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
 using Moq;
@@ -16,6 +19,92 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class ProviderMetadataRefreshServiceTests
 {
+    [Fact]
+    public async Task LegacyMetadata_ShouldNotRevivePriorEvidenceAfterQueryModeRevisionChanges()
+    {
+        await using var database = await OpenDatabaseAsync();
+        await using var db = CreateContext(database);
+        var binding = SeedBinding(db);
+        db.Settings.Add(new Setting { Id = Guid.NewGuid(), Key = Core.Domain.Constants.SettingKeys.NeutralQueryConfiguration, Value = "{}" });
+        await db.SaveChangesAsync();
+        var revision = Guid.NewGuid();
+        var queries = new Mock<INeutralQueryService>();
+        queries.Setup(x => x.ResolveAsync("metadata", binding.LocalAccountId, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new NeutralQueryResolution("Legacy"));
+        queries.Setup(x => x.GetConfigurationAsync(It.IsAny<CancellationToken>())).ReturnsAsync(() => new QueryConfigurationStateDto(revision, [], []));
+        var store = new NeutralMetadataEvidenceStore(db, queries.Object, new EphemeralDataProtectionProvider(), new FixedTimeProvider());
+        var service = new ProviderMetadataRefreshService(db, new HttpClient(RespondingHandler("""
+            {"contractVersion":"1.0","providerNamespace":"example.provider","stableSubject":"subject-1",
+             "email":"fresh@example.test","emailTrustOrigin":"PolicyTrusted"}
+            """)), Options.Create(new ProviderMetadataRefreshOptions { Enabled = true, Endpoint = "https://example.test/metadata", SharedSecret = "synthetic-secret" }),
+            new FixedTimeProvider(), queries.Object, store);
+        Assert.Empty((await store.ReadAsync(binding.LocalAccountId)).Evidence);
+        Assert.Equal(ProviderMetadataRefreshOutcome.Refreshed, await service.RefreshAsync(binding.ProviderNamespace, binding.StableSubject));
+        Assert.Single((await store.ReadAsync(binding.LocalAccountId)).Evidence);
+        revision = Guid.NewGuid();
+        Assert.Empty((await store.ReadAsync(binding.LocalAccountId)).Evidence);
+        Assert.Equal(ProviderMetadataRefreshOutcome.Refreshed, await service.RefreshAsync(binding.ProviderNamespace, binding.StableSubject));
+        Assert.Single((await store.ReadAsync(binding.LocalAccountId)).Evidence);
+    }
+
+    [Fact]
+    public async Task NeutralMetadata_ShouldWorkWithoutBindingInvalidateOnFailureAndKeepVerifiedRecoveryAddress()
+    {
+        await using var database = await OpenDatabaseAsync();
+        await using var db = CreateContext(database);
+        var userId = Guid.NewGuid();
+        db.Users.Add(new Core.Domain.ApplicationUser { Id = userId, UserName = "synthetic" });
+        var enrolled = new RecoveryEmailRecord(userId, "verified@example.test", "VERIFIED@EXAMPLE.TEST", new FixedTimeProvider().GetUtcNow());
+        enrolled.ActivateVerifiedCustom("verified@example.test", "VERIFIED@EXAMPLE.TEST", new FixedTimeProvider().GetUtcNow(), RecoveryEmailProvenance.UserVerified);
+        db.RecoveryEmails.Add(enrolled);
+        await db.SaveChangesAsync();
+        var context = new NeutralQueryContext(userId, null, "source", new NeutralQueryRequest
+        {
+            ContractType = "metadata", ProviderNamespace = "example.provider", Query = new(new Dictionary<string, string> { ["employeeId"] = "SYNTH-001" })
+        }, "revision-1", Guid.NewGuid(), new(new Uri("https://example.test/metadata"), "synthetic-secret", TimeSpan.FromSeconds(5)), []);
+        var queries = new Mock<INeutralQueryService>();
+        queries.Setup(x => x.ResolveAsync("metadata", userId, null, null, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new NeutralQueryResolution("Ready", context));
+        queries.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var store = new NeutralMetadataEvidenceStore(db, queries.Object, new EphemeralDataProtectionProvider(), new FixedTimeProvider());
+        var unavailable = false;
+        var handler = new StubHttpMessageHandler(async (message, ct) =>
+        {
+            Assert.Equal("metadata/2.0", message.Headers.GetValues("X-Provider-Contract").Single());
+            using var request = JsonDocument.Parse(await message.Content!.ReadAsStringAsync(ct));
+            var response = new Dictionary<string, object?> { ["contractType"] = "metadata", ["contractVersion"] = "2.0",
+                ["requestId"] = request.RootElement.GetProperty("requestId").GetString(), ["providerNamespace"] = "example.provider",
+                ["queryOutcome"] = unavailable ? "Unavailable" : "Found" };
+            if (!unavailable) response["result"] = new { email = "source@example.test", emailTrustOrigin = "PolicyTrusted", verifiedAt = (string?)null };
+            return new HttpResponseMessage(unavailable ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK)
+                { Content = new StringContent(JsonSerializer.Serialize(response), Encoding.UTF8, "application/json") };
+        });
+        var service = new ProviderMetadataRefreshService(db, new HttpClient(handler), Options.Create(new ProviderMetadataRefreshOptions
+            { Enabled = true }), new FixedTimeProvider(), queries.Object, store);
+        Assert.Equal(ProviderMetadataRefreshOutcome.Refreshed, await service.RefreshAsync(userId));
+        Assert.Equal("source@example.test", Assert.Single((await store.ReadAsync(userId)).Evidence).Email);
+        Assert.Empty(await db.ProviderSubjectDirectoryBindings.ToListAsync());
+        Assert.Empty(await db.ProviderMetadataSnapshots.ToListAsync());
+        Assert.DoesNotContain("source@example.test", (await db.Settings.SingleAsync()).Value);
+        context = context with { Fingerprint = "revision-2" };
+        Assert.Empty((await store.ReadAsync(userId)).Evidence);
+        Assert.Equal(ProviderMetadataRefreshOutcome.Refreshed, await service.RefreshAsync(userId));
+        unavailable = true;
+        Assert.Equal(ProviderMetadataRefreshOutcome.Unavailable, await service.RefreshAsync(userId));
+        var evidence = Assert.Single((await store.ReadAsync(userId)).Evidence);
+        Assert.Null(evidence.Email);
+        Assert.Equal(ProviderMetadataEvidenceState.Unavailable, evidence.EvidenceState);
+        var policy = new RecoveryVerificationPolicyEvaluator(db, Options.Create(new RecoveryVerificationPolicyOptions
+        {
+            Enabled = true, CurrentPeriodId = "synthetic-period", EffectiveAtUtc = new FixedTimeProvider().GetUtcNow().AddDays(-1),
+            GraceEndsAtUtc = new FixedTimeProvider().GetUtcNow().AddDays(1), AcceptPolicyTrustedEmails = true
+        }), new FixedTimeProvider(), store);
+        var decision = await policy.EvaluateAsync(userId);
+        Assert.True(decision.RecoveryEmail.CanReceiveRecoveryOtp);
+        Assert.Equal("verified@example.test", decision.RecoveryEmail.Address);
+        Assert.Equal(RecoveryEmailPolicyTrustOrigin.LocallyVerified, decision.RecoveryEmail.TrustOrigin);
+    }
+
     [Fact]
     public async Task RefreshAsync_DefaultDisabled_DoesNotAccessDatabaseOrHttp()
     {

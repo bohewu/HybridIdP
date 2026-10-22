@@ -1,0 +1,65 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "lifecycle-status neutral-query 2.0",
+  "description": "Root validates responses; #/$defs/request validates requests. Semantic and authority rules are in NEUTRAL_QUERY_CONTRACT.md.",
+  "$comment": "No mixed legacy/v2 shape acceptance.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "request": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/request"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "lifecycle-status"
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "response": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/response"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "lifecycle-status"
+            },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "accountState",
+                "evidence"
+              ],
+              "properties": {
+                "accountState": {
+                  "enum": [
+                    "Enabled",
+                    "Disabled",
+                    "Retired",
+                    "Superseded",
+                    "Unknown"
+                  ]
+                },
+                "evidence": {
+                  "$ref": "../v1.0/lifecycle-status.schema.json#/$defs/evidence"
+                }
+              }
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

@@ -30,7 +30,7 @@ public sealed class RecoveryIdentityVerificationClient : IRecoveryIdentityVerifi
                 typeof(RecoveryIdentityVerificationOptions), validation.Failures);
         _httpClient = httpClient;
         _enabled = value.Enabled;
-        _endpoint = _enabled ? new Uri(value.Endpoint!, UriKind.Absolute) : null;
+        _endpoint = _enabled && !string.IsNullOrWhiteSpace(value.Endpoint) ? new Uri(value.Endpoint, UriKind.Absolute) : null;
         _sharedSecret = value.SharedSecret;
         _timeout = TimeSpan.FromSeconds(value.TimeoutSeconds);
     }
@@ -51,7 +51,7 @@ public sealed class RecoveryIdentityVerificationClient : IRecoveryIdentityVerifi
         RecoveryIdentityVerificationRequest request, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_enabled) return null;
+        if (!_enabled || _endpoint is null) return null;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(_timeout);
         if (!RecoveryIdentityVerificationJson.TrySerializeRequest(request, out var body)) return null;
@@ -99,5 +99,51 @@ public sealed class RecoveryIdentityVerificationClient : IRecoveryIdentityVerifi
         {
             Array.Clear(body);
         }
+    }
+
+    public async Task<NeutralQueryResponse?> VerifyAsync(NeutralQueryContext context,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (!_enabled || context.Request.ContractType != "recovery-identity-verification" ||
+            !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return null;
+        using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        deadline.CancelAfter(context.Transport.Timeout);
+        try
+        {
+            using var message = new HttpRequestMessage(HttpMethod.Post, context.Transport.Endpoint)
+            {
+                Content = new ByteArrayContent(body)
+            };
+            message.Content.Headers.ContentType = new MediaTypeHeaderValue("application/json");
+            message.Headers.Add("X-Internal-Secret", context.Transport.SharedSecret);
+            message.Headers.Add("X-Provider-Contract", "recovery-identity-verification/2.0");
+            message.Headers.CacheControl = new CacheControlHeaderValue { NoStore = true };
+            using var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
+            if (response.Content.Headers.ContentEncoding.Count != 0 ||
+                response.Content.Headers.ContentLength > RecoveryIdentityVerificationContract.MaximumResponseBytes) return null;
+            var buffer = new byte[RecoveryIdentityVerificationContract.MaximumResponseBytes + 1];
+            await using var stream = await response.Content.ReadAsStreamAsync(deadline.Token);
+            var count = 0;
+            while (count < buffer.Length)
+            {
+                var read = await stream.ReadAsync(buffer.AsMemory(count), deadline.Token);
+                if (read == 0) break;
+                count += read;
+            }
+            deadline.Token.ThrowIfCancellationRequested();
+            if (count > RecoveryIdentityVerificationContract.MaximumResponseBytes ||
+                response.Content.Headers.ContentLength is { } length && length != count) return null;
+            return NeutralQueryJson.TryReadResponse((int)response.StatusCode,
+                response.Content.Headers.ContentType?.ToString(), buffer.AsMemory(0, count), context.Request, out var result)
+                ? result : null;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (Exception exception) when (exception is OperationCanceledException or HttpRequestException or IOException)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return null;
+        }
+        finally { Array.Clear(body); }
     }
 }

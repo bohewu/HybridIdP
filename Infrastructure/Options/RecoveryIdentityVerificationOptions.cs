@@ -6,6 +6,8 @@ namespace Infrastructure.Options;
 
 public sealed class RecoveryIdentityVerificationOptions
 {
+    public Dictionary<string, NeutralQuerySourceOptions> QuerySources { get; set; } = new(StringComparer.Ordinal);
+
     public const string Section = "RecoveryIdentityVerification";
     public bool Enabled { get; set; }
     public bool RequireForLocalAccounts { get; set; }
@@ -30,16 +32,17 @@ public sealed class RecoveryIdentityVerificationOptionsValidator : IValidateOpti
         var failures = new List<string>();
         if (!options.RequireForLocalAccounts && !options.RequireForDirectoryAccounts)
             failures.Add("Recovery identity verification requires an explicit account authority cohort.");
-        if (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
+        var neutralOnly = string.IsNullOrWhiteSpace(options.Endpoint) && options.QuerySources.Values.Any(x => x.Enabled && x.Trusted);
+        if (!neutralOnly && (!Uri.TryCreate(options.Endpoint, UriKind.Absolute, out var endpoint) ||
             string.IsNullOrEmpty(endpoint.Host) || !string.IsNullOrEmpty(endpoint.UserInfo) ||
             !string.IsNullOrEmpty(endpoint.Query) || !string.IsNullOrEmpty(endpoint.Fragment) ||
             (endpoint.Scheme != Uri.UriSchemeHttps &&
              !(isolatedLoopbackTest && endpoint.Scheme == Uri.UriSchemeHttp &&
                IPAddress.TryParse(endpoint.DnsSafeHost, out var address) &&
-               (address.Equals(IPAddress.Loopback) || address.Equals(IPAddress.IPv6Loopback)))))
+               (address.Equals(IPAddress.Loopback) || address.Equals(IPAddress.IPv6Loopback))))))
             failures.Add("Recovery identity verification requires a complete HTTPS endpoint without credentials, query or fragment.");
-        if (string.IsNullOrWhiteSpace(options.SharedSecret) ||
-            options.SharedSecret.Any(character => character < 0x21 || character > 0x7e))
+        if (!neutralOnly && (string.IsNullOrWhiteSpace(options.SharedSecret) ||
+            options.SharedSecret.Any(character => character < 0x21 || character > 0x7e)))
             failures.Add("Recovery identity verification requires a nonempty header-safe shared secret from secure configuration.");
         if (options.Scheme != RecoveryIdentityVerificationContract.Scheme)
             failures.Add("Recovery identity verification requires the identity-identifier scheme.");

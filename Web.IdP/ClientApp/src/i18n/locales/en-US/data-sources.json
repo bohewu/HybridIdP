@@ -1,0 +1,9 @@
+{
+  "title": "Data sources and sync",
+  "subtitle": "Configure source queries and field mappings, then preview and apply synchronization.",
+  "sources": "Sources and queries",
+  "mappings": "Field mappings",
+  "manual": "Manual sync",
+  "manualHelp": "Use saved queries and mappings to preview changes for selected accounts before applying them. Existing values and manually fixed blanks remain protected.",
+  "chooseAccounts": "Choose accounts"
+}

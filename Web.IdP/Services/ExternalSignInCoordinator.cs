@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Interfaces;
+using Core.Application.Ports;
 using Core.Domain;
 using Core.Domain.Constants;
 using Microsoft.AspNetCore.Authentication;
@@ -23,6 +24,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
     private readonly IMigrationIssuanceGuard _migrationIssuanceGuard;
     private readonly ILogger<ExternalSignInCoordinator> _logger;
     private readonly TimeProvider _timeProvider;
+    private readonly IProviderMetadataRefreshService? _metadata;
 
     public ExternalSignInCoordinator(
         Web.IdP.Services.ICurrentUserLifecycleEligibility lifecycleEligibility,
@@ -33,7 +35,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         IPasskeyService passkeyService,
         IMigrationIssuanceGuard migrationIssuanceGuard,
         ILogger<ExternalSignInCoordinator> logger,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, IProviderMetadataRefreshService? metadata = null)
     {
         _lifecycleEligibility = lifecycleEligibility;
         _signInManager = signInManager;
@@ -44,6 +46,7 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
         _migrationIssuanceGuard = migrationIssuanceGuard;
         _logger = logger;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _metadata = metadata;
     }
 
     public async Task<ExternalSignInCompletionResult> CompleteAsync(
@@ -79,6 +82,15 @@ public partial class ExternalSignInCoordinator : IExternalSignInCoordinator
             !await _lifecycleEligibility.IsEligibleAsync(user.Id, cancellationToken))
         {
             return ExternalSignInCompletionResult.Blocked(LoginResult.InvalidCredentials());
+        }
+
+        // CompleteAsync is reached after the external provider's verified callback.
+        // Linking has its own authorization ceremony and does not refresh data here.
+        if (login is null && _metadata is not null)
+        {
+            try { await _metadata.RefreshAsync(user.Id, cancellationToken); }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+            catch { _logger.LogWarning("Provider metadata refresh failed during external sign-in."); }
         }
 
         string? nonce = null;

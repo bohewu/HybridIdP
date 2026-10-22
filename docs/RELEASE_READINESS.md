@@ -66,7 +66,7 @@ Email confirmation still requires fresh source evidence and independent exact
 local namespace trust; saving an address does not confirm it, enroll MFA or
 authorize recovery. The Proof Email trust list remains separate.
 
-Open **Settings > Profile field synchronization > Adjust sync settings** to
+Open **Settings > Profile sync output fields > Manage field mappings** to
 edit native-field source/property mappings and the exact-source new-account
 username choice. **Save for next login** saves configuration only. **Save and
 sync now** saves that configuration, then opens explicit account selection,
@@ -256,7 +256,7 @@ credential migration flags do not substitute for that opt-in. UI pause/resume
 cannot enable or trust a source.
 
 There is no extra environment flag for the FirstName strategy. After upgrading,
-open Settings > Profile field synchronization > Sign-in verification source,
+open Settings > Profile sync output fields > Sign-in verification source,
 select Use the full name to fill a missing first name and save it for the exact
 configured namespace. Existing values and manually fixed blanks stay protected.
 It takes effect on the next eligible normal Proof login, not when Claims Preview

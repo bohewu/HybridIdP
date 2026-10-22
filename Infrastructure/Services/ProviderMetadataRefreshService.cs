@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Ports;
+using Core.Application.Utilities;
 using Core.Domain.Entities;
 using Infrastructure.Options;
 using Microsoft.EntityFrameworkCore;
@@ -19,20 +20,66 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
     private readonly HttpClient _httpClient;
     private readonly ProviderMetadataRefreshOptions _options;
     private readonly TimeProvider _timeProvider;
+    private readonly INeutralQueryService? _queries;
+    private readonly NeutralMetadataEvidenceStore? _neutralEvidence;
 
     public ProviderMetadataRefreshService(
         IApplicationDbContext dbContext,
         HttpClient httpClient,
         IOptions<ProviderMetadataRefreshOptions> options,
-        TimeProvider? timeProvider = null)
+        TimeProvider? timeProvider = null, INeutralQueryService? queries = null, NeutralMetadataEvidenceStore? neutralEvidence = null)
     {
         _dbContext = dbContext;
         _httpClient = httpClient;
         _options = options.Value;
         _timeProvider = timeProvider ?? TimeProvider.System;
+        _queries = queries;
+        _neutralEvidence = neutralEvidence;
     }
 
-    public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false };
+    public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false, UseCookies = false };
+
+    public async Task<ProviderMetadataRefreshOutcome> RefreshAsync(Guid userId, CancellationToken cancellationToken = default)
+    {
+        if (!_options.Enabled) return ProviderMetadataRefreshOutcome.Disabled;
+        if (_queries is null) return ProviderMetadataRefreshOutcome.Legacy;
+        var query = await _queries.ResolveAsync("metadata", userId, cancellationToken: cancellationToken);
+        if (query.Status == "Legacy") return ProviderMetadataRefreshOutcome.Legacy;
+        if (query.Status != "Ready" || query.Context is not { } context || _neutralEvidence is null)
+            return ProviderMetadataRefreshOutcome.Unavailable;
+        if (!NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return ProviderMetadataRefreshOutcome.InvalidRequest;
+        NeutralMetadataResult? result = null;
+        var failure = ProviderMetadataEvidenceState.Unavailable;
+        try
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            timeout.CancelAfter(context.Transport.Timeout);
+            using var message = new HttpRequestMessage(HttpMethod.Post, context.Transport.Endpoint) { Content = new ByteArrayContent(body) };
+            message.Content.Headers.ContentType = new("application/json");
+            message.Headers.Add("X-Internal-Secret", context.Transport.SharedSecret);
+            message.Headers.Add("X-Provider-Contract", "metadata/2.0");
+            message.Headers.CacheControl = new() { NoStore = true };
+            using var response = await _httpClient.SendAsync(message, HttpCompletionOption.ResponseHeadersRead, timeout.Token);
+            using var bounded = await BoundedUpstreamResponse.ReadAsync(response.Content, MaximumResponseBytes, timeout.Token);
+            var bytes = await bounded.ReadAsByteArrayAsync(timeout.Token);
+            if (response.Content.Headers.ContentEncoding.Count == 0 && NeutralQueryJson.TryReadResponse((int)response.StatusCode,
+                response.Content.Headers.ContentType?.ToString(), bytes, context.Request, out var parsed))
+            {
+                if (parsed!.QueryOutcome == "Found") result = parsed.Result!.Value.Deserialize<NeutralMetadataResult>(JsonSerializerOptions.Web);
+                else failure = parsed.QueryOutcome switch { "NotFound" => ProviderMetadataEvidenceState.Missing,
+                    "Unsupported" => ProviderMetadataEvidenceState.Unsupported, _ => ProviderMetadataEvidenceState.Unavailable };
+            }
+            else failure = ProviderMetadataEvidenceState.Malformed;
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
+        catch (OperationCanceledException) { failure = ProviderMetadataEvidenceState.TimedOut; }
+        catch (Exception ex) when (ex is HttpRequestException or IOException) { failure = ProviderMetadataEvidenceState.Unavailable; }
+        catch (JsonException) { failure = ProviderMetadataEvidenceState.Malformed; }
+        finally { Array.Clear(body); }
+        var accepted = await _neutralEvidence.SaveAsync(context, result, failure, cancellationToken);
+        return accepted ? ProviderMetadataRefreshOutcome.Refreshed : result is not null ? ProviderMetadataRefreshOutcome.Untrusted :
+            Enum.TryParse<ProviderMetadataRefreshOutcome>(failure.ToString(), out var outcome) ? outcome : ProviderMetadataRefreshOutcome.Unavailable;
+    }
 
     public async Task<ProviderMetadataRefreshOutcome> RefreshAsync(
         string providerNamespace,
@@ -65,6 +112,11 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
         {
             return ProviderMetadataRefreshOutcome.BindingNotFound;
         }
+
+        // Existing callers may carry a tuple, but configured v2 selects data independently.
+        var neutralOutcome = await RefreshAsync(binding.LocalAccountId, cancellationToken);
+        if (neutralOutcome != ProviderMetadataRefreshOutcome.Legacy) return neutralOutcome;
+        var queryRevision = _neutralEvidence is null ? null : await _neutralEvidence.LegacyRevisionAsync(cancellationToken);
 
         ProviderMetadataResult? result;
         try
@@ -146,6 +198,8 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
             return ProviderMetadataRefreshOutcome.Malformed;
         }
 
+        if (_neutralEvidence is not null && queryRevision != await _neutralEvidence.LegacyRevisionAsync(cancellationToken))
+            return ProviderMetadataRefreshOutcome.Unavailable;
         var snapshot = await FindOrCreateSnapshotAsync(binding.Id, cancellationToken);
         var trustedEmail = result.EmailTrustOrigin == EmailTrustOrigin.Unknown
             ? null
@@ -158,6 +212,8 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
                 : null,
             _timeProvider.GetUtcNow());
         await _dbContext.SaveChangesAsync(cancellationToken);
+        if (_neutralEvidence is not null)
+            await _neutralEvidence.ConfirmLegacyAsync(binding.LocalAccountId, binding.Id, snapshot.RefreshedAtUtc, queryRevision, cancellationToken);
         return snapshot.EvidenceState == ProviderMetadataEvidenceState.Available
             ? ProviderMetadataRefreshOutcome.Refreshed
             : ProviderMetadataRefreshOutcome.Untrusted;

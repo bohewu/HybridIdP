@@ -37,16 +37,6 @@ onMounted(load)
       <template v-else>
         <div v-if="error" role="alert" class="mb-4 space-y-2 rounded-md bg-red-50 p-3 text-sm text-red-700"><p>{{ policyError(t, { message: error }) }}</p><p v-if="conflict">{{ t('native-fields.mapping.draftKept') }}</p><button type="button" :disabled="saving" class="underline" @click="load">{{ t('native-fields.mapping.reloadDiscard') }}</button></div>
         <p v-if="!canUpdate" class="mb-4 text-sm text-gray-600">{{ t('native-fields.mapping.readOnly') }}</p>
-        <fieldset v-if="canUpdate" :disabled="saving || editing !== -1 || allMapped || !availableSources.length" class="mb-6 min-w-0 space-y-3">
-          <legend class="mb-3 text-sm font-medium text-gray-900">{{ t('native-fields.mapping.addTitle') }}</legend>
-          <div class="grid min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1.2fr_1fr_auto]">
-            <label class="min-w-0 text-sm text-gray-700">{{ t('native-fields.mapping.field') }}<select v-model="draft.field" data-test="add-field" :disabled="sourceIndex === ''" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"><option value="">{{ t('native-fields.mapping.chooseField') }}</option><option v-for="field in addFields" :key="field" :value="field">{{ t(`native-fields.fields.${field}`) }}</option></select></label>
-            <label class="min-w-0 text-sm text-gray-700">{{ t('native-fields.source') }}<select v-model="sourceIndex" data-test="add-source" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option value="">{{ t('native-fields.mapping.chooseSource') }}</option><option v-for="(source, i) in availableSources" :key="i" :value="String(i)">{{ t(`native-fields.sources.${source.source}`) }}</option></select></label>
-            <label class="min-w-0 text-sm text-gray-700">{{ t('native-fields.mapping.property') }}<select v-model="draft.sourceProperty" data-test="add-property" :disabled="sourceIndex === ''" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"><option value="">{{ t(sourceIndex === '' ? 'native-fields.mapping.chooseSourceFirst' : 'native-fields.mapping.chooseProperty') }}</option><option v-for="property in properties" :key="property" :value="property">{{ t(`native-fields.mapping.properties.${property}`) }}</option></select></label>
-            <button type="button" data-test="add-mapping" :disabled="!canAdd" class="rounded-md bg-google-50 px-4 py-2 text-sm font-medium text-google-700 disabled:opacity-50" @click="addRow">{{ t('native-fields.mapping.add') }}</button>
-          </div>
-        </fieldset>
-        <p v-if="canUpdate" class="mb-5 text-sm text-gray-500">{{ t(allMapped ? 'native-fields.mapping.allMapped' : !availableSources.length ? 'native-fields.mapping.noSources' : 'native-fields.mapping.availableHelp') }}</p>
         <div class="mb-3 flex items-center justify-between gap-2"><h4 class="text-sm font-medium text-gray-900">{{ t('native-fields.mapping.current') }}</h4><span class="text-xs text-gray-500">{{ t('native-fields.mapping.count', { count: rows.length }) }}</span></div>
         <div class="mapping-table min-w-0 text-sm" role="table" :aria-label="t('native-fields.mapping.current')">
           <div class="mapping-row hidden bg-gray-50 text-xs text-gray-500 sm:grid" role="row"><span role="columnheader">{{ t('native-fields.mapping.field') }}</span><span role="columnheader">{{ t('native-fields.source') }}</span><span role="columnheader">{{ t('native-fields.mapping.property') }}</span><span class="sr-only" role="columnheader">{{ t('native-fields.mapping.actions') }}</span></div>
@@ -66,6 +56,16 @@ onMounted(load)
           </div>
         </div>
         <p v-if="!rows.length" class="py-5 text-sm text-gray-500">{{ t('native-fields.mapping.empty') }}</p>
+        <fieldset v-if="canUpdate" :disabled="saving || editing !== -1 || allMapped || !availableSources.length" class="mb-6 min-w-0 space-y-3">
+          <legend class="mb-3 text-sm font-medium text-gray-900">{{ t('native-fields.mapping.addTitle') }}</legend>
+          <div class="grid min-w-0 grid-cols-1 items-end gap-3 sm:grid-cols-[1fr_1.2fr_1fr_auto]">
+            <label class="min-w-0 text-sm text-gray-700">{{ t('native-fields.mapping.field') }}<select v-model="draft.field" data-test="add-field" :disabled="sourceIndex === ''" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"><option value="">{{ t('native-fields.mapping.chooseField') }}</option><option v-for="field in addFields" :key="field" :value="field">{{ t(`native-fields.fields.${field}`) }}</option></select></label>
+            <label class="min-w-0 text-sm text-gray-700">{{ t('native-fields.source') }}<select v-model="sourceIndex" data-test="add-source" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2"><option value="">{{ t('native-fields.mapping.chooseSource') }}</option><option v-for="(source, i) in availableSources" :key="i" :value="String(i)">{{ t(`native-fields.sources.${source.source}`) }}</option></select></label>
+            <label class="min-w-0 text-sm text-gray-700">{{ t('native-fields.mapping.property') }}<select v-model="draft.sourceProperty" data-test="add-property" :disabled="sourceIndex === ''" class="mt-1 w-full rounded-md border border-gray-300 px-3 py-2 disabled:bg-gray-50"><option value="">{{ t(sourceIndex === '' ? 'native-fields.mapping.chooseSourceFirst' : 'native-fields.mapping.chooseProperty') }}</option><option v-for="property in properties" :key="property" :value="property">{{ t(`native-fields.mapping.properties.${property}`) }}</option></select></label>
+            <button type="button" data-test="add-mapping" :disabled="!canAdd" class="rounded-md bg-google-50 px-4 py-2 text-sm font-medium text-google-700 disabled:opacity-50" @click="addRow">{{ t('native-fields.mapping.add') }}</button>
+          </div>
+        </fieldset>
+        <p v-if="canUpdate" class="mb-5 text-sm text-gray-500">{{ t(allMapped ? 'native-fields.mapping.allMapped' : !availableSources.length ? 'native-fields.mapping.noSources' : 'native-fields.mapping.availableHelp') }}</p>
         <section class="mt-6 min-w-0 space-y-3 border-t border-gray-200 pt-5" aria-labelledby="new-account-username-title">
           <h4 id="new-account-username-title" class="text-sm font-medium text-gray-900">{{ t('native-fields.userName.title') }}</h4>
           <p class="text-sm text-gray-600">{{ t('native-fields.userName.help') }}</p>

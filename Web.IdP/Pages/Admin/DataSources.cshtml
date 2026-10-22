@@ -1,0 +1,10 @@
+@page
+@model Web.IdP.Pages.Admin.DataSourcesModel
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@{
+    ViewData["Title"] = Localizer["DataSourcesAndSync"].Value;
+    ViewData["Breadcrumb"] = Localizer["DataSourcesAndSync"].Value;
+}
+
+<div id="app" class="vue-app-container"></div>
+<script type="module" vite-src="~/src/admin/data-sources/main.js"></script>

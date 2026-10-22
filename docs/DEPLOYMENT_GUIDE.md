@@ -1,6 +1,197 @@
 # HybridIdP Deployment Guide
 
-## Optional administrator native-profile synchronization
+## Neutral non-login query configuration
+
+The six capabilities below support explicit `legacy` and `neutral-v2` query
+selection. With no saved selection, existing legacy behavior applies. Each
+capability's `Enabled` flag and each `QuerySources` entry's `Enabled` and
+`Trusted` flags default to false; source dictionaries default empty. Enabling a
+query source does not enable login or authorize an operation. The normative
+[2.0 contract](NEUTRAL_QUERY_CONTRACT.md) and per-capability schemas define the
+wire; the current product supports the persisted-field subset described here.
+
+| Capability / wire contract type | HybridIdP configuration prefix | Example producer path |
+| --- | --- | --- |
+| Native Profile | `ProviderNativeProfile` | `/api/neutral/native-profile` |
+| Additional Profile properties | `ProviderProfile` | `/api/neutral/profile` |
+| Metadata | `ProviderMetadataRefresh` | `/api/neutral/metadata` |
+| Lifecycle | `ProviderLifecycle` | `/api/neutral/lifecycle-status` |
+| Recovery Identity Verification | `RecoveryIdentityVerification` | `/api/neutral/recovery-identity-verification` |
+| Password Sync | `LegacyPasswordSync` | `/api/neutral/password-sync` |
+
+### Deployment ceilings and a copyable example
+
+The private operator-managed `.env` owns complete endpoint URLs, shared secrets,
+exact data-source namespaces, trust, timeouts, policy revisions, supported
+attribute sets, allowed value sources and operation/cohort ceilings. The
+administrator UI only selects within these ceilings. It cannot edit an endpoint,
+secret, trust decision or source rule. Increment `PolicyRevision` when the
+agreed source policy changes. Do not replace an existing `.env` or its existing
+legacy settings with this example.
+
+This syntactically complete example configures one **disabled** Profile query
+source and its separate output schema. `example` is the same sourceId in
+`QuerySources` and `Sources`; `example.provider` and `example.test` are generic
+examples. Replace the secret through protected deployment configuration before
+enabling either flag. The environment must actually be passed to the IdP
+process (the deployment Compose `env_file` does this).
+
+```dotenv
+ProviderProfile__Enabled=false
+ProviderProfile__MaximumAge=00:05:00
+ProviderProfile__Sources__example__ProviderNamespace=example.provider
+ProviderProfile__Sources__example__AllowedProperties__exampleFlag=Boolean
+ProviderProfile__QuerySources__example__Enabled=false
+ProviderProfile__QuerySources__example__Trusted=false
+ProviderProfile__QuerySources__example__Paused=false
+ProviderProfile__QuerySources__example__ProviderNamespace=example.provider
+ProviderProfile__QuerySources__example__PolicyRevision=example-1
+ProviderProfile__QuerySources__example__Endpoint=https://example.test/api/neutral/profile
+ProviderProfile__QuerySources__example__SharedSecret=replace-with-protected-service-secret
+ProviderProfile__QuerySources__example__Timeout=00:00:05
+ProviderProfile__QuerySources__example__AllowPrivateNetworkHttp=false
+ProviderProfile__QuerySources__example__AcceptedAttributeSets__0__0=employeeId
+ProviderProfile__QuerySources__example__AcceptedAttributeSets__1__0=employeeId
+ProviderProfile__QuerySources__example__AcceptedAttributeSets__1__1=accountName
+ProviderProfile__QuerySources__example__AllowedValueSources__employeeId__0=person.employeeId
+ProviderProfile__QuerySources__example__AllowedValueSources__employeeId__1=user.employeeId
+ProviderProfile__QuerySources__example__AllowedValueSources__accountName__0=user.userName
+ProviderProfile__QuerySources__example__TrustedValueProviderNamespaces__0=example.provider
+```
+
+`Sources.example.AllowedProperties` remains the approved returned-property
+schema (`String`, `Boolean`, `StringArray`), separate from query attributes.
+Use only output properties the producer supports. A neutral-only Profile source
+can omit the legacy `Sources.example.Endpoint` and `SharedSecret` when its
+matching enabled/trusted QuerySources transport is configured. If legacy will
+also be used, preserve its complete transport configuration. Other capabilities
+use the same `QuerySources__example__...` keys under their table prefix, with
+their own endpoint and source policy; they do not need Profile's `Sources`
+output schema. SourceIds are local configuration keys, not provider identities.
+
+Omit `QueryRule` when there is one agreed rule for the namespace, capability
+and attribute set. If disambiguation is needed, add, for example,
+`ProviderProfile__QuerySources__example__QueryRule=example-rule-1` and configure
+the exact same opaque rule at the producer. The UI displays it read-only; on
+the wire it is optional `query.queryRule`, never `queryKey`. There is no automatic
+discovery, weaker retry, fallback to another source or automatic wire downgrade.
+
+Only these current product value sources are selectable:
+
+| Query attribute | Supported value source | Required approval |
+| --- | --- | --- |
+| `employeeId` | `person.employeeId` or `user.employeeId` | Explicit current-account approval, or existing trusted native-field provenance for the selected field and approved source namespace. |
+| `accountName` | `user.userName` | Explicit current-account approval; the local username need not equal the upstream account name. |
+| `nationalIdHash` | `person.nationalId` | Explicit current-account approval including hash algorithm and provenance. |
+
+For an agreed hash-containing set, add `nationalIdHash` to that set's next array
+index and allow it with
+`<prefix>__QuerySources__example__AllowedValueSources__nationalIdHash__0=person.nationalId`.
+Person.NationalId stores `SHA256(UTF8(raw.Trim().ToUpperInvariant()))` as uppercase
+64-hex. A hash-shaped row is insufficient evidence of this algorithm or origin.
+It is sent as the existing digest, never rehashed, reversed into raw IID or used
+as submitted recovery evidence. Person and User employee IDs are independent;
+one never substitutes for the other. `TrustedValueProviderNamespaces` explicitly
+approves reuse of existing native provenance across source namespaces. It does
+not make an arbitrary persisted field trusted.
+
+The contract vocabulary also reserves `runtime.proof.*` and
+`runtime.directory.*`. Current real product callers do not supply those runtime
+objects, so they are hidden from availableCandidates and rejected for new
+selections. Do not configure them as a working alternative to persisted fields.
+No raw IID, Email, birthdate or arbitrary claim source is available.
+
+### Administrator journey
+
+At `/Admin/DataSources`, **Data sources and sync -> Sources and queries** owns query inputs: the approved local values used to
+locate a source record. **Field mappings -> Manage field mappings** owns supported
+returned native fields and their User/Person targets. Input selection or approval
+does not authorize an output write or change native-field ownership. Additional
+Profile properties retain their separate approved output schema and claims rules.
+
+1. Open **Data sources and sync -> Sources and queries -> Manage query fields**. Choose one
+   of the six services and **Configured fields** (`neutral-v2`), then an available
+   deployed source, supported field combination and value source for each field.
+   **Existing method** selects `legacy`. Additional properties supports multiple
+   named sources; the other services use one selected active source each.
+2. Save settings, then reload to inspect the persisted selection. Saving performs
+   no source fetch or profile write. A saved selection that becomes unavailable
+   stays visible and blocked; correct or remove it explicitly. Conflicting
+   selections are not silently reduced to the first source. Source status explains
+   configuration eligibility (enablement, trust, pause, configuration and supported
+   inputs), not live connectivity. Safe reason codes expose no endpoint, secret or
+   private deployment identifier; no health probe is implied. Reasons distinguish
+   `deployment_disabled`, `source_untrusted`, `source_paused`,
+   `invalid_configuration` and `unsupported_inputs`; `source_unavailable` is the
+   safe fallback.
+3. In **Account approval**, select the account and independently verify the
+   current values, Person association and source semantics. Approve those exact
+   values, including the separate document-hash checkbox when applicable.
+   Changing values, association, mapping or account state can invalidate approval;
+   reload and review again. Trusted native employee-ID provenance can avoid
+   manual approval only within its deployed namespace ceiling.
+4. For Native Profile, open **Manual sync -> Choose accounts** directly, without
+   opening mapping editing, then use the account picker and reviewed **Preview**
+   then **Apply** flow. Apply fetches again and rejects stale context. It fills
+   eligible fields while preserving nonempty values, manual fixed values
+   (including intentional blanks), ownership, pause and shared-Person protections.
+   Neutral Native Profile needs an existing local account and Person with trusted
+   query fields; it requires no Proof login, SSO UUID or authentication binding.
+   Saved source and mapped output-property selections govern a fresh preview/apply;
+   changing configuration invalidates earlier review/approval contexts. Successful
+   apply changes account/native state and may require explicit renewed account/source
+   approval before another query. Neither action automatically establishes trust.
+
+The page requires local application-cookie IdP Admin plus `settings.read`.
+Global query GET/PUT, Native mappings GET/PUT and source pause/fallback PUT require
+`DataSourcesAdministration` (local Admin or separately provisioned administrative
+M2M) in addition to `settings.read`/`settings.update` as applicable; live M2M
+permission ceilings and cookie CSRF protection remain. Native `GET sources`
+retains `settings.read` for shared per-record dialogs. Per-record User/Person
+routes are unchanged. Account approval retains its existing boundary and requires
+`users.read` for reads and `users.update` for writes. Native Profile keeps its
+existing User/Person write permissions. Query configuration uses the existing
+Settings and field-authority schema; this round adds no HybridIdP EF migration
+or manual HybridIdP SQL step, and the page relocation adds no environment keys.
+General Settings retains branding, system, logging, Turnstile and mail settings.
+Source selection uses public capabilities and deployment configuration without
+provider-name or namespace heuristics. AuthProxy is an optional integration;
+its v2 Password Sync has the separate
+[producer receipt prerequisite](integrations/authproxy.md#authproxy-v2-password-sync-receipt-prerequisite).
+Retain normal deployment upgrade procedures for any already outstanding schema
+upgrades.
+
+### Capability limits and producer agreement
+
+A query match never links accounts, renames users, changes UserId/PersonId,
+authenticates, grants recovery/reset authority or replaces local eligibility.
+Profile retains property/claim approvals and cache freshness. Metadata supplies
+contact evidence under its independent trust rules; it cannot retarget a
+verified recovery address. RIV still checks separately submitted evidence and
+requires the existing recovery OTP and reset authorization.
+
+Lifecycle still requires explicit `ProviderLifecycle.RequiredAccounts` entries
+(local account ID, `BindingKind=NeutralQuery`, exact namespace, source authority
+and mapping version) and its existing freshness/eligibility policy. A producer
+without an authoritative Lifecycle source must return Unavailable.
+Password Sync additionally retains `CompletedDirectoryRecoveryEnabled`,
+`CompletedDirectoryRequiredChangeEnabled` and `Stage2MigrationEnabled` cohort
+ceilings. Enable only already authorized source operations; this does not add a
+local-password write cohort. Completed source operation checks, single-send
+reservation and durable Unknown/CommitUnknown barriers still apply. Never resend
+an uncertain write or convert missing/ambiguous inputs into a different target.
+
+An independent producer must implement the agreed exact attribute sets and
+correlation rules. Supported sets, normalization, unique matching and operation
+authority must be agreed independently; HybridIdP does not read producer storage.
+The [optional AuthProxy recipe](integrations/authproxy.md) describes one adapter's
+configuration and its separate Password Sync receipt prerequisite.
+
+Unit/fixture and in-process HTTP checks establish bounded product behavior.
+They do not establish connected SQL, deployed TLS, real upstream authority or
+completed joint E2E. Verify those only in a separately authorized environment.
+
+## Optional administrator native-profile synchronization (legacy mode)
 
 [Provider Native Profile 1.0](PROVIDER_NATIVE_PROFILE_CONTRACT.md) is disabled by
 default and has no new schema migration. Existing native-field authority schema
@@ -8,7 +199,7 @@ must already be present. In private deployment configuration, set
 `ProviderNativeProfile__Enabled`, `TrustedProviderNamespace`, the complete
 `Endpoint`, and `SharedSecret` under that section. `Timeout` defaults to five
 seconds; HTTPS verifies the server certificate and redirects/cookies are disabled.
-The existing Proof native-field source must also be enabled, trusted, unpaused
+In legacy mode, the existing Proof native-field source must also be enabled, trusted, unpaused
 and use the exact same namespace. No endpoint or source is inferred.
 
 `ProviderNativeProfile__TrustedEmailProviderNamespaces__0` is an independent,
@@ -966,7 +1157,7 @@ Already enabled deployments do not need to add a mandatory Proof flag. Set
 `NativeFieldPolicy__ProofEnabled=false` to block native writes while preserving
 login and independent Profile refresh.
 
-The Settings UI displays the Stage 1 source as **Organization directory (AD/LDAP)**,
+The Data sources and sync UI displays the Stage 1 source as **Organization directory (AD/LDAP)**,
 separately from **Sign-in verification source**. For an approved directory native
 rollout, explicitly set
 `NativeFieldPolicy__Stage1Enabled=true` and at least one exact indexed trusted
@@ -1002,9 +1193,9 @@ writes. These existing keys are the enablement/trust ceiling. There is no
 additional environment flag for the fallback selection. All five production
 Compose files pass the selected `.env` through `idp-service.env_file`.
 
-In **Settings > Profile field synchronization > Adjust sync settings**, edit
+In **Data sources and sync > Field mappings > Manage field mappings**, edit
 the native/source/property mappings and optional **Use the full name to fill a
-missing first name** strategy. **Save for next login** saves configuration only;
+missing first name** strategy. **Save for next sign-in** saves configuration only;
 **Save and sync now** then opens account selection, read-only preview and explicit
 apply. Editable mappings use the existing system-managed Settings storage and
 source-policy revisions, with no additional migration or environment flag.

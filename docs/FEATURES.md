@@ -9,13 +9,14 @@
 ## Native field policies
 
 Administrators can manage `Nickname`, `FirstName`, `LastName`, `Department`,
-`JobTitle` and `EmployeeId` independently on User and Person records. Settings
-shows deployment/trust and pause status before Branding; User row menus and
+`JobTitle` and `EmployeeId` independently on User and Person records. Data sources
+and sync shows deployment/trust and pause status; User row menus and
 Person row buttons open Native field policies. Existing target permissions
 protect reads/updates; source status and UI assignment additionally need `settings.read`
-and pause needs `settings.update`. The UI cannot enable an untrusted source.
+and global pause needs local Admin authority plus `settings.update`.
+The UI cannot enable an untrusted source.
 
-Only existing Proof and Stage 1 mappings are supported. Exact persisted bindings
+Normal-login mappings use existing Proof and Stage 1 sources. Exact persisted bindings
 and field ownership prevent shared Person last-login-wins. Nonempty values are
 preserved unless overwrite is explicitly chosen. Manual fixed values, including
 intentional blanks, survive until explicit Unlock; assignment does not unlock.
@@ -26,6 +27,62 @@ Identity/security authority, read-only Claims Preview and independent normal-log
 Provider Profile snapshots retain their existing behavior. See
 [field mapping and workflow](IDENTITY_FIELD_MAPPING.md#native-field-policy-and-operator-workflow)
 and [deployment upgrade requirements](DEPLOYMENT_GUIDE.md#native-field-policy-configuration-and-upgrade).
+
+## Neutral query fields for six non-login services
+
+**Data sources and sync -> Sources and queries -> Manage query fields** selects the lookup
+method, deployed data source, supported attribute set and stored value sources
+for Profile sync, Additional properties, Contact verification, Account status,
+Recovery identity verification and Password sync. Each capability/source keeps
+an explicit `legacy` or `neutral-v2` selection; absent settings retain legacy
+behavior. Deployment capability/source enablement and trust default off. The
+operator retains endpoints, secrets, revision, trust, supported sets and
+operation/cohort ceilings in protected environment configuration. The UI shows
+the optional agreed `query.queryRule` read-only. **Data sources and sync -> Field mappings ->
+Manage field mappings** separately controls supported returned fields and native
+User/Person targets. Query inputs identify the record to read; output mappings
+control eligible profile writes. Neither setting grants the other's authority.
+
+The dedicated `/Admin/DataSources` page requires local application-cookie IdP
+Admin authority and `settings.read`. Its **Manual sync** area opens account
+selection, review, preview and apply without opening mapping editing. Source
+summaries become cards below 768px. General Settings retains branding, system,
+logging, Turnstile and mail. Global configuration APIs additionally require local
+Admin or separately provisioned administrative M2M authority, with existing
+granular permissions, M2M ceilings and cookie CSRF retained. Shared source-catalog
+reads and per-record operations retain their existing permissions; see
+[the authorization boundaries](PERMISSION_SYSTEM.md#settings).
+
+Current selectable inputs are Person.EmployeeId, User.EmployeeId,
+Person.NationalId (approved stored SHA-256 digest only) and User.UserName.
+An administrator approves mutable stored values and their current account/Person
+association, or approved existing native employee-ID provenance supplies trust.
+Changes invalidate stale approvals and contexts. Runtime Proof/directory sources
+remain reserved vocabulary and are not selectable in the current product.
+No raw IID input or implicit account-name equivalence is supplied.
+
+Neutral Native Profile can operate independently of Proof/SSO login when the
+existing account/Person has trusted query fields. Its explicit preview/apply
+retains fill-only behavior, manual fixed blanks, ownership, source pause and
+shared-Person protections. Query configuration and approval do not fetch or
+write profiles. Saved source/output-property selections govern fresh Native
+preview/apply; configuration changes invalidate earlier review/approval contexts.
+Successful sync can require explicit renewed account/source approval before
+another query. Source selection follows public capabilities and deployed
+configuration, without producer-name or namespace heuristics. Additional properties retains its separate per-source output
+schemas and claim approvals. Metadata, Lifecycle, RIV and Password Sync retain
+their existing evidence, eligibility, recovery ceremony and authorized-write
+boundaries. Missing authority remains unavailable; configuration cannot create it.
+
+The configuration reuses Settings storage and the existing field-authority schema, requiring no
+additional HybridIdP EF migration or manual HybridIdP SQL. AuthProxy v2 Password
+Sync writes separately require the operator-reviewed
+[existing producer receipt DDL update](integrations/authproxy.md#authproxy-v2-password-sync-receipt-prerequisite)
+after backup; read-only capabilities do not require it. A query match never changes authentication
+authority, links accounts, renames usernames or replaces UserId/PersonId.
+See the [configuration example and administrator journey](DEPLOYMENT_GUIDE.md#neutral-non-login-query-configuration)
+and [wire contract](NEUTRAL_QUERY_CONTRACT.md). Fixture tests do not establish
+connected producer support or completed joint E2E.
 
 ## Administrative claims preview
 

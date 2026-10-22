@@ -19,6 +19,44 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class AdminProfileSyncServiceTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NeutralSync_ShouldBeFreshFillOnlyWithoutProofAndRejectChangedQuery(bool changeQuery)
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        f.Db.UserLogins.RemoveRange(f.Db.UserLogins);
+        var user = await f.Db.Users.SingleAsync();
+        user.LastName = "retained";
+        f.Native.ApplyManual(user, new Dictionary<NativeField, string?> { [NativeField.FirstName] = "" });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Equal("ready", preview.Status);
+        Assert.Empty(f.Db.ChangeTracker.Entries());
+        Assert.Equal("manual_fixed", preview.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").Action);
+        Assert.Equal("preserve", preview.Changes.Single(x => x.Target == "User" && x.Field == "LastName").Action);
+        if (changeQuery)
+        {
+            f.QueryContext = f.QueryContext! with { Fingerprint = "changed" };
+            Assert.Equal("preview_stale", (await Assert.ThrowsAsync<ProfileSyncException>(() =>
+                f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!))).Code);
+            Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+        }
+        else
+        {
+            await f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!);
+            user = await f.Db.Users.AsNoTracking().SingleAsync();
+            Assert.Equal("Source display", user.Nickname);
+            Assert.Equal("", user.FirstName);
+            Assert.Equal("retained", user.LastName);
+            Assert.Contains("NeutralQuery", user.NativeFieldStateJson);
+        }
+        Assert.Empty(await f.Db.UserLogins.ToListAsync());
+        Assert.Equal(2, f.Fetches);
+    }
+
     [Fact]
     public async Task MappingSave_ShouldNotFetchAndShouldInvalidateUnchangedPreview()
     {
@@ -421,16 +459,36 @@ public sealed class AdminProfileSyncServiceTests
         public bool FailAudit { get; set; }
         public Func<Task>? OnFetch { get; set; }
         public Clock Clock { get; } = new();
-        public Fixture()
+        public NeutralQueryContext? QueryContext { get; set; }
+        public Fixture(bool neutral = false)
         {
             _connection.Open();
             Db = new(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection).Options);
             Db.Database.EnsureCreated();
+            var queries = new Mock<INeutralQueryService>();
+            if (neutral)
+            {
+                Proof.Enabled = false;
+                QueryContext = new(UserId, PersonId, "source", new NeutralQueryRequest
+                {
+                    ContractType = "native-profile", ProviderNamespace = "example.provider",
+                    Query = new(new Dictionary<string, string> { ["employeeId"] = "SYNTH-001" })
+                }, "revision", Guid.NewGuid(), new(new Uri("https://example.test/native"), "synthetic-secret", TimeSpan.FromSeconds(5)), []);
+                queries.Setup(x => x.GetConfigurationAsync(It.IsAny<CancellationToken>())).ReturnsAsync(new QueryConfigurationStateDto(Guid.NewGuid(),
+                    [new("native-profile", "source", "neutral-v2", "example.provider", [new("employeeId", "user.employeeId")])],
+                    [new("native-profile", "source", "example.provider", true, null, [], [], null)]));
+                queries.Setup(x => x.ResolveAsync("native-profile", UserId, null, null, It.IsAny<CancellationToken>()))
+                    .ReturnsAsync(() => new NeutralQueryResolution("Ready", QueryContext));
+                queries.Setup(x => x.IsCurrentAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>())).ReturnsAsync(true);
+            }
             Native = new(Db, Microsoft.Extensions.Options.Options.Create(NativeOptions),
-                Microsoft.Extensions.Options.Options.Create(Proof), Microsoft.Extensions.Options.Options.Create(new DirectoryIntegrationOptions()));
+                Microsoft.Extensions.Options.Options.Create(Proof), Microsoft.Extensions.Options.Options.Create(new DirectoryIntegrationOptions()),
+                neutral ? () => queries.Object : null);
             var client = new Mock<IProviderNativeProfileClient>();
             client.Setup(x => x.FetchAsync(It.IsAny<ProviderNativeProfileRequest>(), It.IsAny<CancellationToken>()))
                 .Returns(async () => { Fetches++; if (OnFetch is not null) await OnFetch(); return Source; });
+            client.Setup(x => x.FetchNeutralAsync(It.IsAny<NeutralQueryContext>(), It.IsAny<CancellationToken>()))
+                .Returns(async () => { Fetches++; if (OnFetch is not null) await OnFetch(); return new NeutralNativeProfileResult(Source.Profile, Source.EmailTrustOrigin); });
             var audit = new Mock<IAuditService>();
             audit.Setup(x => x.LogAdministrativeEventAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns<string, string, string, string?, CancellationToken>(
@@ -442,7 +500,7 @@ public sealed class AdminProfileSyncServiceTests
                     if (FailAudit) throw new InvalidOperationException("fixture audit failure");
                 });
             Service = new(Db, Native, client.Object, Microsoft.Extensions.Options.Options.Create(Options),
-                new EphemeralDataProtectionProvider(), new UpperInvariantLookupNormalizer(), audit.Object, Clock);
+                new EphemeralDataProtectionProvider(), new UpperInvariantLookupNormalizer(), audit.Object, Clock, neutral ? queries.Object : null);
         }
         public async Task SeedAsync()
         {

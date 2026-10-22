@@ -129,6 +129,10 @@ public static class ServiceCollectionExtensions
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<IStage1BindingRefreshService, Stage1BindingRefreshService>();
         services.AddScoped<INativeFieldPolicyService, NativeFieldPolicyService>();
+        services.AddScoped<Func<INeutralQueryService>>(provider => () => provider.GetRequiredService<INeutralQueryService>());
+        services.AddScoped<INeutralQueryService, NeutralQueryService>();
+        services.AddScoped<NeutralMetadataEvidenceStore>();
+        services.AddScoped<INeutralMetadataEvidenceReader>(provider => provider.GetRequiredService<NeutralMetadataEvidenceStore>());
         services.AddOptions<ProviderNativeProfileOptions>()
             .Bind(configuration.GetSection(ProviderNativeProfileOptions.Section));
         services.AddHttpClient<IProviderNativeProfileClient, ProviderNativeProfileClient>()
@@ -765,6 +769,11 @@ public static class ServiceCollectionExtensions
                     policy.Requirements.Add(new global::Infrastructure.Authorization.PermissionRequirement(permission)));
             }
 
+            options.AddPolicy(DataSourceAdministrationRequirement.InteractivePolicy, policy =>
+                policy.AddRequirements(new DataSourceAdministrationRequirement(false)));
+            options.AddPolicy(DataSourceAdministrationRequirement.AdministrationPolicy, policy =>
+                policy.AddRequirements(new DataSourceAdministrationRequirement(true)));
+
             options.AddPolicy("HasAnyAdminAccess", policy =>
             {
                 policy.Requirements.Add(new global::Infrastructure.Authorization.HasAnyPermissionRequirement(
@@ -793,6 +802,7 @@ public static class ServiceCollectionExtensions
         });
 
         // Register Authorization Handlers
+        services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, DataSourceAdministrationAuthorizationHandler>();
         services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, global::Infrastructure.Authorization.PermissionAuthorizationHandler>();
         services.AddScoped<global::Infrastructure.Authorization.IAdministrativeAuthorizationBoundary, global::Infrastructure.Authorization.AdministrativeAuthorizationBoundary>();
         services.AddScoped<Microsoft.AspNetCore.Authorization.IAuthorizationHandler, global::Infrastructure.Authorization.HasAnyPermissionAuthorizationHandler>();

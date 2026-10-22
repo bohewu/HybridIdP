@@ -4,6 +4,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Ports;
 using Core.Domain;
+using Core.Domain.Constants;
 using Infrastructure.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -12,7 +13,7 @@ namespace Infrastructure.Services;
 
 public sealed class ProviderProfileService(
     IApplicationDbContext db, ProviderProfileClient client, IOptions<ProviderProfileOptions> options,
-    TimeProvider? timeProvider = null) : IProviderProfileService, IProviderProfileSnapshotReader, IProviderProfilePreviewReader
+    TimeProvider? timeProvider = null, INeutralQueryService? queries = null) : IProviderProfileService, IProviderProfileSnapshotReader, IProviderProfilePreviewReader
 {
     private readonly TimeProvider _clock = timeProvider ?? TimeProvider.System;
     private readonly Dictionary<(Guid User, string Source), IReadOnlyDictionary<string, JsonElement>> _requestValues = [];
@@ -22,7 +23,8 @@ public sealed class ProviderProfileService(
         CancellationToken cancellationToken = default)
     {
         if (!options.Value.Enabled) return;
-        foreach (var (name, source) in options.Value.Sources.Where(p => p.Value.ProviderNamespace == providerNamespace))
+        foreach (var (name, source) in options.Value.Sources.Where(p => p.Value.ProviderNamespace == providerNamespace ||
+                     options.Value.QuerySources.ContainsKey(p.Key)))
         {
             _requestValues.Remove((user.Id, name));
             // The login tuple must match the durable source selected for this Person.
@@ -60,6 +62,15 @@ public sealed class ProviderProfileService(
         ProviderProfileSourceOptions source, bool force, string? loginSubject, CancellationToken cancellationToken,
         bool readOnly = false, bool preview = false)
     {
+        if (queries is not null)
+        {
+            var query = await queries.ResolveAsync("profile", user.Id, sourceName, cancellationToken: cancellationToken);
+            if (query.Status != "Legacy")
+                return query.Context is { } context && query.Status == "Ready"
+                    ? await ResolveNeutralAsync(user, sourceName, source, context, force, readOnly, preview, cancellationToken)
+                    : new("query_unavailable", Empty);
+        }
+        var queryRevision = await LegacyQueryRevisionAsync(cancellationToken);
         var currentUser = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
         if (currentUser is not { IsActive: true, IsDeleted: false, PersonId: { } personId }) return new("account_ineligible", Empty);
         var person = await (readOnly ? db.Persons.AsNoTracking() : db.Persons).SingleOrDefaultAsync(p => p.Id == personId, cancellationToken);
@@ -86,7 +97,7 @@ public sealed class ProviderProfileService(
         }));
         var matching = snapshot is not null && snapshot.AccountId == linkIdentity.Id &&
             snapshot.ProviderNamespace == source.ProviderNamespace && snapshot.StableSubject == linkIdentity.ProviderKey &&
-            snapshot.PolicyHash == policyHash;
+            snapshot.PolicyHash == policyHash && snapshot.QueryFingerprint == queryRevision;
         if (!readOnly && !force && matching && _requestValues.TryGetValue((user.Id, sourceName), out var requestValues))
             return new("confirmed", requestValues, snapshot!.ConfirmedAt);
         if (!force && matching && snapshot!.ConfirmedAt is { } confirmed && confirmed <= now &&
@@ -115,6 +126,8 @@ public sealed class ProviderProfileService(
                                   .Take(2).ToListAsync(cancellationToken);
         var currentPerson = await db.Persons.AsNoTracking().SingleOrDefaultAsync(p => p.Id == personId, cancellationToken);
         var requestingAccount = await db.Users.AsNoTracking().SingleOrDefaultAsync(u => u.Id == user.Id, cancellationToken);
+        if (queryRevision != await LegacyQueryRevisionAsync(cancellationToken))
+            return new("configuration_changed", Empty);
         if (currentLinks.Count != 1 || currentLinks[0].Id != linkIdentity.Id ||
             currentLinks[0].LoginProvider != source.ProviderNamespace || currentLinks[0].ProviderKey != linkIdentity.ProviderKey ||
             requestingAccount is not { IsActive: true, IsDeleted: false } || requestingAccount.PersonId != personId ||
@@ -130,7 +143,7 @@ public sealed class ProviderProfileService(
         snapshot = matching ? snapshot! : new ProfileSnapshot
         {
             AccountId = linkIdentity.Id, ProviderNamespace = source.ProviderNamespace,
-            StableSubject = linkIdentity.ProviderKey, PolicyHash = policyHash
+            StableSubject = linkIdentity.ProviderKey, PolicyHash = policyHash, QueryFingerprint = queryRevision
         };
         snapshot.ConfirmedAt = properties is null ? null : now;
         if (properties is not null)
@@ -152,6 +165,58 @@ public sealed class ProviderProfileService(
         return new(properties is null ? "unconfirmed" : "confirmed", accepted, snapshot.ConfirmedAt);
     }
 
+    private async Task<ProviderProfileSnapshotResult> ResolveNeutralAsync(ApplicationUser user, string sourceName,
+        ProviderProfileSourceOptions source, NeutralQueryContext context, bool force, bool readOnly, bool preview,
+        CancellationToken ct)
+    {
+        if (context.PersonId is not { } personId || source.ProviderNamespace != context.Request.ProviderNamespace)
+            return new("account_ineligible", Empty);
+        var account = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == user.Id, ct);
+        var person = await (readOnly ? db.Persons.AsNoTracking() : db.Persons).SingleOrDefaultAsync(x => x.Id == personId, ct);
+        if (account is not { IsActive: true, IsDeleted: false } || account.PersonId != personId ||
+            person is null || !person.CanAuthenticate()) return new("account_ineligible", Empty);
+        // Multiple accounts sharing a Person must never replace each other's source confirmation.
+        var key = sourceName + ":v2:" + user.Id.ToString("D");
+        Dictionary<string, ProfileSnapshot> snapshots;
+        try { snapshots = preview ? [] : JsonSerializer.Deserialize<Dictionary<string, ProfileSnapshot>>(person.ProviderProfilesJson ?? "{}") ?? []; }
+        catch (JsonException) { return new("snapshot_invalid", Empty); }
+        var approved = new Dictionary<string, string>(source.AllowedProperties, StringComparer.Ordinal);
+        var policyHash = ComputeHash(JsonSerializer.SerializeToElement(approved.OrderBy(x => x.Key, StringComparer.Ordinal)));
+        snapshots.TryGetValue(key, out var snapshot);
+        var matching = snapshot is not null && snapshot.AccountId == user.Id &&
+            snapshot.ProviderNamespace == context.Request.ProviderNamespace && snapshot.QueryFingerprint == context.Fingerprint &&
+            snapshot.PolicyHash == policyHash;
+        var now = _clock.GetUtcNow();
+        if (!force && matching && snapshot!.ConfirmedAt is { } confirmed && confirmed <= now &&
+            options.Value.MaximumAge > TimeSpan.Zero && now - confirmed < options.Value.MaximumAge &&
+            await queries!.IsCurrentAsync(context, ct))
+            return new("confirmed", snapshot.Properties, confirmed, confirmed + options.Value.MaximumAge);
+        if (readOnly && !preview)
+            return new(snapshot is null ? "snapshot_missing" : !matching ? "configuration_changed" : "expired", Empty);
+
+        var result = await client.FetchNeutralAsync(context, ct);
+        var current = await db.Persons.AsNoTracking().SingleOrDefaultAsync(x => x.Id == personId, ct);
+        if (!options.Value.Enabled || !options.Value.Sources.TryGetValue(sourceName, out var currentSource) ||
+            currentSource.ProviderNamespace != context.Request.ProviderNamespace ||
+            policyHash != ComputeHash(JsonSerializer.SerializeToElement(currentSource.AllowedProperties.OrderBy(x => x.Key, StringComparer.Ordinal))) ||
+            !await queries!.IsCurrentAsync(context, ct) || current is null || !current.CanAuthenticate())
+            return new("configuration_changed", Empty);
+        var properties = result?.ExtraProperties.Where(x => approved.TryGetValue(x.Key, out var type) &&
+            ProviderProfileContract.IsValueOfType(x.Value, type)).ToDictionary(x => x.Key, x => x.Value, StringComparer.Ordinal);
+        if (preview) return new(properties is null ? "unavailable" : "confirmed", properties is null ? Empty : properties,
+            properties is null ? null : _clock.GetUtcNow());
+        snapshot = new ProfileSnapshot
+        {
+            AccountId = user.Id, ProviderNamespace = context.Request.ProviderNamespace, QueryFingerprint = context.Fingerprint,
+            PolicyHash = policyHash, ConfirmedAt = properties is null ? null : _clock.GetUtcNow(), Properties = properties ?? []
+        };
+        snapshots[key] = snapshot;
+        person.ProviderProfilesJson = JsonSerializer.Serialize(snapshots);
+        try { await db.SaveChangesAsync(ct); }
+        catch (DbUpdateConcurrencyException) { db.Detach(person); return new("concurrent_change", Empty); }
+        return new(properties is null ? "unconfirmed" : "confirmed", snapshot.Properties, snapshot.ConfirmedAt);
+    }
+
     public static string ComputePropertyHash(IReadOnlyDictionary<string, JsonElement> properties)
     {
         using var buffer = new MemoryStream();
@@ -168,6 +233,10 @@ public sealed class ProviderProfileService(
         return Convert.ToHexString(SHA256.HashData(buffer.ToArray()));
     }
 
+    private async Task<string?> LegacyQueryRevisionAsync(CancellationToken ct) => queries is not null &&
+        await db.Settings.AsNoTracking().AnyAsync(x => x.Key == SettingKeys.NeutralQueryConfiguration, ct)
+        ? (await queries.GetConfigurationAsync(ct)).Revision.ToString("D") : null;
+
     private static string ComputeHash(JsonElement value) =>
         Convert.ToHexString(SHA256.HashData(JsonSerializer.SerializeToUtf8Bytes(value)));
 
@@ -177,6 +246,7 @@ public sealed class ProviderProfileService(
         public string ProviderNamespace { get; set; } = string.Empty;
         public string StableSubject { get; set; } = string.Empty;
         public string PolicyHash { get; set; } = string.Empty;
+        public string? QueryFingerprint { get; set; }
         public string? Hash { get; set; }
         public DateTimeOffset? ConfirmedAt { get; set; }
         public Dictionary<string, JsonElement> Properties { get; set; } = [];

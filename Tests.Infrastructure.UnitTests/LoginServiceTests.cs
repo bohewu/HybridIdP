@@ -74,6 +74,18 @@ namespace Tests.Infrastructure.UnitTests
         }
 
         [Fact]
+        public async Task EligibilityValidation_ShouldNotRefreshMetadataBeforeCredentialVerification()
+        {
+            var metadata = new Mock<IProviderMetadataRefreshService>(MockBehavior.Strict);
+            var user = new ApplicationUser { Id = Guid.NewGuid(), IsActive = true };
+            var service = new LoginService(_userManagerMock.Object, _securityPolicyServiceMock.Object,
+                _jitProvisioningServiceMock.Object, _dbContext, _loggerMock.Object, _externalLoginOptionsMock.Object,
+                providerMetadataRefreshService: metadata.Object);
+            Assert.True((await service.ValidateExternalUserSignInAsync(user)).IsSuccess);
+            metadata.VerifyNoOtherCalls();
+        }
+
+        [Fact]
         public async Task AuthenticateAsync_ShouldCopyPersonLocaleToUser_WhenLinkedAndActive()
         {
             // Arrange

@@ -1,4 +1,55 @@
-# Recovery Identity Verification Contract 1.0
+# Recovery Identity Verification contracts (1.0 and 2.0)
+
+The original sections below describe the 1.0 compatibility mode.
+For independently selected neutral queries, see [version 2.0](#neutral-query-version-20)
+and the [common contract](NEUTRAL_QUERY_CONTRACT.md). Neither format is inferred
+from a failed request; all original authority limits continue to apply.
+
+## Neutral query version 2.0
+
+The [common neutral-query contract](NEUTRAL_QUERY_CONTRACT.md) is normative for
+selection, typed candidates, queryRule, approved mappings, comparison, unique
+matching, transport, response correlation and mutation invalidation. Legacy
+formats remain unchanged under explicit compatibility selection.
+
+Neutral-v2 uses `recovery-identity-verification/2.0`. Its availableCandidates are
+typed `employeeId` (String), `nationalIdHash` (Sha256Hex), and `accountName`
+(String). The seven nonempty sets in the common contract may be explicitly
+agreed. Use only trusted server-resolved/approved lookup inputs for the already
+selected local account. Common normalization and unique source-account matching
+apply; no prior SSO/Proof login, subject UUID mapping or public account discovery
+is introduced. The anonymous browser cannot select the source/query/rule.
+
+The request independently includes `scheme: "identity-identifier"` and
+`evidence: { identityIdentifier }` with the same unchanged submitted evidence,
+128-code-point limit and producer Trim().ToUpperInvariant() comparison as 1.0.
+Lookup attributes select the target only. They NEVER substitute for that evidence,
+even when a nationalIdHash query was used. The producer must verify the separately
+submitted raw evidence against its trusted source document/storage algorithm;
+a matching lookup, received digest or consumer's approval is not verification.
+
+Found returns `result: { outcome: "Verified" | "Denied", scheme:
+"identity-identifier" }`. It carries no login binding. NotFound maps to generic
+Denied locally; Ambiguous uses HTTP 503 and grants nothing, as does Unavailable.
+Verified requires exact requestId/source/type/version plus the immutable pending
+query/local-account context and independent evidence verification. The restricted
+durable grant binds that account, query/configuration/approval revisions, stamps,
+policy, destination and browser/CSRF context. Do not persist raw query identifiers,
+document hashes or submitted evidence in the grant or logs. Changes invalidate
+it at VerifyIdentity, SendOtp, VerifyOtp and Reset; preserve atomic single-use
+consumption, recipient stability, OTP, eligibility and uncertain-write barriers.
+Verified alone never signs in, resets a password or bypasses OTP. Keep uniform
+anonymous failure presentation and the existing bounded disclosure policy.
+
+Wire definitions: [request](contracts/recovery-identity-verification/v2.0/contract.schema.json#/$defs/request)
+and [response](contracts/recovery-identity-verification/v2.0/contract.schema.json#/$defs/response).
+[Synthetic examples](contracts/recovery-identity-verification/v2.0/examples/) cover Found, NotFound,
+Ambiguous, Unavailable, Unsupported, missing inputs and forbidden mixed shapes.
+Their validity proves structure only; semantic, authority and live product checks
+remain separate. queryRule is omitted in these unambiguous agreed-rule examples.
+
+## Version 1.0 compatibility contract
+
 
 Baseline: `RIV-1.0-PLAN-20260930-A`. This is the fixed implementation baseline,
 not a declaration of a published or deployed API. Appendix A UTF-8/LF SHA-256:

@@ -20,6 +20,8 @@ public sealed class ProfileSyncException(string code) : Exception(code)
 public interface IProviderNativeProfileClient
 {
     Task<ProviderNativeProfileResponse> FetchAsync(ProviderNativeProfileRequest request, CancellationToken cancellationToken = default);
+    Task<NeutralNativeProfileResult> FetchNeutralAsync(NeutralQueryContext context, CancellationToken cancellationToken = default) =>
+        throw new ProfileSyncException("source_unavailable");
 }
 
 public interface IAdminProfileSyncService

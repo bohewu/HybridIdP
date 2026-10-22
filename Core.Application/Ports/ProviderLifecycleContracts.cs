@@ -5,6 +5,8 @@ namespace Core.Application.Ports;
 public interface IProviderLifecycleClient
 {
     Task<ProviderLifecycleLookupResult> LookupAsync(ProviderLifecycleBinding binding, CancellationToken cancellationToken = default);
+    Task<NeutralQueryResponse?> LookupNeutralAsync(NeutralQueryContext context, CancellationToken cancellationToken = default) =>
+        Task.FromResult<NeutralQueryResponse?>(null);
 }
 
 public enum ProviderLifecycleFailure { None, Disabled, Unavailable, Timeout, Malformed, AuthenticationFailed }

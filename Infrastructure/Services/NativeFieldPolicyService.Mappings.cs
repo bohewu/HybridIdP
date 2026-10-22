@@ -25,6 +25,9 @@ public sealed partial class NativeFieldPolicyService
             configured.Add((NativeFieldSource.Proof, proofOptions.Value.TrustedProviderNamespace));
         configured.AddRange(options.Value.TrustedStage1ProviderNamespaces.Where(x => !string.IsNullOrWhiteSpace(x))
             .Distinct(StringComparer.Ordinal).Select(x => (NativeFieldSource.Stage1, x)));
+        var neutralSources = neutralQueries is null ? [] : (await neutralQueries().GetConfigurationAsync(cancellationToken)).Sources
+            .Where(x => x.Capability == "native-profile").ToArray();
+        configured.AddRange(neutralSources.Select(x => (NativeFieldSource.NeutralQuery, x.ProviderNamespace)).Distinct());
         var mappings = document?.Mappings ?? configured.SelectMany(source => Fields.Select(field =>
             new NativeFieldMappingDto(field, source.Source, source.Namespace, SourceProperties[(int)field]))).ToArray();
         var proofPolicy = policies.SingleOrDefault(x => x.Source == "Proof");
@@ -32,11 +35,14 @@ public sealed partial class NativeFieldPolicyService
             proofOptions.Value.TrustedProviderNamespace,
             proofPolicy?.FirstNameDisplayNameFallback == true &&
             proofPolicy.FirstNameFallbackProviderNamespace == proofOptions.Value.TrustedProviderNamespace);
+        fallback = NormalizeDisabledFallback(fallback);
         var userNamePolicies = document?.UserNamePolicies ?? [];
         var sources = configured.Concat(mappings.Select(x => (x.Source, x.ProviderNamespace)))
             .Concat(userNamePolicies.Select(x => (x.Source, x.ProviderNamespace))).Distinct()
             .Select(x => new NativeFieldMappingSourceDto(x.Source, x.Item2,
-                IsEnabled(x.Source) && IsTrustedNamespace(x.Source, x.Item2),
+                x.Source == NativeFieldSource.NeutralQuery
+                    ? neutralSources.Any(source => source.ProviderNamespace == x.Item2 && source.Available)
+                    : IsEnabled(x.Source) && IsTrustedNamespace(x.Source, x.Item2),
                 policies.SingleOrDefault(p => p.Source == x.Source.ToString())?.Paused == true,
                 x.Source == NativeFieldSource.Proof && proofOptions.Value.Enabled && IsTrustedNamespace(x.Source, x.Item2)))
             .OrderBy(x => x.Source).ThenBy(x => x.ProviderNamespace, StringComparer.Ordinal).ToArray();
@@ -49,6 +55,7 @@ public sealed partial class NativeFieldPolicyService
     public async Task<NativeFieldMappingsDto> SetMappingsAsync(NativeFieldMappingsRequest request,
         CancellationToken cancellationToken = default)
     {
+        request = request with { FirstNameFallback = NormalizeDisabledFallback(request.FirstNameFallback) };
         ValidateMappingShape(request.Mappings, request.FirstNameFallback, "invalid_mapping");
         // Configuration and the native writers share source-policy concurrency rows. The transaction
         // also protects the absent Settings row and atomically saves the complete draft plus fallback.
@@ -92,7 +99,8 @@ public sealed partial class NativeFieldPolicyService
                 UserNamePolicies = userNamePolicies.ToArray()
             }, MappingJson);
             setting.UpdatedUtc = DateTime.UtcNow;
-            foreach (var source in Enum.GetValues<NativeFieldSource>())
+            foreach (var source in Enum.GetValues<NativeFieldSource>().Where(source => source != NativeFieldSource.NeutralQuery ||
+                         current.Sources.Any(x => x.Source == NativeFieldSource.NeutralQuery)))
             {
                 var policy = await db.NativeFieldSourcePolicies.SingleOrDefaultAsync(x => x.Source == source.ToString(), cancellationToken);
                 if (policy is null)
@@ -137,6 +145,11 @@ public sealed partial class NativeFieldPolicyService
         }
         catch (JsonException) { throw new NativeFieldPolicyException("invalid_stored_state"); }
     }
+
+    private static NativeFieldMappingFallbackDto NormalizeDisabledFallback(NativeFieldMappingFallbackDto fallback) =>
+        fallback is { Enabled: false } && string.IsNullOrWhiteSpace(fallback.ProviderNamespace)
+            ? fallback with { ProviderNamespace = null }
+            : fallback;
 
     private static void ValidateMappingShape(IReadOnlyList<NativeFieldMappingDto>? mappings,
         NativeFieldMappingFallbackDto? fallback, string code)

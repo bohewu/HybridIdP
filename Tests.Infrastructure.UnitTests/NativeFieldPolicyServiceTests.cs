@@ -9,12 +9,59 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Moq;
 using Xunit;
 
 namespace Tests.Infrastructure.UnitTests;
 
 public sealed class NativeFieldPolicyServiceTests
 {
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task MappingSave_ShouldRoundTripDisabledBlankFallbackWithoutProof(string? fallbackNamespace)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var queries = new Mock<INeutralQueryService>();
+        queries.Setup(x => x.GetConfigurationAsync(It.IsAny<CancellationToken>())).ReturnsAsync(
+            new QueryConfigurationStateDto(Guid.NewGuid(), [],
+                [new("native-profile", "example-source", "example.data", true, null, [], [], null)]));
+        var service = new NativeFieldPolicyService(db, Options.Create(new NativeFieldPolicyOptions()),
+            Options.Create(new ProviderProofOptions { Enabled = false, TrustedProviderNamespace = "" }),
+            Options.Create(new DirectoryIntegrationOptions()), () => queries.Object);
+        var initial = await service.GetMappingsAsync();
+        Assert.False(initial.FirstNameFallback.Enabled);
+        Assert.Null(initial.FirstNameFallback.ProviderNamespace);
+        var mapping = new NativeFieldMappingDto(NativeField.FirstName, NativeFieldSource.NeutralQuery, "example.data", "displayName");
+        var saved = await service.SetMappingsAsync(new(initial.Revision, [mapping], new(fallbackNamespace, false)));
+        Assert.Equal(mapping, Assert.Single(saved.Mappings));
+        Assert.False(saved.FirstNameFallback.Enabled);
+        Assert.Null(saved.FirstNameFallback.ProviderNamespace);
+        var reloaded = await service.GetMappingsAsync();
+        Assert.Equal(mapping, Assert.Single(reloaded.Mappings));
+        Assert.Equal(saved.FirstNameFallback, reloaded.FirstNameFallback);
+        Assert.Empty(db.UserLogins);
+        Assert.DoesNotContain(reloaded.Sources, x => x.Source == NativeFieldSource.Proof);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task MappingSave_ShouldRejectEnabledBlankFallbackWithoutProof(string? fallbackNamespace)
+    {
+        using var f = new Fixture();
+        await using var db = f.Open();
+        var service = Service(db, proofEnabled: false, providerNamespace: "");
+        var initial = await service.GetMappingsAsync();
+        var error = await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            service.SetMappingsAsync(new(initial.Revision, [], new(fallbackNamespace, true))));
+        Assert.Equal("invalid_mapping", error.Code);
+        Assert.Empty(db.Settings);
+    }
+
     [Fact]
     public async Task UserNamePolicy_ShouldSaveAtomicallyPreserveOmissionAndIsolateChangedNamespace()
     {

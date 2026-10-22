@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "metadata neutral-query 2.0",
+  "description": "Root validates responses; #/$defs/request validates requests. Semantic and authority rules are in NEUTRAL_QUERY_CONTRACT.md.",
+  "$comment": "No mixed legacy/v2 shape acceptance.",
+  "$ref": "#/$defs/response",
+  "$defs": {
+    "request": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/request"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "metadata"
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "response": {
+      "allOf": [
+        {
+          "$ref": "../../neutral-query/v2.0/common.schema.json#/$defs/response"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "contractType": {
+              "const": "metadata"
+            },
+            "result": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "email",
+                "emailTrustOrigin",
+                "verifiedAt"
+              ],
+              "properties": {
+                "email": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "maxLength": 256
+                },
+                "emailTrustOrigin": {
+                  "enum": [
+                    "Unknown",
+                    "SourceVerified",
+                    "PolicyTrusted"
+                  ]
+                },
+                "verifiedAt": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "format": "date-time",
+                  "pattern": "^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\\.[0-9]{1,7})?(Z|[+-][0-9]{2}:[0-9]{2})$"
+                }
+              },
+              "allOf": [
+                {
+                  "if": {
+                    "properties": {
+                      "emailTrustOrigin": {
+                        "enum": [
+                          "SourceVerified",
+                          "PolicyTrusted"
+                        ]
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "email": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 256,
+                        "pattern": "\\S",
+                        "not": {
+                          "pattern": "[\\u0000-\\u001f\\u007f-\\u009f]"
+                        }
+                      }
+                    }
+                  }
+                },
+                {
+                  "if": {
+                    "properties": {
+                      "verifiedAt": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "then": {
+                    "properties": {
+                      "emailTrustOrigin": {
+                        "const": "SourceVerified"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "required": []
+        }
+      ],
+      "unevaluatedProperties": false
+    }
+  }
+}

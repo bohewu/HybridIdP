@@ -21,6 +21,49 @@ docs/
 
 ---
 
+## Neutral query implementation and bounded verification
+
+Use the [neutral wire contract and schemas](NEUTRAL_QUERY_CONTRACT.md) for all
+six non-login capabilities and the [configuration guide](DEPLOYMENT_GUIDE.md#neutral-non-login-query-configuration)
+for actual QuerySources environment keys and the administrator workflow.
+The `/Admin/DataSources` UI separates **Data sources and sync -> Sources and queries -> Manage query fields** from
+**Data sources and sync -> Field mappings -> Manage field mappings**. Query selections choose
+approved lookup inputs; native-field mappings choose supported output properties
+and targets. Keep these contracts and their authority checks independent.
+**Manual sync -> Choose accounts** directly opens selection, review and preview/apply.
+The page requires the local application-cookie IdP Admin and `settings.read`.
+Global query and mapping configuration adds `DataSourcesAdministration` to the
+existing granular permissions and cookie CSRF checks; approved administrative
+M2M retains its existing ceiling. Shared Native source-catalog reads, per-record
+policies and query approvals retain their existing gates. General Settings keeps
+branding, system, logging, Turnstile and mail; source cards appear below 768px.
+Saved source/property changes require fresh review and applicable renewed query
+approval; successful sync may invalidate approval for the next query.
+Producer-specific setup belongs in optional integration recipes such as
+[AuthProxy](integrations/authproxy.md), not in the core query resolver.
+`INeutralQueryService` resolves persisted Settings selections and account approval
+against deployment ceilings; the capability services retain their own operation
+authority. Current real callers support persisted values only. Do not advertise
+reserved runtime Proof/directory mappings as selectable functionality.
+
+Existing product test projects cover strict wire correlation, persisted
+selection/approval invalidation, actual capability request paths, legacy forms
+and authority boundaries. For the focused cross-boundary case, run:
+
+```powershell
+dotnet test Tests.Infrastructure.UnitTests/Tests.Infrastructure.UnitTests.csproj --filter FullyQualifiedName~ProfilePreview_ShouldConsumeSavedApprovedQueryAndBlockChangedStoredValueWithoutLegacyFallback
+dotnet build HybridAuthIdP.sln
+```
+
+The focused test uses SQLite Settings, the real query resolver and Profile
+service/client with a captured HTTP handler. It proves approved values reach
+the neutral request, read-only preview preserves state, and a changed stored
+value blocks another request without falling back. It does not run a real
+producer, connected source database or deployed TLS. Preserve existing per-path
+tests for Native Profile, Profile, Metadata, Lifecycle, RIV and Password Sync;
+do not sum overlapping filtered test runs as distinct coverage. Joint product
+E2E, recording and deployment acceptance require their own observed evidence.
+
 ## 🚀 快速開始（新 Session）
 
 ### 1. 閱讀順序

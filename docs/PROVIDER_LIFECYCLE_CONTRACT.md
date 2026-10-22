@@ -1,4 +1,51 @@
-# Provider Lifecycle Status Contract 1.0 (review draft)
+# Provider Lifecycle Status contracts (1.0 and 2.0)
+
+The original sections below describe the 1.0 compatibility mode.
+For independently selected neutral queries, see [version 2.0](#neutral-query-version-20)
+and the [common contract](NEUTRAL_QUERY_CONTRACT.md). Neither format is inferred
+from a failed request; all original authority limits continue to apply.
+
+## Neutral query version 2.0
+
+The [common neutral-query contract](NEUTRAL_QUERY_CONTRACT.md) is normative for
+selection, typed candidates, queryRule, approved mappings, comparison, unique
+matching, transport, response correlation and mutation invalidation. Legacy
+formats remain unchanged under explicit compatibility selection.
+
+Neutral-v2 uses `lifecycle-status/2.0`. Its availableCandidates are typed
+`employeeId` (String), `nationalIdHash` (Sha256Hex), and `accountName` (String).
+The seven nonempty sets in the common contract may be explicitly agreed, but
+acceptance requires a unique immutable source ACCOUNT for this specific local
+ApplicationUser. A shared employee/person identifier resolving several accounts
+is Ambiguous; it cannot choose the active account, successor or first result.
+Common approved value-source and normalization rules apply. Previous SSO/Proof
+login and a tuple-to-UUID mapping database are not required.
+
+Found returns `result: { accountState, evidence }` with the same state vocabulary
+and six evidence fields as 1.0. No authentication binding or successor is returned
+in 2.0. The source must independently establish account-specific lifecycle
+authority and approved mapping/snapshot versions. Unique lookup alone cannot
+supply them. The AuthProxy source remains Unavailable unless independent
+account-state authority and real observation evidence are established.
+
+The existing finite interval/maxAge, trusted clock, request-only reuse and every
+local denial remain mandatory at each covered checkpoint. Correlate exact
+requestId/source/type/version and the unchanged query/value-source/approval/policy
+context, rather than comparing a returned login tuple. Re-evaluate immediately
+before action. Missing/changed inputs, ambiguous/no record, outage, stale/future
+or unapproved evidence deny without rewriting local eligibility or disabling a
+Person. Enabled cannot override local denial, create a binding, grant roles or
+promise immediate revocation of already issued JWTs.
+
+Wire definitions: [request](contracts/provider-lifecycle/v2.0/contract.schema.json#/$defs/request)
+and [response](contracts/provider-lifecycle/v2.0/contract.schema.json#/$defs/response).
+[Synthetic examples](contracts/provider-lifecycle/v2.0/examples/) cover Found, NotFound,
+Ambiguous, Unavailable, Unsupported, missing inputs and forbidden mixed shapes.
+Their validity proves structure only; semantic, authority and live product checks
+remain separate. queryRule is omitted in these unambiguous agreed-rule examples.
+
+## Version 1.0 compatibility contract
+
 
 Status: neutral, unpublished wire contract, 2026-10-03. The HybridIdP consumer
 is implemented and default disabled; independent final review passed after one side-effect ordering repair.

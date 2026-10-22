@@ -1,4 +1,49 @@
-# Provider Native Profile 1.0
+# Provider Native Profile contracts (1.0 and 2.0)
+
+The original sections below describe the 1.0 compatibility mode.
+For independently selected neutral queries, see [version 2.0](#neutral-query-version-20)
+and the [common contract](NEUTRAL_QUERY_CONTRACT.md). Neither format is inferred
+from a failed request; all original authority limits continue to apply.
+
+## Neutral query version 2.0
+
+The [common neutral-query contract](NEUTRAL_QUERY_CONTRACT.md) is normative for
+selection, typed candidates, queryRule, approved mappings, comparison, unique
+matching, transport, response correlation and mutation invalidation. Legacy
+formats remain unchanged under explicit compatibility selection.
+
+Neutral-v2 uses `native-profile/2.0`. Its availableCandidates are typed
+`employeeId` (String), `nationalIdHash` (Sha256Hex), and `accountName` (String).
+All seven nonempty sets in the common contract are eligible for explicit source
+agreement; every supplied property must match the same unique native-profile
+record. The common registry defines approved value-source mappings and exact
+normalization/comparison. Neither a Proof login nor an existing Proof tuple is
+required in this mode. The selected independently deployed native data source
+must be enabled, trusted and unpaused for that exact namespace; a query selection
+does not enable Proof or invent a native write owner.
+
+Found returns `result: { profile, emailTrustOrigin }` with the same seven assured
+fields, lengths and Email assurance semantics as 1.0. NotFound/Ambiguous return
+no result; missing local inputs, source failure or invalid correlation block
+preview/apply. All User/Person native values remain fill-only and independently
+owned; populated/manual-fixed blanks, shared-Person restrictions, output mapping,
+MFA-protected Email and independent Email trust stay authoritative.
+
+Preview/apply binds the local account/Person, selected source, exact query/value
+sources/approvals, configuration revision and full fresh diff. Apply refetches
+using the same approved query and rejects any drift with `preview_stale`, including
+query/configuration changes that happen to produce the same returned fields.
+No query match creates a link, Person, login, security-stamp change or entitlement.
+
+Wire definitions: [request](contracts/provider-native-profile/v2.0/contract.schema.json#/$defs/request)
+and [response](contracts/provider-native-profile/v2.0/contract.schema.json#/$defs/response).
+[Synthetic examples](contracts/provider-native-profile/v2.0/examples/) cover Found, NotFound,
+Ambiguous, Unavailable, Unsupported, missing inputs and forbidden mixed shapes.
+Their validity proves structure only; semantic, authority and live product checks
+remain separate. queryRule is omitted in these unambiguous agreed-rule examples.
+
+## Version 1.0 compatibility contract
+
 
 This independently enabled capability reads a fresh native profile for one
 existing exact provider identity. It supplies no credential proof, authentication,

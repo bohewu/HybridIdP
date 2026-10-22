@@ -2,6 +2,7 @@ using Core.Application;
 using Core.Application.DTOs;
 using Core.Application.Ports;
 using Core.Domain.Entities;
+using System.Text.Json;
 using Infrastructure.Options;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -15,6 +16,7 @@ public sealed class CurrentUserLifecycleEligibility : ICurrentUserLifecycleEligi
     private readonly IOptions<ProviderLifecycleOptions> _options;
     private readonly IProviderLifecycleClient? _client;
     private readonly ProviderLifecycleClock _clock;
+    private readonly INeutralQueryService? _queries;
 
     // Compatibility for existing explicitly local-only callers. Production DI uses the full constructor.
     public CurrentUserLifecycleEligibility(IApplicationDbContext context)
@@ -23,12 +25,13 @@ public sealed class CurrentUserLifecycleEligibility : ICurrentUserLifecycleEligi
 
     public CurrentUserLifecycleEligibility(IApplicationDbContext context,
         IOptions<ProviderLifecycleOptions> options, IProviderLifecycleClient? client,
-        ProviderLifecycleClock clock)
+        ProviderLifecycleClock clock, INeutralQueryService? queries = null)
     {
         _context = context;
         _options = options;
         _client = client;
         _clock = clock;
+        _queries = queries;
     }
 
     public async Task<bool> IsEligibleAsync(Guid userId, CancellationToken cancellationToken = default)
@@ -50,6 +53,13 @@ public sealed class CurrentUserLifecycleEligibility : ICurrentUserLifecycleEligi
             }
 
             if (!_clock.TryGetUtcNow(out var startedAt) || !IsLocallyEligible(initial, startedAt)) return false;
+            if (_queries is not null)
+            {
+                var query = await _queries.ResolveAsync("lifecycle-status", userId, cancellationToken: cancellationToken);
+                if (query.Status != "Legacy") return query.Status == "Ready" && query.Context is { } context &&
+                    await IsNeutralEligibleAsync(userId, initial!, policy, account, context, cancellationToken);
+            }
+            if (account.BindingKind == ProviderLifecycleRequiredAccount.NeutralQuery) return false;
             var binding = await ReadBindingAsync(userId, account, cancellationToken);
             if (binding is null || _client is null) return false;
             var lookup = await _client.LookupAsync(binding.Tuple, cancellationToken);
@@ -81,6 +91,27 @@ public sealed class CurrentUserLifecycleEligibility : ICurrentUserLifecycleEligi
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested) { throw; }
         catch { return false; }
+    }
+
+    private async Task<bool> IsNeutralEligibleAsync(Guid userId, LocalAccountSnapshot initial, PolicySnapshot policy,
+        AccountPolicy account, NeutralQueryContext context, CancellationToken ct)
+    {
+        if (_client is null || context.Request.ProviderNamespace != account.ProviderNamespace) return false;
+        var response = await _client.LookupNeutralAsync(context, ct);
+        if (response?.QueryOutcome != "Found" || response.ContractType != "lifecycle-status" ||
+            response.RequestId != context.Request.RequestId || response.ProviderNamespace != account.ProviderNamespace ||
+            response.Result is not { } payload) return false;
+        var result = payload.Deserialize<NeutralLifecycleResult>(JsonSerializerOptions.Web);
+        if (result is null || result.AccountState != "Enabled" ||
+            result.Evidence.SourceAuthority != account.SourceAuthority || result.Evidence.MappingVersion != account.MappingVersion) return false;
+        var current = await ReadLocalAsync(userId, ct);
+        if (current is null || current.PersonId != initial.PersonId || current.SecurityStamp != initial.SecurityStamp ||
+            current.ConcurrencyStamp != initial.ConcurrencyStamp || !policy.Matches(ReadPolicy()) ||
+            !await _queries!.IsCurrentAsync(context, ct) || !_clock.TryGetUtcNow(out var actionTime)) return false;
+        var evidence = result.Evidence;
+        return IsLocallyEligible(current, actionTime) && evidence.EffectiveFrom < evidence.EffectiveUntil &&
+            evidence.ObservedAt <= actionTime && actionTime - evidence.ObservedAt <= TimeSpan.FromSeconds(policy.MaxAgeSeconds) &&
+            evidence.EffectiveFrom <= actionTime && actionTime < evidence.EffectiveUntil;
     }
 
     private Task<LocalAccountSnapshot?> ReadLocalAsync(Guid userId, CancellationToken cancellationToken) =>
@@ -140,6 +171,7 @@ public sealed class CurrentUserLifecycleEligibility : ICurrentUserLifecycleEligi
         {
             Enabled = value.Enabled, Endpoint = value.Endpoint, SharedSecret = value.SharedSecret,
             TimeoutSeconds = value.TimeoutSeconds, MaxAgeSeconds = value.MaxAgeSeconds,
+            QuerySources = value.QuerySources,
             RequiredAccounts = value.RequiredAccounts?.Select(account => new ProviderLifecycleRequiredAccount
             {
                 LocalAccountId = account.LocalAccountId, BindingKind = account.BindingKind,

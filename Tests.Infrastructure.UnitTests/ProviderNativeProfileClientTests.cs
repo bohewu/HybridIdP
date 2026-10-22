@@ -12,6 +12,34 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class ProviderNativeProfileClientTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task NeutralFetch_ShouldSendIndependentQueryAndRejectUncorrelatedResponse(bool wrongCorrelation)
+    {
+        var context = new NeutralQueryContext(Guid.NewGuid(), null, "source", new NeutralQueryRequest
+        {
+            ContractType = "native-profile", ProviderNamespace = "example.provider",
+            Query = new(new Dictionary<string, string> { ["employeeId"] = "SYNTH-001" })
+        }, "fingerprint", Guid.NewGuid(), new(new Uri("https://example.test/neutral-native"), "synthetic-secret", TimeSpan.FromSeconds(5)), []);
+        using var handler = new Handler(async (request, ct) =>
+        {
+            Assert.Equal("native-profile/2.0", request.Headers.GetValues("X-Provider-Contract").Single());
+            Assert.Equal(context.Transport.Endpoint, request.RequestUri);
+            using var json = JsonDocument.Parse(await request.Content!.ReadAsStringAsync(ct));
+            Assert.False(json.RootElement.TryGetProperty("stableSubject", out var ignoredSubject));
+            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(JsonSerializer.Serialize(new
+            {
+                contractType = "native-profile", contractVersion = "2.0", providerNamespace = "example.provider",
+                requestId = wrongCorrelation ? Guid.NewGuid().ToString("D") : context.Request.RequestId,
+                queryOutcome = "Found", result = new { profile = new { displayName = "Fresh display", assuredFields = new[] { "DisplayName" } }, emailTrustOrigin = "Unknown" }
+            }), Encoding.UTF8, "application/json") };
+        });
+        var client = new ProviderNativeProfileClient(new HttpClient(handler), Microsoft.Extensions.Options.Options.Create(new ProviderNativeProfileOptions { Enabled = true }));
+        if (wrongCorrelation) Assert.Equal("source_invalid_response", (await Assert.ThrowsAsync<ProfileSyncException>(() => client.FetchNeutralAsync(context))).Code);
+        else Assert.Equal("Fresh display", (await client.FetchNeutralAsync(context)).Profile.DisplayName);
+    }
+
     private const string Valid = """
         {"contractVersion":"1.0","providerNamespace":"example.provider","stableSubject":"subject",
         "profile":{"displayName":"Display","email":"contact@example.test","assuredFields":["DisplayName","Email"]},

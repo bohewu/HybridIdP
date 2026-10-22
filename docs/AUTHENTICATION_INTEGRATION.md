@@ -13,7 +13,7 @@ There is no organization-specific or AuthProxy package dependency.
 
 The [identity source and field mapping inventory](IDENTITY_FIELD_MAPPING.md)
 lists the implemented User/Person mappings, API responsibilities and bounded
-six-field Proof/Stage 1 policies. Native writes require deployment enablement,
+six-field Proof/Stage 1 policies. Normal-login native writes require deployment enablement,
 exact established binding and independent per-User/per-Person ownership.
 `NativeFieldPolicy:ProofEnabled` defaults to `true` to retain explicitly enabled
 Proof deployments, while `ProviderProof:Enabled` still defaults to `false`.
@@ -26,12 +26,19 @@ Pausing native sync or disabling its ceiling does not disable authentication or
 independent Provider Profile snapshot refresh. Email trust, MFA and recovery
 authority remain separate. Claims Preview remains read-only.
 
-Administrators may independently enable [Provider Native Profile 1.0](PROVIDER_NATIVE_PROFILE_CONTRACT.md)
+Administrators may independently enable [Provider Native Profile](PROVIDER_NATIVE_PROFILE_CONTRACT.md)
 for reviewed, manual fill-only synchronization of an already linked account
-and Person. It requires the same existing Proof source policy and its own exact
+and Person. In legacy 1.0 mode it requires the same existing Proof source policy and its own exact
 namespace/endpoint/secret/email trust settings. Preview performs no write; apply
 refetches and rejects changed source or local state. This capability supplies
 no login proof and does not change normal login synchronization or claims snapshots.
+
+The explicit neutral-v2 query mode instead selects trusted stored fields for an
+independent data source. Native Profile then requires no Proof login, SSO UUID or
+authentication binding. Current selectable fields, per-account approval and
+deployment ceilings are described in the [neutral query configuration guide](DEPLOYMENT_GUIDE.md#neutral-non-login-query-configuration).
+This mode supplies neither login/linking authority nor a new AD authentication
+implementation; existing UserId, PersonId and authentication bindings remain intact.
 
 Enable `ProviderProof:Enabled` and configure `TrustedProviderNamespace`, the full
 endpoint and service secret to select API credential proof. Actual local-password

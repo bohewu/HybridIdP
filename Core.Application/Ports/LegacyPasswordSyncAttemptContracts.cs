@@ -37,7 +37,8 @@ public sealed record LegacyPasswordSyncAttemptIdentity(
     Guid LocalAccountId,
     LegacyPasswordSyncBindingReference Binding,
     Guid AccountIdentity,
-    string MappingVersion);
+    string MappingVersion,
+    NeutralQueryContext? Query = null);
 
 public sealed record LegacyPasswordSyncBindingReference(
     Guid Id,

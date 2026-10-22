@@ -4,6 +4,9 @@ namespace Core.Application.Ports;
 
 public interface IRecoveryIdentityVerificationClient
 {
+    Task<NeutralQueryResponse?> VerifyAsync(NeutralQueryContext context,
+        CancellationToken cancellationToken = default) => Task.FromResult<NeutralQueryResponse?>(null);
+
     /// <summary>
     /// Performs one verification against a server-selected existing binding. Returns only a
     /// strictly validated, request-bound response, or null on invalid/operational failure.

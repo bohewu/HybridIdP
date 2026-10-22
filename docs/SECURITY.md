@@ -7,8 +7,13 @@ HybridAuthIdP is committed to maintaining a high level of security. This documen
 
 The independently disabled [Provider Native Profile capability](PROVIDER_NATIVE_PROFILE_CONTRACT.md)
 requires both User and Person update authority plus cookie CSRF protection.
-It accepts only the exact existing external-login tuple and existing linked
-Person. Preview uses detached records and never saves. Apply rereads source and
+Legacy 1.0 accepts only the exact existing external-login tuple and existing
+linked Person, under the existing Proof source policy. Explicit `neutral-v2`
+instead resolves approved trusted query inputs for an existing local account
+and Person against an independently enabled, trusted and unpaused data source;
+it requires no Proof login, SSO UUID or authentication binding. The modes retain
+their separate wire formats and never fall back after a failed query.
+In both modes, preview uses detached records and never saves. Apply rereads source and
 local policy, checks an actor-bound five-minute protected review token, and
 commits fill-only changes plus value-free audit atomically under serializable
 isolation. Drift, concurrency failures and malformed source data fail closed.
@@ -19,6 +24,18 @@ namespace trust. No login proof, session, security stamp, recovery enrollment,
 role, lifecycle, username or account-link authority is granted by this endpoint.
 
 ### Administrative API authority
+
+The `/Admin/DataSources` page requires `DataSourcesInteractiveAdmin` (local
+application-cookie IdP Admin) and `settings.read`. Global query configuration
+GET/PUT, Native mappings GET/PUT and source pause/fallback PUT additionally use
+`DataSourcesAdministration`, admitting local Admin or separately provisioned
+administrative M2M while retaining each route's granular permissions, live M2M
+ceiling and cookie CSRF protection. Native `GET sources` retains `settings.read`
+for shared per-record dialogs. Per-record User/Person operations and per-account
+query approvals keep their existing gates; these policies do not impose an
+Admin role on every API route. Source/property configuration changes invalidate
+prior reviews and affected approvals. Successful Native sync changes local state
+and may require explicit renewed account/source approval before another query.
 
 Interactive administration uses the authenticated Identity application cookie.
 User OAuth tokens carry application roles and do not inherit global IdP roles or
