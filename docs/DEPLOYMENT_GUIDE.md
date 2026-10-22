@@ -583,8 +583,21 @@ the repository and its protection-at-rest configuration during upgrades. The
 schema-only `--migrate-only` path does not acquire this lock or initialize keys.
 Development retains its existing framework-default behavior when the configured
 key directory does not exist. This startup coordination addresses the empty-key
-cold-start gap; Redis outage handling, SignalR scale-out and background-job
-coordination still require separate work before full multi-instance qualification.
+cold-start gap. Session state confirmation now has bounded failure handling;
+actual shared-store outage/recovery still needs deployment verification. SignalR
+scale-out and background-job coordination remain separate work before full
+multi-instance qualification.
+
+ASP.NET session load/write confirmation and Email MFA cooldown cache operations
+have a five-second caller IO wait bound, with no new environment variable. Keep
+the existing `Redis__Enabled`, `Redis__ConnectionString` and `Redis__InstanceName`
+consistent across nodes. This does not change session/cookie/OTP/token lifetimes
+or add automatic memory failover. An affected state-dependent request returns
+503 with localized retry guidance; unrelated DB token and cookie validation
+paths do not gain a Redis preflight. A timeout does not prove the remote write
+was rolled back. After restoration, start from a confirmed healthy ceremony and
+repeat normal checks; see DEVELOPMENT_GUIDE.md section 10.4.3. Do not change keys,
+credentials or security lifetimes to diagnose an outage.
 
 ### Data-Service Network Exposure
 

@@ -132,6 +132,12 @@ public partial class LoginEmailOtpModel : PageModel
                 return StatusCode(429, new { success = false, remainingSeconds, hasPendingCode });
             }
         }
+        catch (EmailMfaCooldownUnavailableException)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.RetryAfter = "5";
+            return StatusCode(503, new { error = "temporarily_unavailable", message = _localizer["SessionStateUnavailableRetry"].Value });
+        }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to send email MFA code for user {UserId}", user.Id);

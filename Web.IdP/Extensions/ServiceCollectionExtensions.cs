@@ -861,12 +861,14 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOpts);
             
             options.IdleTimeout = TimeSpan.FromMinutes(5); // Short timeout for login sessions
+            options.IOTimeout = ConfirmedSessionStore.IoTimeout;
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax; // Consistent with Identity cookies
             options.Cookie.IsEssential = true;
             options.Cookie.Name = cookieOpts.GetSessionCookieName();
         });
+        services.AddTransient<Microsoft.AspNetCore.Session.ISessionStore, ConfirmedSessionStore>();
 
         // Antiforgery
         services.AddAntiforgery(options =>

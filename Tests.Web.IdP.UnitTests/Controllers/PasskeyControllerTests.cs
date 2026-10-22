@@ -33,6 +33,19 @@ namespace Tests.Web.IdP.UnitTests.Controllers;
 
 public class PasskeyControllerTests
 {
+    [Fact]
+    public async Task AssertionOptionsPost_ShouldPropagateUnconfirmedSessionWriteToRetryMiddleware()
+    {
+        var session = new Mock<ISession>();
+        session.Setup(value => value.Set(It.IsAny<string>(), It.IsAny<byte[]>()))
+            .Throws(new SessionStateUnavailableException());
+        _controller.HttpContext.Session = session.Object;
+        _passkeyServiceMock.Setup(service => service.GetAssertionOptionsAsync(null, default))
+            .ReturnsAsync(AssertionOptions.FromJson("{\"challenge\":\"AQ\",\"allowCredentials\":[]}"));
+        await Assert.ThrowsAsync<SessionStateUnavailableException>(() =>
+            _controller.AssertionOptionsPost(new LoginOptionsRequest(null), default));
+    }
+
     [Theory]
     [InlineData(false)]
     [InlineData(true)]

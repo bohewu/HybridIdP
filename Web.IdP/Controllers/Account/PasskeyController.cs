@@ -348,7 +348,7 @@ public partial class PasskeyController : ControllerBase
             
             return Ok(options);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SessionStateUnavailableException)
         {
             _logger.LogWarning("Failed to generate assertion options ({ErrorType})", ex.GetType().Name);
             return BadRequest(new { error = "Authentication failed" });

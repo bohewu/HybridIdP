@@ -603,6 +603,72 @@ public class MfaServiceTests : IDisposable
     #region Email MFA Tests (Phase 20.3)
 
     [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendEmailMfaCodeAsync_ShouldNotChangeCodeOrSend_WhenCooldownCannotBeConfirmed(bool writing)
+    {
+        var user = CreateTestUser();
+        user.EmailMfaCode = "existing-code";
+        if (writing)
+            _distributedCacheMock.Setup(cache => cache.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(),
+                It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new IOException("Injected write failure"));
+        else
+            _distributedCacheMock.Setup(cache => cache.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new IOException("Injected read failure"));
+
+        await Assert.ThrowsAsync<EmailMfaCooldownUnavailableException>(() => _sut.SendEmailMfaCodeAsync(user));
+        Assert.Equal("existing-code", user.EmailMfaCode);
+        _userManagerMock.Verify(manager => manager.UpdateAsync(user), Times.Never);
+        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task SendEmailMfaCodeAsync_ShouldRetryAfterRecovery_AndRetainNormalCooldown()
+    {
+        var user = CreateTestUser();
+        var unavailable = true;
+        byte[]? deadline = null;
+        _distributedCacheMock.Setup(cache => cache.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .Returns(() => unavailable ? Task.FromException<byte[]?>(new IOException("Injected outage")) : Task.FromResult(deadline));
+        _distributedCacheMock.Setup(cache => cache.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(),
+            It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>()))
+            .Callback<string, byte[], DistributedCacheEntryOptions, CancellationToken>((_, value, _, _) => deadline = value)
+            .Returns(Task.CompletedTask);
+        await Assert.ThrowsAsync<EmailMfaCooldownUnavailableException>(() => _sut.SendEmailMfaCodeAsync(user));
+        unavailable = false;
+        Assert.Equal((true, 60), await _sut.SendEmailMfaCodeAsync(user));
+        Assert.Equal((false, 60), await _sut.SendEmailMfaCodeAsync(user));
+        _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+            It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task SendEmailMfaCodeAsync_ShouldBoundUncooperativeCooldownIo(bool writing)
+    {
+        var user = CreateTestUser();
+        var pending = new TaskCompletionSource<byte[]?>(TaskCreationOptions.RunContinuationsAsynchronously);
+        if (writing)
+            _distributedCacheMock.Setup(cache => cache.SetAsync(It.IsAny<string>(), It.IsAny<byte[]>(),
+                It.IsAny<DistributedCacheEntryOptions>(), It.IsAny<CancellationToken>())).Returns(pending.Task);
+        else
+            _distributedCacheMock.Setup(cache => cache.GetAsync(It.IsAny<string>(), It.IsAny<CancellationToken>())).Returns(pending.Task);
+        try
+        {
+            var timer = System.Diagnostics.Stopwatch.StartNew();
+            await Assert.ThrowsAsync<EmailMfaCooldownUnavailableException>(() => _sut.SendEmailMfaCodeAsync(user));
+            Assert.InRange(timer.Elapsed.TotalSeconds, 4, 8);
+            Assert.Null(user.EmailMfaCode);
+            _emailServiceMock.Verify(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(),
+                It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        }
+        finally { pending.TrySetResult(null); }
+    }
+
+    [Theory]
     [InlineData(45000, 45)]
     [InlineData(100, 1)]
     [InlineData(0, 0)]

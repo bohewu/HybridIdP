@@ -41,6 +41,20 @@ describe('login email OTP sender', () => {
     input.dispatchEvent(new Event('input'))
   }
 
+  it('shows localized retry guidance for an unconfirmed send gate without enabling verification', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({
+      error: 'temporarily_unavailable', message: 'Wait a few seconds, then try again.'
+    }) }))
+    const { input, verify, send } = loadSender(false)
+    enterCode(input, '123456')
+    send.click()
+    await vi.waitFor(() => expect(document.getElementById('emailCodeSentMsg').textContent).toBe('Wait a few seconds, then try again.'))
+    expect(verify.disabled).toBe(true)
+    expect(send.disabled).toBe(false)
+    expect(document.getElementById('emailCodeSentMsg').getAttribute('role')).toBe('alert')
+  })
+
   it.each([true, false].flatMap(pending => [0, 12].map(seconds => [pending, seconds])))('hydrates pending=%s and cooldown=%s without sending or conflating verification state', async (pending, seconds) => {
     vi.useFakeTimers()
     const fetchMock = vi.fn()

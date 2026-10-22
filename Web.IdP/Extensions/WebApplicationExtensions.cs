@@ -102,6 +102,7 @@ public static class WebApplicationExtensions
         app.UseStaticFiles();
 
         app.UseSession();
+        app.UseMiddleware<SessionStateUnavailableMiddleware>();
         app.UseAuthentication();
         app.UseAuthorization();
 

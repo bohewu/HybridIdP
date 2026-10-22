@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else {
                     btn.disabled = false;
                     btnText.textContent = originalText;
-                    showMessage(i18n.sendFailed, 'text-red-600');
+                    showMessage(data.error === 'temporarily_unavailable' && data.message ? data.message : i18n.sendFailed, 'text-red-600');
                 }
             }
         } catch (e) { 

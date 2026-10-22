@@ -1,4 +1,5 @@
 {
+  "SessionStateUnavailableRetry": "We could not confirm the state needed for this step. Wait a few seconds, then return to the previous page and try again. If it has expired, start sign-in again.",
   "DataSourcesAndSync": "Data sources and sync",
   "EmailMfaAddressChangeRequiresRemoval": "Remove email MFA using the authorized security settings or administrator MFA reset before changing the email address or its confirmation status, then enroll again.",
   "Recovery.Identity.Identifier.Label": "Identity document number",
