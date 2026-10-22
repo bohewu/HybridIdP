@@ -73,6 +73,37 @@ namespace Tests.Infrastructure.UnitTests
             _dbContext.Dispose();
         }
 
+        [Theory]
+        [InlineData(false)]
+        [InlineData(true)]
+        public async Task AuthenticateAsync_ShouldRetainLocalAuthorityAndDenyUnknownAccountWithoutSourceCalls_WhenDirectoryIsDataOnly(bool localAccount)
+        {
+            var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "local-account", IsActive = true,
+                PasswordHash = "fixture-local", LastPasswordChangeDate = DateTime.UtcNow };
+            _userManagerMock.Setup(x => x.FindByNameAsync("local-account")).ReturnsAsync(localAccount ? user : null);
+            _userManagerMock.Setup(x => x.CheckPasswordAsync(user, "password")).ReturnsAsync(true);
+            _userManagerMock.Setup(x => x.ResetAccessFailedCountAsync(user)).ReturnsAsync(IdentityResult.Success);
+            var handler = new Mock<HttpMessageHandler>();
+            using var http = new HttpClient(handler.Object);
+            var proofOptions = Options.Create(new global::Infrastructure.Options.ProviderProofOptions());
+            var directory = new Mock<IDirectoryIdentityLookup>(MockBehavior.Strict);
+            var binding = new Mock<IStage1BindingRefreshService>(MockBehavior.Strict);
+            var service = new LoginService(_userManagerMock.Object, _securityPolicyServiceMock.Object,
+                _jitProvisioningServiceMock.Object, _dbContext, _loggerMock.Object, _externalLoginOptionsMock.Object,
+                proofProvider: new ProviderProofProvider(http, proofOptions), directoryIdentityLookup: directory.Object,
+                stage1BindingRefreshService: binding.Object,
+                directoryIntegrationOptions: Options.Create(new global::Infrastructure.Options.DirectoryIntegrationOptions
+                { Enabled = true, AuthenticationEnabled = false }),
+                credentialMigrationStateStore: _credentialMigrationStateStoreMock.Object, providerProofOptions: proofOptions);
+
+            var result = await service.AuthenticateAsync("local-account", "password");
+            Assert.Equal(localAccount, result.IsSuccess);
+            handler.VerifyNoOtherCalls();
+            directory.VerifyNoOtherCalls();
+            binding.VerifyNoOtherCalls();
+            _jitProvisioningServiceMock.VerifyNoOtherCalls();
+        }
+
         [Fact]
         public async Task EligibilityValidation_ShouldNotRefreshMetadataBeforeCredentialVerification()
         {

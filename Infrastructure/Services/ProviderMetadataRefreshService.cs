@@ -47,7 +47,7 @@ public sealed class ProviderMetadataRefreshService : IProviderMetadataRefreshSer
         if (query.Status == "Legacy") return ProviderMetadataRefreshOutcome.Legacy;
         if (query.Status != "Ready" || query.Context is not { } context || _neutralEvidence is null)
             return ProviderMetadataRefreshOutcome.Unavailable;
-        if (!NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return ProviderMetadataRefreshOutcome.InvalidRequest;
+        if (context.Transport is null || context.DirectoryTransport is not null || !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return ProviderMetadataRefreshOutcome.InvalidRequest;
         NeutralMetadataResult? result = null;
         var failure = ProviderMetadataEvidenceState.Unavailable;
         try

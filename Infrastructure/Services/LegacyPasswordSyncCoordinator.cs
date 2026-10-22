@@ -324,7 +324,7 @@ public sealed class LegacyPasswordSyncHttpTransport(
     public async Task<LegacyPasswordSyncTransportResult> SendAsync(NeutralQueryContext context,
         CancellationToken cancellationToken = default)
     {
-        if (!_options.Enabled || context.Request.ContractType != "password-sync" || cancellationToken.IsCancellationRequested ||
+        if (context.Transport is null || context.DirectoryTransport is not null || !_options.Enabled || context.Request.ContractType != "password-sync" || cancellationToken.IsCancellationRequested ||
             !NeutralQueryJson.TrySerializeRequest(context.Request, out var body))
             return new(LegacyPasswordSyncTransportOutcome.PreDispatchRejected);
         var dispatched = false;

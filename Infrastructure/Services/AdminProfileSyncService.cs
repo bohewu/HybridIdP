@@ -21,26 +21,28 @@ public sealed class AdminProfileSyncService(
     ApplicationDbContext db, INativeFieldPolicyService nativeFields, IProviderNativeProfileClient client,
     IOptions<ProviderNativeProfileOptions> options, IDataProtectionProvider protection,
     ILookupNormalizer normalizer, IAuditService audit, TimeProvider? timeProvider = null,
-    INeutralQueryService? queries = null) : IAdminProfileSyncService
+    INeutralQueryService? queries = null, IDirectoryIdentityLookup? directoryLookup = null) : IAdminProfileSyncService
 {
     private readonly IDataProtector _protector = protection.CreateProtector("HybridIdP.AdminProfileSync.Preview.v1");
     private readonly TimeProvider _time = timeProvider ?? TimeProvider.System;
 
     public async Task<ProfileSyncStatusDto> GetStatusAsync(CancellationToken cancellationToken = default)
     {
-        if (!options.Value.Enabled) return new(false, "disabled");
         if (queries is not null)
         {
             var configuration = await queries.GetConfigurationAsync(cancellationToken);
             var configured = configuration.Configurations.Where(x => x.Capability == "native-profile").ToArray();
-            if (configured.Any(x => x.WireMode != NeutralQueryContract.Legacy))
+            if (configured.Any(x => x.WireMode != NeutralQueryContract.Legacy || configuration.Sources.Any(source =>
+                source.Capability == x.Capability && source.SourceId == x.SourceId && source.SourceType == "directory")))
             {
-                if (configured.Length != 1 || !configuration.Sources.Any(x => x.Capability == "native-profile" &&
+                if (configured.Length != 1 || configured[0].WireMode != NeutralQueryContract.WireMode ||
+                    !configuration.Sources.Any(x => x.Capability == "native-profile" &&
                     x.SourceId == configured[0].SourceId && x.Available)) return new(false, "configuration_invalid");
                 var neutral = (await nativeFields.GetSourcesAsync(cancellationToken)).Single(x => x.Source == NativeFieldSource.NeutralQuery);
                 return new(neutral.Enabled && !neutral.Paused, !neutral.Enabled ? "source_disabled" : neutral.Paused ? "source_paused" : null);
             }
         }
+        if (!options.Value.Enabled) return new(false, "disabled");
         if (!options.Value.TryGetEndpoint(out _)) return new(false, "configuration_invalid");
         var source = (await nativeFields.GetSourcesAsync(cancellationToken)).Single(x => x.Source == NativeFieldSource.Proof);
         if (!source.Enabled) return new(false, "source_disabled");
@@ -160,8 +162,9 @@ public sealed class AdminProfileSyncService(
         return new(user, person, identity, accounts.OrderBy(x => x).ToArray(), policy, null);
     }
 
-    private async Task<SyncPlan> PlanAsync(SyncContext context, ProviderNativeProfileResponse source, CancellationToken ct)
+    private async Task<SyncPlan> PlanAsync(SyncContext context, ProfileReadResult read, CancellationToken ct)
     {
+        var source = read.Response;
         if (context.Query is { } query && !await queries!.IsCurrentAsync(query, ct)) throw new ProfileSyncException("preview_stale");
         if (source.ProviderNamespace != context.Identity!.ProviderNamespace ||
             source.StableSubject != context.Identity.StableSubject) throw new ProfileSyncException("source_invalid_response");
@@ -190,7 +193,7 @@ public sealed class AdminProfileSyncService(
             : await nativeFields.ApplyMissingSourceAsync(user, person, context.Identity, values, ct)).ToList();
         if (changes.Count != 12) throw new ProfileSyncException("preview_stale");
         ApplyEmail(context, source, changes);
-        return new(changes, Hash(new { localFingerprint, Source = source, Changes = changes }));
+        return new(changes, Hash(new { localFingerprint, Source = read, Changes = changes }));
     }
 
     private void ApplyEmail(SyncContext context, ProviderNativeProfileResponse source, List<ProfileSyncChangeDto> changes)
@@ -255,12 +258,29 @@ public sealed class AdminProfileSyncService(
             reason, changes, token);
     private static ProviderNativeProfileRequest Request(NativeFieldSourceIdentity identity) =>
         new(ProviderNativeProfileContract.Version, identity.ProviderNamespace, identity.StableSubject);
-    private async Task<ProviderNativeProfileResponse> FetchAsync(SyncContext context, CancellationToken ct)
+    private async Task<ProfileReadResult> FetchAsync(SyncContext context, CancellationToken ct)
     {
-        if (context.Query is not { } query) return await client.FetchAsync(Request(context.Identity!), ct);
+        if (context.Query is not { } query) return new(await client.FetchAsync(Request(context.Identity!), ct));
+        if (query.DirectoryTransport is { } direct)
+        {
+            if (directoryLookup is null || query.Transport is not null || query.Request.ContractType != "native-profile" ||
+                query.Request.Query.Attributes.Count != 1 ||
+                !query.Request.Query.Attributes.TryGetValue(direct.SamAccountNameQueryAttribute, out var account))
+                throw new ProfileSyncException("configuration_invalid");
+            if (!await queries!.IsCurrentAsync(query, ct)) throw new ProfileSyncException("preview_stale");
+            var found = await directoryLookup.FindManagedIdentityAsync(account, ct);
+            if (!await queries.IsCurrentAsync(query, ct)) throw new ProfileSyncException("preview_stale");
+            if (found.Outcome != DirectoryLookupOutcome.Found)
+                throw new ProfileSyncException(found.Outcome == DirectoryLookupOutcome.NotFound ? "source_not_found" : "source_unavailable");
+            if (found.Identity is not { ObjectId: var objectId, IsEligible: true, IsEnabled: true, IsLocked: false } identity ||
+                objectId == Guid.Empty || identity.CanonicalAccount != account || identity.Profile is { } invalid && !invalid.IsValid())
+                throw new ProfileSyncException("source_invalid_response");
+            // A data read supplies no authentication binding or Email verification authority.
+            return new(new("2.0", query.Request.ProviderNamespace, string.Empty, identity.Profile ?? new(), "Unknown"), objectId);
+        }
         var result = await client.FetchNeutralAsync(query, ct);
         if (!await queries!.IsCurrentAsync(query, ct)) throw new ProfileSyncException("preview_stale");
-        return new("2.0", query.Request.ProviderNamespace, string.Empty, result.Profile, result.EmailTrustOrigin);
+        return new(new("2.0", query.Request.ProviderNamespace, string.Empty, result.Profile, result.EmailTrustOrigin));
     }
     private static bool HasChanges(IReadOnlyList<ProfileSyncChangeDto> changes) => changes.Any(x => x.Action is "fill" or "confirm");
     private static string[] ChangedFields(IReadOnlyList<ProfileSyncChangeDto> changes, string target) =>
@@ -272,6 +292,7 @@ public sealed class AdminProfileSyncService(
     }
     private sealed record SyncContext(ApplicationUser User, Person? Person, NativeFieldSourceIdentity? Identity,
         Guid[] Accounts, NativeFieldSourcePolicy? Policy, string? Reason, NeutralQueryContext? Query = null);
+    private sealed record ProfileReadResult(ProviderNativeProfileResponse Response, Guid? DirectoryObjectId = null);
     private sealed record SyncPlan(IReadOnlyList<ProfileSyncChangeDto> Changes, string Fingerprint);
     private sealed record PreviewReceipt(string ActorKey, Guid UserId, DateTimeOffset ExpiresAt, string Fingerprint);
 }

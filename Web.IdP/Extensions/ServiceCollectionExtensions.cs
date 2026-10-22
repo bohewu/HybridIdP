@@ -327,6 +327,8 @@ public static class ServiceCollectionExtensions
             .ValidateOnStart();
         services.Configure<DirectoryCredentialTransportOptions>(
             configuration.GetSection(DirectoryCredentialTransportOptions.Section));
+        services.Configure<DirectoryNativeProfileOptions>(
+            configuration.GetSection(DirectoryNativeProfileOptions.Section));
         services.Configure<ObservabilityOptions>(options =>
         {
             configuration.GetSection(ObservabilityOptions.MonitoringSection).Bind(options);

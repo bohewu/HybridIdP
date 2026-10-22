@@ -176,3 +176,25 @@ it('opens the requested named Profile row without selecting a fallback', async (
   expect(wrapper.findAll('[data-test="select-profile-query"]')[1].attributes('aria-pressed')).toBe('true')
   expect(queryConfigurationApi.save).not.toHaveBeenCalled()
 })
+
+it.each([['en-US', en], ['zh-TW', zh]])('saves and reopens an approved directory query in %s', async (locale, words) => {
+  const data = fixture()
+  data.sources[0] = { ...source('native-profile'), sourceType: 'directory', availableCandidates: [{ attribute: 'accountName', valueSources: ['user.userName'] }], acceptedAttributeSets: [['accountName']] }
+  await render(data, {}, locale)
+  await wrapper.get('[data-test="query-mode"]').setValue('neutral-v2')
+  await wrapper.get('[data-test="query-source"]').setValue('0')
+  expect(wrapper.get('[data-test="query-source"]').text()).toContain(words.sourceTypes.directory)
+  expect(wrapper.get('[data-test="directory-query-help"]').text()).toBe(words.directoryHelp)
+  expect(wrapper.get('[data-test="query-mode"] option[value="legacy"]').element.disabled).toBe(true)
+  await wrapper.get('[data-test="query-mode"]').setValue('legacy')
+  expect(wrapper.find('[data-test="directory-query-help"]').exists()).toBe(true)
+  await wrapper.get('[data-test="query-attributes"]').setValue('accountName')
+  await wrapper.get('[data-test="query-value-accountName"]').setValue('user.userName')
+  await wrapper.get('[data-test="save-query"]').trigger('click'); await flushPromises()
+  const request = queryConfigurationApi.save.mock.calls[0][0]
+  expect(request.configurations[0]).toMatchObject({ wireMode: 'neutral-v2', mappings: [{ attribute: 'accountName', valueSource: 'user.userName' }] })
+  wrapper.unmount()
+  await render({ ...data, configurations: request.configurations }, {}, locale)
+  expect(wrapper.get('[data-test="query-value-accountName"]').element.value).toBe('user.userName')
+  expect(wrapper.get('[data-test="open-query-approval"]').element.disabled).toBe(false)
+})

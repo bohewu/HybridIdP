@@ -11,7 +11,7 @@ public sealed record QueryConfigurationDto(string Capability, string SourceId, s
 public sealed record QueryCandidateDto(string Attribute, string DataType, IReadOnlyList<string> ValueSources);
 public sealed record QuerySourceDto(string Capability, string SourceId, string ProviderNamespace, bool Available,
     string? UnavailableReason, IReadOnlyList<QueryCandidateDto> AvailableCandidates,
-    IReadOnlyList<string[]> AcceptedAttributeSets, string? QueryRule);
+    IReadOnlyList<string[]> AcceptedAttributeSets, string? QueryRule, string SourceType = "http");
 public sealed record QueryConfigurationStateDto(Guid Revision, IReadOnlyList<QueryConfigurationDto> Configurations,
     IReadOnlyList<QuerySourceDto> Sources);
 [JsonUnmappedMemberHandling(JsonUnmappedMemberHandling.Disallow)]
@@ -26,9 +26,11 @@ public sealed record QueryApprovalRequest(Guid ExpectedRevision, bool Approved, 
 public sealed record TrustedRuntimeQueryValue(string ValueSource, string Value, string ProviderNamespace,
     Guid LocalAccountId, string SecurityStamp, DateTimeOffset ValidatedAt, bool Assured);
 public sealed record NeutralQueryTransport(Uri Endpoint, string SharedSecret, TimeSpan Timeout);
+public sealed record DirectoryQueryTransport(string SamAccountNameQueryAttribute);
 public sealed record NeutralQueryContext(Guid LocalAccountId, Guid? PersonId, string SourceId,
     NeutralQueryRequest Request, string Fingerprint, Guid ConfigurationRevision,
-    NeutralQueryTransport Transport, IReadOnlyList<TrustedRuntimeQueryValue> RuntimeValues);
+    NeutralQueryTransport? Transport, IReadOnlyList<TrustedRuntimeQueryValue> RuntimeValues,
+    DirectoryQueryTransport? DirectoryTransport = null);
 public sealed record NeutralQueryResolution(string Status, NeutralQueryContext? Context = null);
 public sealed class NeutralQueryException(string code) : Exception(code) { public string Code { get; } = code; }
 

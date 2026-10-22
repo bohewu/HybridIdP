@@ -14,7 +14,7 @@ public sealed class ProviderProfileClient(HttpClient httpClient)
 
     public async Task<NeutralProfileResult?> FetchNeutralAsync(NeutralQueryContext context, CancellationToken cancellationToken)
     {
-        if (context.Request.ContractType != "profile" || !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return null;
+        if (context.Transport is null || context.DirectoryTransport is not null || context.Request.ContractType != "profile" || !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return null;
         try
         {
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);

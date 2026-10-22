@@ -212,9 +212,9 @@ the configured namespace does not transfer the old namespace's selection.
 Pause/resume retains the selection; the strategy runs only while the source is
 enabled, trusted and unpaused.
 
-**Cancel** discards the draft. **Save for next sign-in** atomically saves the full
+**Cancel** discards the draft. **Save mappings** atomically saves the full
 mapping draft and fallback selection without fetching source data or changing
-native values. **Save and sync now** first saves the same configuration, then
+native values. **Save and open manual sync** first saves the same configuration, then
 opens explicit existing-account selection and the established read-only preview
 and token-only apply flow. It never synchronizes the whole account pool.
 
@@ -238,7 +238,7 @@ The same established binding and ownership rules below apply. Nickname mapping,
 normal-login Profile refresh and read-only Claims Preview remain independent;
 neither stored Nickname nor Profile extra properties supplies fallback input.
 
-Every source write requires the exact persisted identity: Proof uses local account,
+Sign-in source writes require the exact persisted identity: Proof uses local account,
 provider namespace and opaque subject in `AspNetUserLogins`; Stage 1 additionally
 requires the persisted directory object in `ProviderSubjectDirectoryBinding`.
 Enablement or assignment never creates that binding. User and Person field
@@ -345,6 +345,31 @@ state and can require renewed approval for a subsequent query; it does not
 automatically establish trust. Neutral Native sync remains fill-only, preserving
 populated values, manual fixed values and fixed blanks, IDs and identity links.
 
+The direct AD data source is separate from the bound Stage 1 sign-in source.
+Enable/trust is default-off under `DirectoryNativeProfile`; `DirectoryIntegration.Enabled`
+provides the connection while `AuthenticationEnabled` remains independent. The
+protected source catalog labels it **Organization directory (AD/LDAP)** with
+`sourceType: "directory"`. Choose **Profile sync > Configured fields** and its
+deployment-approved stored input, then approve the exact account/Person/value
+context. The input is explicitly configured as exact sAMAccountName: `accountName`
+uses `user.userName`; `employeeId` uses `person.employeeId` and/or `user.employeeId`
+only by explicit deployment agreement. Returned EmployeeId is actual AD employeeID,
+never an input alias. No prior Proof/SSO login or directory binding is required,
+and no identity binding, UserId, PersonId, username or credential is changed.
+
+Map only the six native targets and supported returned properties above. Explicit
+`FirstName -> displayName` is available independently of the default-off Proof
+givenName fallback. **Save mappings** and **Save and open manual sync** do not
+read AD or schedule its next-login sync; the latter opens explicit account
+selection. Direct AD reads occur only during explicit preview and explicit apply,
+with a fresh read at each step. Existing sign-in sources keep their normal timing.
+Directory Email supplies contact data under existing protections, never EmailConfirmed.
+Missing/unavailable data preserves values and cannot select an alternate source.
+Directory source policy, connection/scope, approvals and the resolved object identity
+participate in freshness checks alongside existing configuration/account/security
+state. Changed evidence invalidates apply and requires a fresh preview. See the
+[generic setup](DEPLOYMENT_GUIDE.md#direct-ad-source-for-manual-profile-synchronization).
+
 **Users > row action > Manual sync** opens **Sync source data**. Administrators
 with both `users.update` and `persons.update` can also select up to 50 accounts
 from the current page and choose **Preview selected**. Selection resets when the
@@ -355,7 +380,8 @@ accounts. No first account or shared Person owner is inferred.
 The deployment must enable manual synchronization separately. When disabled,
 the dialog shows the deployment-needed reason and offers no inactive preview or
 apply controls. It cannot enable or trust a source and does not report source
-connection health. Existing normal-login and policy-setting behavior is unchanged.
+connection health. Existing sign-in sources retain their normal-login and policy-setting behavior;
+direct AD data reads remain manual-only.
 
 Choose **Preview differences** to fetch and compare source data without writing
 User/Person fields. Each account has a separate result; expand it to compare

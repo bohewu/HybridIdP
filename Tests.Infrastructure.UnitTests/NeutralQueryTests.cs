@@ -9,6 +9,7 @@ using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure;
 using Infrastructure.Options;
+using Infrastructure.Directory;
 using Infrastructure.Services;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
@@ -24,6 +25,204 @@ namespace Tests.Infrastructure.UnitTests;
 
 public sealed class NeutralQueryTests
 {
+    [Theory]
+    [InlineData("accountName", "user.userName")]
+    [InlineData("employeeId", "person.employeeId")]
+    [InlineData("employeeId", "user.employeeId")]
+    public async Task DirectorySync_ShouldUseOnlyApprovedExactInputAndFillMappedFieldsWithoutLogin(string attribute, string valueSource)
+    {
+        using var f = new Fixture(nativeMode: true, direct: true);
+        f.DirectoryNative.SamAccountNameQueryAttribute = attribute;
+        f.DirectoryNative.AllowedValueSources = [valueSource];
+        var id = await f.SeedAsync();
+        var user = await f.Db.Users.SingleAsync();
+        var person = await f.Db.Persons.SingleAsync();
+        var personId = person.Id;
+        user.UserName = "local-account";
+        user.Department = "keep department";
+        user.EmailMfaEnabled = true;
+        f.NativeFields.ApplyManual(user, new Dictionary<NativeField, string?> { [NativeField.LastName] = "" });
+        f.NativeFields.ApplyManual(person, new Dictionary<NativeField, string?> { [NativeField.FirstName] = "" });
+        await f.Db.SaveChangesAsync();
+        await f.ConfigureAsync(attribute, valueSource);
+        var transport = new Mock<IProtectedDirectoryIdentityTransport>(MockBehavior.Strict);
+        var expected = valueSource == "user.userName" ? "local-account" : valueSource == "person.employeeId" ? "0001" : "different";
+        transport.Setup(x => x.FindExactAsync(expected, DirectoryTransport.Ldaps, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new ProtectedDirectoryTransportResult(ProtectedDirectoryTransportOutcome.Succeeded,
+                [new(Guid.NewGuid(), expected, true, true, false, new AssuredProfile
+                {
+                    DisplayName = "Directory display", Surname = "Directory surname", Department = "Directory department",
+                    Email = "directory@example.test",
+                    AssuredFields = [AssuredProfileField.DisplayName, AssuredProfileField.Surname, AssuredProfileField.Department, AssuredProfileField.Email]
+                })]));
+        var http = new Mock<IProviderNativeProfileClient>(MockBehavior.Strict);
+        var sync = f.CreateDirectorySync(transport.Object, http.Object);
+        var deployed = Assert.Single((await f.Service.GetConfigurationAsync()).Sources);
+        Assert.True(deployed.Available);
+        Assert.Equal("directory", deployed.SourceType);
+        Assert.Equal(attribute, Assert.Single(deployed.AvailableCandidates).Attribute);
+        Assert.False(f.NativeOptions.Enabled);
+        Assert.False(f.DirectoryIntegration.AuthenticationEnabled);
+        Assert.True((await sync.GetStatusAsync()).Enabled);
+        Assert.Equal("query_unavailable", (await sync.PreviewAsync("actor", id)).Reason);
+        transport.VerifyNoOtherCalls();
+
+        var mappings = await f.NativeFields.GetMappingsAsync();
+        await f.NativeFields.SetMappingsAsync(new(mappings.Revision,
+            mappings.Mappings.Select(x => x.Field == NativeField.FirstName ? x with { SourceProperty = "displayName" } : x).ToArray(), mappings.FirstNameFallback));
+        Assert.False((await f.NativeFields.GetMappingsAsync()).FirstNameFallback.Enabled);
+        await f.ApproveAsync(id);
+        var context = (await f.Service.ResolveAsync("native-profile", id)).Context!;
+        Assert.Null(context.Transport);
+        Assert.Equal(attribute, context.DirectoryTransport!.SamAccountNameQueryAttribute);
+        var preview = await sync.PreviewAsync("actor", id);
+        Assert.Equal("ready", preview.Status);
+        Assert.Empty(f.Db.ChangeTracker.Entries());
+        Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).FirstName);
+        Assert.Equal("Directory display", preview.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").ProposedValue);
+        Assert.Equal("manual_fixed", preview.Changes.Single(x => x.Target == "User" && x.Field == "LastName").Action);
+        Assert.Equal("manual_fixed", preview.Changes.Single(x => x.Target == "Person" && x.Field == "FirstName").Action);
+        Assert.Equal("preserve", preview.Changes.Single(x => x.Target == "User" && x.Field == "Department").Action);
+        Assert.Equal("missing_source", preview.Changes.Single(x => x.Target == "User" && x.Field == "JobTitle").Action);
+        Assert.Equal("mfa_protected", preview.Changes.Single(x => x.Target == "User" && x.Field == "Email").Action);
+        Assert.Equal("preview_invalid", (await Assert.ThrowsAsync<ProfileSyncException>(() => sync.ApplyAsync("other-actor", id, preview.PreviewToken!))).Code);
+        await sync.ApplyAsync("actor", id, preview.PreviewToken!);
+        user = await f.Db.Users.AsNoTracking().SingleAsync();
+        person = await f.Db.Persons.AsNoTracking().SingleAsync();
+        Assert.Equal(id, user.Id);
+        Assert.Equal(personId, user.PersonId);
+        Assert.Equal(personId, person.Id);
+        Assert.Equal("local-account", user.UserName);
+        Assert.Equal("Directory display", user.FirstName);
+        Assert.Equal("", user.LastName);
+        Assert.Equal("", person.FirstName);
+        Assert.Equal("Directory surname", person.LastName);
+        Assert.Equal("keep department", user.Department);
+        Assert.Equal("Directory department", person.Department);
+        Assert.Null(user.Email);
+        Assert.False(user.EmailConfirmed);
+        Assert.Equal("directory@example.test", person.Email);
+        Assert.Equal("different", user.EmployeeId);
+        Assert.Equal(" 0001 ", person.EmployeeId);
+        Assert.Empty(await f.Db.UserLogins.ToArrayAsync());
+        Assert.Empty(await f.Db.ProviderSubjectDirectoryBindings.ToArrayAsync());
+        http.VerifyNoOtherCalls();
+        transport.Verify(x => x.FindExactAsync(expected, DirectoryTransport.Ldaps, It.IsAny<CancellationToken>()), Times.Exactly(2));
+    }
+
+    [Theory]
+    [InlineData("disabled")]
+    [InlineData("untrusted")]
+    [InlineData("paused")]
+    [InlineData("directory_disabled")]
+    [InlineData("missing_scope")]
+    [InlineData("unsupported_attribute")]
+    [InlineData("undeployed_value_source")]
+    [InlineData("duplicate_source_id")]
+    public async Task DirectorySource_ShouldFailClosedForInvalidDeployment(string condition)
+    {
+        using var f = new Fixture(nativeMode: true, direct: true);
+        switch (condition)
+        {
+            case "disabled": f.DirectoryNative.Enabled = false; break;
+            case "untrusted": f.DirectoryNative.Trusted = false; break;
+            case "paused": f.DirectoryNative.Paused = true; break;
+            case "directory_disabled": f.DirectoryIntegration.Enabled = false; break;
+            case "missing_scope": f.DirectoryConnection.ManagedSearchFilter = null; break;
+            case "unsupported_attribute": f.DirectoryNative.SamAccountNameQueryAttribute = "nationalIdHash"; break;
+            case "undeployed_value_source": f.DirectoryNative.AllowedValueSources = ["user.userName"]; break;
+            case "duplicate_source_id": f.NativeOptions.QuerySources["example"] = f.Source; break;
+        }
+        Assert.False(Assert.Single((await f.Service.GetConfigurationAsync()).Sources).Available);
+        Assert.Equal("source_unavailable", (await Assert.ThrowsAsync<NeutralQueryException>(() => f.ConfigureAsync("employeeId", "person.employeeId"))).Code);
+    }
+
+    [Fact]
+    public async Task DirectorySource_ShouldRejectLegacyModeAndBlockSavedLegacySelection()
+    {
+        using var f = new Fixture(nativeMode: true, direct: true);
+        var id = await f.SeedAsync();
+        var legacy = new QueryConfigurationDto("native-profile", "example", "legacy", "example.provider", []);
+        var revision = (await f.Service.GetConfigurationAsync()).Revision;
+        Assert.Equal("invalid_mapping", (await Assert.ThrowsAsync<NeutralQueryException>(() =>
+            f.Service.SetConfigurationAsync(new(revision, [legacy])))).Code);
+        f.Db.Settings.Add(new Setting { Id = Guid.NewGuid(), Key = SettingKeys.NeutralQueryConfiguration,
+            Value = JsonSerializer.Serialize(new { Revision = Guid.NewGuid(), Configurations = new[] { legacy } }) });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal("Unavailable", (await f.Service.ResolveAsync("native-profile", id)).Status);
+        var transport = new Mock<IProtectedDirectoryIdentityTransport>(MockBehavior.Strict);
+        var sync = f.CreateDirectorySync(transport.Object);
+        Assert.False((await sync.GetStatusAsync()).Enabled);
+        Assert.Equal("configuration_invalid", (await sync.PreviewAsync("actor", id)).Reason);
+        transport.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData("policy")]
+    [InlineData("scope")]
+    [InlineData("connection")]
+    [InlineData("approval")]
+    [InlineData("mapping")]
+    [InlineData("object")]
+    public async Task DirectorySync_ShouldRejectStalePreviewWithoutWriting(string change)
+    {
+        using var f = new Fixture(nativeMode: true, direct: true);
+        var id = await f.SeedAsync();
+        await f.ConfigureAsync("employeeId", "person.employeeId");
+        await f.ApproveAsync(id);
+        var objectId = Guid.NewGuid();
+        var transport = new Mock<IProtectedDirectoryIdentityTransport>();
+        transport.Setup(x => x.FindExactAsync("0001", DirectoryTransport.Ldaps, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => new(ProtectedDirectoryTransportOutcome.Succeeded,
+                [new(objectId, "0001", true, true, false, new AssuredProfile { DisplayName = "Directory display", AssuredFields = [AssuredProfileField.DisplayName] })]));
+        var sync = f.CreateDirectorySync(transport.Object);
+        var preview = await sync.PreviewAsync("actor", id);
+        Assert.NotNull(preview.PreviewToken);
+        switch (change)
+        {
+            case "policy": f.DirectoryNative.PolicyRevision = "changed"; break;
+            case "scope": f.DirectoryConnection.ManagedSearchFilter = "(&(objectCategory=person)(department=example))"; break;
+            case "connection": f.DirectoryConnection.Host = "changed.example.invalid"; break;
+            case "approval":
+                var approval = await f.Service.GetApprovalAsync("native-profile", "example", id);
+                await f.Service.SetApprovalAsync("native-profile", "example", id, new(approval.Revision, false));
+                break;
+            case "mapping":
+                var mappings = await f.NativeFields.GetMappingsAsync();
+                await f.NativeFields.SetMappingsAsync(new(mappings.Revision, mappings.Mappings, mappings.FirstNameFallback));
+                break;
+            case "object": objectId = Guid.NewGuid(); break;
+        }
+        f.Db.ChangeTracker.Clear();
+        Assert.Equal("preview_stale", (await Assert.ThrowsAsync<ProfileSyncException>(() => sync.ApplyAsync("actor", id, preview.PreviewToken!))).Code);
+        Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+        Assert.Null((await f.Db.Persons.AsNoTracking().SingleAsync()).Nickname);
+    }
+
+    [Theory]
+    [InlineData(DirectoryLookupOutcome.NotFound, "source_not_found")]
+    [InlineData(DirectoryLookupOutcome.Ambiguous, "source_unavailable")]
+    [InlineData(DirectoryLookupOutcome.Ineligible, "source_unavailable")]
+    [InlineData(DirectoryLookupOutcome.Timeout, "source_unavailable")]
+    [InlineData(DirectoryLookupOutcome.Unavailable, "source_unavailable")]
+    public async Task DirectorySync_ShouldSurfaceFailedReadWithoutHttpFallback(DirectoryLookupOutcome outcome, string code)
+    {
+        using var f = new Fixture(nativeMode: true, direct: true);
+        var id = await f.SeedAsync();
+        await f.ConfigureAsync("employeeId", "person.employeeId");
+        await f.ApproveAsync(id);
+        var lookup = new Mock<IDirectoryIdentityLookup>();
+        lookup.Setup(x => x.FindManagedIdentityAsync("0001", It.IsAny<CancellationToken>())).ReturnsAsync(new DirectoryLookupResult(outcome));
+        var http = new Mock<IProviderNativeProfileClient>(MockBehavior.Strict);
+        var sync = new AdminProfileSyncService(f.Db, f.NativeFields, http.Object, Options.Create(f.NativeOptions),
+            f.Protection, new UpperInvariantLookupNormalizer(), Mock.Of<Core.Application.IAuditService>(), queries: f.Service, directoryLookup: lookup.Object);
+        Assert.Equal(code, (await Assert.ThrowsAsync<ProfileSyncException>(() => sync.PreviewAsync("actor", id))).Code);
+        Assert.Null((await f.Db.Users.AsNoTracking().SingleAsync()).Nickname);
+        lookup.Verify(x => x.FindManagedIdentityAsync("0001", It.IsAny<CancellationToken>()), Times.Once);
+        http.VerifyNoOtherCalls();
+    }
+
     [Theory]
     [InlineData("example.provider")]
     [InlineData("other.example")]
@@ -542,7 +741,11 @@ public sealed class NeutralQueryTests
         public NativeFieldPolicyService NativeFields { get; }
         public ProviderNativeProfileOptions NativeOptions { get; }
         private readonly string _capability;
-        public Fixture(bool nativeMode = false, bool capabilityEnabled = true)
+        public DirectoryNativeProfileOptions DirectoryNative { get; } = new();
+        public DirectoryIntegrationOptions DirectoryIntegration { get; } = new();
+        public DirectoryLookupOptions DirectoryLookup { get; } = new();
+        public DirectoryCredentialTransportOptions DirectoryConnection { get; } = new();
+        public Fixture(bool nativeMode = false, bool capabilityEnabled = true, bool direct = false)
         {
             _capability = nativeMode ? "native-profile" : "profile";
             _connection.Open();
@@ -551,10 +754,37 @@ public sealed class NeutralQueryTests
             NativeFields = new NativeFieldPolicyService(Db, Options.Create(new NativeFieldPolicyOptions()),
                 Options.Create(new ProviderProofOptions()), Options.Create(new DirectoryIntegrationOptions()), () => Service!);
             NativeOptions = nativeMode ? new ProviderNativeProfileOptions { Enabled = capabilityEnabled, QuerySources = new() { ["example"] = Source } } : new();
+            if (direct)
+            {
+                NativeOptions.Enabled = false;
+                NativeOptions.QuerySources.Clear();
+                DirectoryNative.Enabled = true;
+                DirectoryNative.Trusted = true;
+                DirectoryNative.SourceId = "example";
+                DirectoryNative.ProviderNamespace = "example.provider";
+                DirectoryNative.PolicyRevision = "first";
+                DirectoryNative.SamAccountNameQueryAttribute = "employeeId";
+                DirectoryNative.AllowedValueSources = ["person.employeeId"];
+                DirectoryIntegration.Enabled = true;
+                DirectoryConnection.Host = "directory.example.invalid";
+                DirectoryConnection.BaseDistinguishedName = "DC=example,DC=invalid";
+                DirectoryConnection.ManagedSearchFilter = "(objectCategory=person)";
+            }
             Service = new(Db, Protection, Monitor(NativeOptions),
                 Monitor(nativeMode ? new ProviderProfileOptions() : new ProviderProfileOptions { Enabled = capabilityEnabled, QuerySources = new() { ["example"] = Source } }),
                 Monitor(new ProviderMetadataRefreshOptions()), Monitor(new ProviderLifecycleOptions()),
-                Monitor(new RecoveryIdentityVerificationOptions()), Monitor(new LegacyPasswordSyncOptions()), NativeFields);
+                Monitor(new RecoveryIdentityVerificationOptions()), Monitor(new LegacyPasswordSyncOptions()), NativeFields,
+                Monitor(DirectoryNative), Options.Create(DirectoryIntegration), Options.Create(DirectoryLookup), Options.Create(DirectoryConnection));
+        }
+        public AdminProfileSyncService CreateDirectorySync(IProtectedDirectoryIdentityTransport transport, IProviderNativeProfileClient? client = null) =>
+            new(Db, NativeFields, client ?? new Mock<IProviderNativeProfileClient>(MockBehavior.Strict).Object, Options.Create(NativeOptions),
+                Protection, new UpperInvariantLookupNormalizer(), Mock.Of<Core.Application.IAuditService>(), queries: Service,
+                directoryLookup: new ProtectedDirectoryIdentityLookup(transport, Options.Create(DirectoryIntegration), Options.Create(DirectoryLookup)));
+        public async Task ApproveAsync(Guid id)
+        {
+            var approval = await Service.GetApprovalAsync("native-profile", "example", id);
+            await Service.SetApprovalAsync("native-profile", "example", id, new(approval.Revision, true));
+            Db.ChangeTracker.Clear();
         }
         public async Task<Guid> SeedAsync()
         {

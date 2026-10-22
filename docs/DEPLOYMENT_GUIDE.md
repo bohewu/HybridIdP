@@ -161,6 +161,127 @@ its v2 Password Sync has the separate
 Retain normal deployment upgrade procedures for any already outstanding schema
 upgrades.
 
+### Direct AD source for manual profile synchronization
+
+The optional direct **Organization directory (AD/LDAP)** source is read-only and
+admin-manual-only. It uses the existing internal `neutral-v2` query-selection
+shape without an HTTP endpoint, shared key or legacy fallback. The protected
+`QuerySourceDto.sourceType` is `directory`; existing API sources default to `http`.
+No additional migration is needed for this source; retain outstanding existing
+schema upgrade procedures. No previous Proof/SSO login or authentication binding
+is required for the approved local query input.
+
+Configure these exact ASP.NET environment keys privately. Empty values below
+are placeholders; the example remains disabled and untrusted:
+
+```dotenv
+DirectoryNativeProfile__Enabled=false
+DirectoryNativeProfile__Trusted=false
+DirectoryNativeProfile__Paused=false
+DirectoryNativeProfile__SourceId=
+DirectoryNativeProfile__ProviderNamespace=
+DirectoryNativeProfile__PolicyRevision=
+DirectoryNativeProfile__SamAccountNameQueryAttribute=accountName
+DirectoryNativeProfile__AllowedValueSources__0=user.userName
+DirectoryIntegration__Enabled=false
+DirectoryIntegration__AuthenticationEnabled=false
+DirectoryIntegration__Transport=Ldaps
+DirectoryLookup__Timeout=00:00:05
+DirectoryCredentialTransport__Host=
+DirectoryCredentialTransport__Port=636
+DirectoryCredentialTransport__BaseDistinguishedName=
+DirectoryCredentialTransport__ManagedSearchFilter=
+DirectoryCredentialTransport__ServiceAccountDistinguishedName=
+DirectoryCredentialTransport__ServiceAccountSecret=
+DirectoryCredentialTransport__Timeout=00:00:05
+```
+
+Set a unique local `SourceId`, exact independently approved data `ProviderNamespace`
+and nonempty `PolicyRevision`. A sourceId collision with a Native Profile HTTP
+query source fails closed. After validating configuration, explicitly enable and
+trust `DirectoryNativeProfile` and enable `DirectoryIntegration` for data access.
+`AuthenticationEnabled` remains independently default-off. Existing Stage 1 login,
+objectGUID binding, credential and native-write ceilings keep their separate rules.
+
+For a pure data-only deployment to omit Proof transport at startup, explicitly set
+`DirectoryNativeProfile__Enabled=true` and `DirectoryNativeProfile__Trusted=true`,
+keep `ProviderProof__Enabled=false` with both `ProviderProof__Endpoint` and
+`ProviderProof__SharedSecret` absent or blank, and keep
+`DirectoryIntegration__AuthenticationEnabled=false`,
+`DirectoryIntegration__TemporaryCredentialCapabilityEnabled=false`,
+`NativeFieldPolicy__Stage1Enabled=false` and `CredentialMigration__Enabled=false`.
+All these flags default to false; review inherited environment/configuration
+overrides explicitly. `DirectoryIntegration__Enabled=true` is still required for
+data access. This is a narrow startup-validator exception; other validation remains
+in force. Existing configured Proof, login or staged features must retain their
+real transport, credentials and validation: do not clear their settings or disable
+those features merely to add this data source.
+
+Choose exactly one deployment-agreed lookup attribute:
+
+| SamAccountNameQueryAttribute | AllowedValueSources entries | Meaning |
+| --- | --- | --- |
+| `accountName` | `user.userName` | Approved local username means exact sAMAccountName in this source. |
+| `employeeId` | `person.employeeId`, `user.employeeId`, or both | Only by explicit deployment agreement, the chosen stored field means exact sAMAccountName. |
+
+For the second form, replace `SamAccountNameQueryAttribute` with `employeeId` and
+set indexed `AllowedValueSources__0` and optionally `__1`. The UI selects one
+approved value source; User and Person values never substitute for each other.
+Neither form searches LDAP employeeID. Returned `employeeId` comes only from
+actual AD `employeeID`. No domain stripping, case conversion, attribute alias,
+inferred name, runtime candidate, national ID or weaker retry is added. Existing
+neutral-query outer-whitespace normalization still applies.
+
+Keep connection values and credentials outside Git. Use a service identity
+restricted to reads and the independently approved managed scope. The deployment
+`ManagedSearchFilter` is a filter clause combined with the fixed escaped exact
+sAMAccountName predicate below `BaseDistinguishedName`; no UI LDAP editor exists.
+The reader requires exactly one eligible, enabled, unlocked result. Missing,
+ambiguous or unavailable data never clears local fields.
+
+Use `Ldaps`, `StartTls` or `WindowsNegotiate`; anonymous and unprotected simple
+bind are rejected. When Port is unset, LDAPS defaults to 636 and the other two
+to 389; explicitly choose a matching port and retain TLS certificate validation.
+LDAPS/StartTLS require `ServiceAccountDistinguishedName` and `ServiceAccountSecret`.
+WindowsNegotiate accepts separate `ServiceAccountUserName`, `WindowsDomain` and
+`ServiceAccountSecret`; omitting the username uses the process network identity.
+Do not assume that identity is usable in a container. Both timeouts must be
+positive; `DirectoryLookup__Timeout` must be at most 30 seconds.
+
+The five production Compose modes (`internal`, `nginx`, `splithost`,
+`splithost-nginx`, `splithost-nginx-nodb`) pass the selected private env file
+through `idp-service.env_file`; explicit `environment` entries take precedence.
+Host `dotnet run` does not automatically load the repository `.env`: supply process
+environment or local user-secrets. Root `docker-compose.dev.yml` uses an explicit
+environment whitelist and does not pass `DirectoryNativeProfile__*` automatically.
+For a development container, use a private override with an `idp-service.environment`
+mapping for each required `DirectoryNativeProfile__*` key, including indexed value
+sources. Explicitly include the base and override files and the private interpolation
+env file when starting Compose. Set the existing uppercase directory connection
+variables consumed by the development Compose file too. Adding keys to `.env` or
+using `--env-file` alone does not extend that container whitelist.
+
+In **Sources and queries > Manage query fields**, choose **Profile sync**,
+**Configured fields**, the deployed directory source, its supported input and
+approved stored value source. **Existing method** is unavailable for directory
+sources. Save and approve the exact account/input/Person context. In **Field
+mappings**, select the source and supported returned property. Native targets
+remain Nickname, FirstName, LastName, Department, JobTitle and EmployeeId; returned
+choices remain `displayName`, `givenName`, `surname`, `department`, `title` and
+`employeeId`. Explicit `FirstName -> displayName` uses the whole returned value
+without enabling the separate Proof fallback.
+
+**Save mappings** only saves configuration. **Save and open manual sync** saves
+then opens account selection; neither action reads AD or schedules a next-login
+AD sync. Select existing accounts, **Preview differences**, then explicitly
+**Apply** eligible changes. Preview and apply each read AD afresh. Populated
+values, manually fixed blanks, independent User/Person ownership and Email MFA
+protections remain enforced. Directory Email is contact data and cannot confer
+EmailConfirmed. Source/property/approval/account/security or directory policy,
+connection/scope changes invalidate affected previews. A changed resolved directory
+object invalidates apply too. Stale or failed apply needs a fresh preview, without
+automatic retry, source switching or legacy fallback.
+
 ### Capability limits and producer agreement
 
 A query match never links accounts, renames users, changes UserId/PersonId,
@@ -1195,8 +1316,8 @@ Compose files pass the selected `.env` through `idp-service.env_file`.
 
 In **Data sources and sync > Field mappings > Manage field mappings**, edit
 the native/source/property mappings and optional **Use the full name to fill a
-missing first name** strategy. **Save for next sign-in** saves configuration only;
-**Save and sync now** then opens account selection, read-only preview and explicit
+missing first name** strategy. **Save mappings** saves configuration only;
+**Save and open manual sync** then opens account selection, read-only preview and explicit
 apply. Editable mappings use the existing system-managed Settings storage and
 source-policy revisions, with no additional migration or environment flag.
 Saved rows retain their exact namespace; changing deployment trust does not

@@ -13,6 +13,75 @@ namespace Tests.Web.IdP.UnitTests.Configuration;
 
 public sealed class ProviderProofConfigurationTests
 {
+    [Fact]
+    public void Registration_ShouldValidateDataOnlyDirectoryWithoutProofTransport()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["DirectoryIntegration:Enabled"] = "true",
+            ["DirectoryIntegration:AuthenticationEnabled"] = "false",
+            ["DirectoryNativeProfile:Enabled"] = "true",
+            ["DirectoryNativeProfile:Trusted"] = "true",
+            ["DirectoryNativeProfile:SourceId"] = "directory-data",
+            ["DirectoryNativeProfile:ProviderNamespace"] = "example.directory",
+            ["DirectoryNativeProfile:PolicyRevision"] = "first",
+            ["DirectoryNativeProfile:SamAccountNameQueryAttribute"] = "accountName",
+            ["DirectoryNativeProfile:AllowedValueSources:0"] = "user.userName",
+            ["ProviderProof:Enabled"] = "false"
+        }).Build();
+        var services = new ServiceCollection();
+        services.AddSingleton<IConfiguration>(configuration);
+        services.AddSingleton(Mock.Of<IApplicationDbContext>());
+        services.AddCustomApplicationServices(configuration);
+        using var provider = services.BuildServiceProvider();
+
+        // Exercise the registered startup validators without starting a host or making a directory read.
+        provider.GetRequiredService<IStartupValidator>().Validate();
+        var proof = provider.GetRequiredService<IOptions<ProviderProofOptions>>().Value;
+        Assert.False(proof.Enabled);
+        Assert.Null(proof.Endpoint);
+        Assert.Null(proof.SharedSecret);
+        Assert.False(provider.GetRequiredService<IOptions<DirectoryIntegrationOptions>>().Value.AuthenticationEnabled);
+        Assert.True(provider.GetRequiredService<IOptions<DirectoryNativeProfileOptions>>().Value.Enabled);
+    }
+
+    [Theory]
+    [InlineData("direct_disabled")]
+    [InlineData("direct_untrusted")]
+    [InlineData("proof_enabled")]
+    [InlineData("directory_authentication")]
+    [InlineData("temporary_credentials")]
+    [InlineData("stage1_native_fields")]
+    [InlineData("credential_migration")]
+    [InlineData("endpoint_only")]
+    [InlineData("secret_only")]
+    public void Options_ShouldRetainProofTransportRequirementsOutsideDataOnlyDirectory(string condition)
+    {
+        var directory = new DirectoryIntegrationOptions { Enabled = true };
+        var direct = new DirectoryNativeProfileOptions { Enabled = true, Trusted = true };
+        var native = new Core.Application.Options.NativeFieldPolicyOptions();
+        var migration = new CredentialMigrationOptions();
+        var proof = new ProviderProofOptions();
+        switch (condition)
+        {
+            case "direct_disabled": direct.Enabled = false; break;
+            case "direct_untrusted": direct.Trusted = false; break;
+            case "proof_enabled": proof.Enabled = true; break;
+            case "directory_authentication": directory.AuthenticationEnabled = true; break;
+            case "temporary_credentials": directory.TemporaryCredentialCapabilityEnabled = true; break;
+            case "stage1_native_fields": native.Stage1Enabled = true; break;
+            case "credential_migration": migration.Enabled = true; break;
+            case "endpoint_only": proof.Endpoint = "https://provider.example.org/proof"; break;
+            case "secret_only": proof.SharedSecret = "synthetic-secret"; break;
+        }
+        var validator = new ProviderProofOptionsValidator(
+            Microsoft.Extensions.Options.Options.Create(directory), Microsoft.Extensions.Options.Options.Create(direct),
+            Microsoft.Extensions.Options.Options.Create(native), Microsoft.Extensions.Options.Options.Create(migration));
+        var result = validator.Validate(null, proof);
+        Assert.True(result.Failed);
+        Assert.Contains(result.Failures, failure => failure.Contains("protected provider endpoint") || failure.Contains("provider shared secret"));
+    }
+
     [Theory]
     [InlineData(nameof(ProviderProfileClient))]
     [InlineData(nameof(IProofProvider))]
@@ -50,6 +119,8 @@ public sealed class ProviderProofConfigurationTests
         var services = new ServiceCollection();
         services.AddSingleton(configuration as IConfiguration);
         services.AddSingleton(Mock.Of<IApplicationDbContext>());
+        services.AddSingleton<Microsoft.AspNetCore.DataProtection.IDataProtectionProvider>(
+            new Microsoft.AspNetCore.DataProtection.EphemeralDataProtectionProvider());
         services.AddCustomApplicationServices(configuration);
         using var provider = services.BuildServiceProvider();
 

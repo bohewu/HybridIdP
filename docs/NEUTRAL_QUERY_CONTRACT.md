@@ -253,6 +253,31 @@ target/write scope before writing. An exact duplicate returns the stored aggrega
 receipt without executing again; conflicting reuse is rejected without a new
 write, never replaced by a new target. Do not persist plaintext passwords.
 
+## Direct directory Native Profile adapter
+
+The optional AD/LDAP adapter applies only to administrator manual Native Profile
+sync. It uses the existing internal `neutral-v2` selection and approved persisted
+values, without an HTTP endpoint, header, shared key or legacy body. HTTP transport
+rules above continue to apply to HTTP producers. The protected source catalog
+identifies this source with `sourceType: "directory"`; existing sources default
+to `"http"`.
+
+`DirectoryNativeProfile` is deployment-controlled and disabled/untrusted by default.
+Its explicit `SamAccountNameQueryAttribute` selects `accountName` with `user.userName`,
+or `employeeId` with `person.employeeId` and/or `user.employeeId`. Either choice
+uses the selected approved value as exact sAMAccountName, without alias or candidate
+substitution. The employeeId-input form requires explicit deployment agreement;
+returned employeeId still comes only from AD employeeID. No national-ID or runtime
+candidate is added. See [configuration and safe setup](DEPLOYMENT_GUIDE.md#direct-ad-source-for-manual-profile-synchronization).
+
+Saving query settings or mappings performs no AD read or next-login scheduling.
+Only explicit manual preview and apply perform fresh read-only lookups. Data lookup
+needs no previous login binding and grants no login, linking, credential-write or
+Email verification authority. Existing Stage 1 binding/login and HTTP legacy/v2
+consumers retain their boundaries. Directory policy, connection/scope, approvals
+and resolved object identity participate in preview freshness; stale or failed
+apply requires a fresh preview without fallback.
+
 ## Consumer and producer handoff
 
 Implement common typed query resolution/correlation once, then retain each

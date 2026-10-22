@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { profileSyncApi } from '@/services/profileSyncApi'
@@ -12,6 +12,11 @@ const linkedAccounts = ref([]), selectedAccountId = ref(''), results = ref([]), 
 const accounts = computed(() => props.personId
   ? linkedAccounts.value.filter(account => account.id === selectedAccountId.value)
   : props.accounts.slice(0, 50))
+let previewGeneration = 0
+watch(() => JSON.stringify([props.accounts.map(account => account.id), props.personId, selectedAccountId.value, props.canSync]), () => {
+  previewGeneration++
+  results.value = []
+}, { flush: 'sync' })
 const writable = change => ['fill', 'confirm'].includes(change.action)
 const ready = computed(() => results.value.filter(row => row.status === 'ready' && row.previewToken && row.changes.some(writable)))
 const fillCount = computed(() => ready.value.reduce((count, row) => count + row.changes.filter(writable).length, 0))
@@ -38,12 +43,14 @@ async function load() {
 async function preview() {
   if (!props.canSync || !enabled.value || busy.value || !accounts.value.length) return
   busy.value = true
+  const generation = ++previewGeneration
   phase.value = 'preview'
   progress.value = 0
   results.value = []
   total.value = accounts.value.length
   try {
     for (const account of accounts.value) {
+      if (generation !== previewGeneration) break
       const row = reactive({ account, status: 'previewing', changes: [], reason: null, previewToken: null })
       results.value.push(row)
       try { Object.assign(row, await profileSyncApi.preview(account.id)) }

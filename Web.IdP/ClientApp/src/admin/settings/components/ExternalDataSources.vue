@@ -53,7 +53,7 @@ onMounted(load)
           <tbody class="divide-y divide-gray-100">
             <tr v-for="(entry, index) in entries" :key="index" data-test="query-summary-row" :data-capability="(entry.configuration || entry.source).capability" :data-source-id="(entry.configuration || entry.source).sourceId" class="align-top">
               <th scope="row" class="px-3 py-3 font-medium text-gray-900">{{ t(`query-fields.capabilities.${(entry.configuration || entry.source).capability}`) }}</th>
-              <td class="break-words px-3 py-3 text-gray-700">{{ (entry.configuration || entry.source).sourceId }}</td>
+              <td class="break-words px-3 py-3 text-gray-700">{{ (entry.configuration || entry.source).sourceId }}<span v-if="entry.source" class="mt-1 block text-xs text-gray-500">{{ t(`query-fields.sourceTypes.${entry.source.sourceType === 'directory' ? 'directory' : 'http'}`) }}</span></td>
               <td class="px-3 py-3 text-gray-600">
                 <template v-if="entry.configuration?.wireMode === 'neutral-v2'"><p v-for="mapping in entry.configuration.mappings" :key="mapping.attribute">{{ t(`query-fields.attributes.${mapping.attribute}`) }} ← {{ t(`query-fields.values.${mapping.valueSource.replaceAll('.', '_')}`) }}</p></template>
                 <span v-else>{{ t(entry.configuration ? 'query-fields.legacy' : 'query-fields.notConfigured') }}</span>

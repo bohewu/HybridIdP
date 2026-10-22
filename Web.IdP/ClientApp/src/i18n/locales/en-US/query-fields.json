@@ -117,5 +117,10 @@
   "actions": "Actions",
   "edit": "Edit",
   "view": "View",
-  "legacyStatus": "Existing method; neutral query is not selected."
+  "legacyStatus": "Existing method; neutral query is not selected.",
+  "sourceTypes": {
+    "directory": "Organization directory (AD/LDAP)",
+    "http": "External API"
+  },
+  "directoryHelp": "This directory uses configured, approved stored inputs to look up data without a prior sign-in. Select the deployed input and approve its meaning for each account. Only manual preview and apply read the directory; saving does not fetch data or schedule synchronization at sign-in."
 }

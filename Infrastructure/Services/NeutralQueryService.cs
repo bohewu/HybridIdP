@@ -12,6 +12,7 @@ using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Infrastructure.Options;
+using Infrastructure.Directory;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -23,7 +24,11 @@ public sealed class NeutralQueryService(
     IOptionsMonitor<ProviderNativeProfileOptions> native, IOptionsMonitor<ProviderProfileOptions> profile,
     IOptionsMonitor<ProviderMetadataRefreshOptions> metadata, IOptionsMonitor<ProviderLifecycleOptions> lifecycle,
     IOptionsMonitor<RecoveryIdentityVerificationOptions> recovery, IOptionsMonitor<LegacyPasswordSyncOptions> password,
-    INativeFieldPolicyService nativeFields) : INeutralQueryService
+    INativeFieldPolicyService nativeFields,
+    IOptionsMonitor<DirectoryNativeProfileOptions>? directoryNative = null,
+    IOptions<DirectoryIntegrationOptions>? directory = null,
+    IOptions<DirectoryLookupOptions>? directoryLookup = null,
+    IOptions<DirectoryCredentialTransportOptions>? directoryConnection = null) : INeutralQueryService
 {
     private static readonly JsonSerializerOptions Json = new() { UnmappedMemberHandling = System.Text.Json.Serialization.JsonUnmappedMemberHandling.Disallow };
     private readonly IDataProtector _protector = protection.CreateProtector("NeutralQuery.Approval.v2");
@@ -52,7 +57,12 @@ public sealed class NeutralQueryService(
             {
                 // A blocked saved selection remains visible and can be removed, never silently replaced.
                 if (current.Configurations.Any(x => Serialize(x) == Serialize(row))) continue;
-                if (row.WireMode == NeutralQueryContract.Legacy) continue;
+                if (row.WireMode == NeutralQueryContract.Legacy)
+                {
+                    Require(!deployed.TryGetValue((row.Capability, row.SourceId), out var legacySource) ||
+                        legacySource.Directory is null, "invalid_mapping");
+                    continue;
+                }
                 Require(deployed.TryGetValue((row.Capability, row.SourceId), out var source) && Usable(row.Capability, source), "source_unavailable");
                 Require(Supports(row, source!), "invalid_mapping");
             }
@@ -93,8 +103,11 @@ public sealed class NeutralQueryService(
             if (mappings.Length == 0) return new("Legacy");
             if (mappings.Length != 1) return new("Unavailable");
             var mapping = mappings[0];
-            if (mapping.WireMode == NeutralQueryContract.Legacy) return new("Legacy");
-            if (!Sources().TryGetValue((capability, mapping.SourceId), out var source) || !Usable(capability, source) || !Supports(mapping, source)) return new("Unavailable");
+            if (mapping.WireMode == NeutralQueryContract.Legacy)
+                return new(Sources().TryGetValue((capability, mapping.SourceId), out var legacySource) &&
+                    legacySource.Directory is not null ? "Unavailable" : "Legacy");
+            if (!Sources().TryGetValue((capability, mapping.SourceId), out var deployed) || !Usable(capability, deployed) || !Supports(mapping, deployed)) return new("Unavailable");
+            var source = deployed.Policy;
             var (user, person) = await AccountAsync(userId, cancellationToken);
             var supplied = runtimeValues?.ToArray() ?? [];
             var material = await ApprovalMaterialAsync(capability, mapping.SourceId, userId, cancellationToken);
@@ -124,14 +137,15 @@ public sealed class NeutralQueryService(
             }
             // Include original stored material, source policy (including endpoint/secret), approval revision,
             // account/security state and mapping revision. Request IDs are independent correlation tokens.
-            var fingerprint = Hash(new { state.Revision, mapping, source, material.Fingerprint, approval, values, supplied,
+            var fingerprint = Hash(new { state.Revision, mapping, deployed, material.Fingerprint, approval, values, supplied,
                 user.SecurityStamp, user.ConcurrencyStamp, user.IsActive, user.PersonId,
                 person?.Status, person?.StartDate, person?.EndDate, person?.IsDeleted, user.NativeFieldStateJson,
                 PersonNativeState = person?.NativeFieldStateJson });
             var request = new NeutralQueryRequest { ContractType = capability, ProviderNamespace = mapping.ProviderNamespace,
                 Query = new(new ReadOnlyDictionary<string, string>(values), mapping.QueryRule) };
             return new("Ready", new(userId, user.PersonId, mapping.SourceId, request, fingerprint, state.Revision,
-                new(new Uri(source.Endpoint), source.SharedSecret, source.Timeout), Array.AsReadOnly(supplied)));
+                deployed.Directory is null ? new(new Uri(source.Endpoint), source.SharedSecret, source.Timeout) : null,
+                Array.AsReadOnly(supplied), deployed.Directory));
         }
         catch (NeutralQueryException) { return new("Unavailable"); }
     }
@@ -144,9 +158,9 @@ public sealed class NeutralQueryService(
             Serialize(current.Context.Request.Query) == Serialize(context.Request.Query);
     }
 
-    private Dictionary<(string Capability, string SourceId), NeutralQuerySourceOptions> Sources()
+    private Dictionary<(string Capability, string SourceId), DeployedSource> Sources()
     {
-        var result = new Dictionary<(string, string), NeutralQuerySourceOptions>();
+        var result = new Dictionary<(string, string), DeployedSource>();
         void Add(string capability, bool enabled, Dictionary<string, NeutralQuerySourceOptions> sources)
         {
             foreach (var (id, source) in sources)
@@ -154,7 +168,7 @@ public sealed class NeutralQueryService(
                 // Snapshot monitors so a pending context never shares a mutable deployment object.
                 var copy = JsonSerializer.Deserialize<NeutralQuerySourceOptions>(Serialize(source))!;
                 copy.Enabled &= enabled;
-                result.Add((capability, id), copy);
+                result.Add((capability, id), new(copy));
             }
         }
         Add("native-profile", native.CurrentValue.Enabled, native.CurrentValue.QuerySources);
@@ -163,23 +177,49 @@ public sealed class NeutralQueryService(
         Add("lifecycle-status", lifecycle.CurrentValue.Enabled, lifecycle.CurrentValue.QuerySources);
         Add("recovery-identity-verification", recovery.CurrentValue.Enabled, recovery.CurrentValue.QuerySources);
         Add("password-sync", password.CurrentValue.Enabled, password.CurrentValue.QuerySources);
+        if (directoryNative?.CurrentValue is { } direct && !string.IsNullOrWhiteSpace(direct.SourceId))
+        {
+            var key = ("native-profile", direct.SourceId);
+            var policy = new NeutralQuerySourceOptions
+            {
+                Enabled = direct.Enabled, Trusted = direct.Trusted, Paused = direct.Paused,
+                ProviderNamespace = direct.ProviderNamespace, PolicyRevision = direct.PolicyRevision,
+                AcceptedAttributeSets = [[direct.SamAccountNameQueryAttribute ?? string.Empty]],
+                AllowedValueSources = new() { [direct.SamAccountNameQueryAttribute ?? string.Empty] = direct.AllowedValueSources?.ToArray()! }
+            };
+            var valid = ProviderProfileContract.IsValidKey(direct.SourceId) &&
+                direct.SamAccountNameQueryAttribute is "accountName" or "employeeId" &&
+                directory?.Value is { Enabled: true, Transport: DirectoryTransport.Ldaps or DirectoryTransport.StartTls or DirectoryTransport.WindowsNegotiate } &&
+                directoryLookup?.Value.Timeout is { } timeout && timeout > TimeSpan.Zero && timeout <= TimeSpan.FromSeconds(30) &&
+                directoryConnection?.Value.IsConfigured == true;
+            // A duplicate local source key is ambiguous, never a transport override or HTTP fallback.
+            if (result.ContainsKey(key)) valid = false;
+            result[key] = new(policy, new(direct.SamAccountNameQueryAttribute ?? string.Empty),
+                Hash(new { direct, Integration = directory?.Value, Lookup = directoryLookup?.Value, Connection = directoryConnection?.Value }), valid);
+        }
         return result;
     }
 
-    private static bool Usable(string capability, NeutralQuerySourceOptions source) => source.Enabled && source.Trusted && !source.Paused &&
+    private static bool Usable(string capability, DeployedSource deployed) =>
+        (deployed.Directory is null || capability == "native-profile" && deployed.DirectoryConfigurationValid) &&
+        UsablePolicy(capability, deployed.Policy, deployed.Directory is not null);
+
+    private static bool UsablePolicy(string capability, NeutralQuerySourceOptions source, bool direct) => source.Enabled && source.Trusted && !source.Paused &&
         NeutralQueryContract.IsText(source.ProviderNamespace, 200) && NeutralQueryContract.IsText(source.PolicyRevision, 128) &&
         NeutralQueryContract.IsRule(source.QueryRule) && source.Timeout > TimeSpan.Zero && source.Timeout <= TimeSpan.FromSeconds(
             capability is "lifecycle-status" or "recovery-identity-verification" ? 10 : 30) &&
-        Uri.TryCreate(source.Endpoint, UriKind.Absolute, out var endpoint) && !string.IsNullOrEmpty(endpoint.Host) &&
+        (direct || (Uri.TryCreate(source.Endpoint, UriKind.Absolute, out var endpoint) && !string.IsNullOrEmpty(endpoint.Host) &&
         string.IsNullOrEmpty(endpoint.UserInfo) && string.IsNullOrEmpty(endpoint.Query) && string.IsNullOrEmpty(endpoint.Fragment) &&
         (endpoint.Scheme == "https" || source.AllowPrivateNetworkHttp && capability is not ("lifecycle-status" or "recovery-identity-verification") && endpoint.Scheme == "http") &&
-        source.SharedSecret is { Length: > 0 } && source.SharedSecret.All(c => c is >= '!' and <= '~') &&
+        source.SharedSecret is { Length: > 0 } && source.SharedSecret.All(c => c is >= '!' and <= '~'))) &&
         source.AcceptedAttributeSets is { Length: > 0 and <= 7 } && source.AcceptedAttributeSets.All(set =>
             set is { Length: > 0 and <= 3 } && set.Distinct(StringComparer.Ordinal).Count() == set.Length && set.All(NeutralQueryContract.ValueSources.ContainsKey)) &&
         source.AllowedValueSources is not null && source.AllowedValueSources.All(pair => NeutralQueryContract.ValueSources.TryGetValue(pair.Key, out var valid) &&
             pair.Value is { Length: > 0 } && pair.Value.All(value => valid.Contains(value, StringComparer.Ordinal))) && source.TrustedValueProviderNamespaces is not null;
 
-    private static bool Supports(QueryConfigurationDto row, NeutralQuerySourceOptions source) => row.ProviderNamespace == source.ProviderNamespace &&
+    private static bool Supports(QueryConfigurationDto row, DeployedSource deployed) => SupportsPolicy(row, deployed.Policy);
+
+    private static bool SupportsPolicy(QueryConfigurationDto row, NeutralQuerySourceOptions source) => row.ProviderNamespace == source.ProviderNamespace &&
         row.QueryRule == source.QueryRule && source.AcceptedAttributeSets.Any(set => set.Order(StringComparer.Ordinal).SequenceEqual(
             row.Mappings.Select(x => x.Attribute).Order(StringComparer.Ordinal))) && row.Mappings.All(x =>
             IsSupportedValueSource(x.ValueSource) && source.AllowedValueSources.TryGetValue(x.Attribute, out var sources) &&
@@ -189,9 +229,10 @@ public sealed class NeutralQueryService(
     private static bool IsSupportedValueSource(string valueSource) => valueSource is
         "person.employeeId" or "user.employeeId" or "person.nationalId" or "user.userName";
 
-    private static QuerySourceDto Describe(string capability, string sourceId, NeutralQuerySourceOptions source)
+    private static QuerySourceDto Describe(string capability, string sourceId, DeployedSource deployed)
     {
-        var available = Usable(capability, source);
+        var source = deployed.Policy;
+        var available = Usable(capability, deployed);
         var candidates = available ? source.AllowedValueSources
             .Select(x => new QueryCandidateDto(x.Key, x.Key == "nationalIdHash" ? "Sha256Hex" : "String",
                 x.Value.Where(IsSupportedValueSource).ToArray()))
@@ -204,7 +245,7 @@ public sealed class NeutralQueryService(
         available &= sets.Length > 0;
         return new(capability, sourceId, source.ProviderNamespace, available, unavailableReason,
             available ? candidates.Where(x => sets.Any(set => set.Contains(x.Attribute))).ToArray() : [],
-            available ? sets : [], source.QueryRule);
+            available ? sets : [], source.QueryRule, deployed.Directory is null ? "http" : "directory");
     }
 
     private static void ValidateShape(IReadOnlyList<QueryConfigurationDto>? rows)
@@ -240,9 +281,13 @@ public sealed class NeutralQueryService(
         var (user, person) = await AccountAsync(userId, ct);
         var stored = mapping!.Mappings.Where(x => !x.ValueSource.StartsWith("runtime.", StringComparison.Ordinal)).Select(x =>
             new { x.Attribute, x.ValueSource, Value = StoredValue(user, person, x.ValueSource) }).ToArray();
-        return new(mapping, Hash(new { mapping, user.Id, user.PersonId, user.SecurityStamp, user.ConcurrencyStamp,
+        var deployed = Sources()[(capability, sourceId)];
+        var fingerprint = Hash(new { mapping, user.Id, user.PersonId, user.SecurityStamp, user.ConcurrencyStamp,
                 user.ModifiedAt, user.UpdatedAt, user.NativeFieldStateJson, PersonModifiedAt = person?.ModifiedAt,
-                PersonNativeState = person?.NativeFieldStateJson, person?.IdentityVerifiedAt, person?.IdentityVerifiedBy, stored }),
+                PersonNativeState = person?.NativeFieldStateJson, person?.IdentityVerifiedAt, person?.IdentityVerifiedBy, stored });
+        // Retain the existing HTTP approval material; only direct reads add the directory scope contract.
+        if (deployed.Directory is not null) fingerprint = Hash(new { fingerprint, deployed.DirectoryConfigurationFingerprint });
+        return new(mapping, fingerprint,
             stored.All(x => NeutralQueryContract.TryNormalize(x.Attribute, x.Value, out _)));
     }
     private static string? StoredValue(ApplicationUser user, Person? person, string source) => source switch
@@ -307,6 +352,8 @@ public sealed class NeutralQueryService(
     private static string Serialize<T>(T value) => JsonSerializer.Serialize(value, Json);
     private static string Hash<T>(T value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Serialize(value))));
     private static Guid Revision<T>(T value) => new(SHA256.HashData(Encoding.UTF8.GetBytes(Serialize(value))).AsSpan(0, 16));
+    private sealed record DeployedSource(NeutralQuerySourceOptions Policy, DirectoryQueryTransport? Directory = null,
+        string? DirectoryConfigurationFingerprint = null, bool DirectoryConfigurationValid = true);
     private sealed record ConfigurationDocument(Guid Revision, IReadOnlyList<QueryConfigurationDto> Configurations);
     private sealed record ApprovalDocument(Guid Revision, bool Approved, string ValueFingerprint);
     private sealed record ApprovalMaterial(QueryConfigurationDto Mapping, string Fingerprint, bool Complete);

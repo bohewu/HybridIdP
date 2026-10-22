@@ -22,6 +22,8 @@ const isNeutral = computed(() => capability.value === 'profile' && row.value ? r
 const sources = computed(() => state.value?.sources.filter(source => source.capability === capability.value) || [])
 const sourceIndex = computed(() => row.value ? sources.value.findIndex(source => source.sourceId === row.value.sourceId && source.providerNamespace === row.value.providerNamespace) : -1)
 const source = computed(() => sources.value[sourceIndex.value])
+const isDirectory = computed(() => source.value?.sourceType === 'directory')
+const sourceLabel = item => `${item.sourceId} (${t(`query-fields.sourceTypes.${item.sourceType === 'directory' ? 'directory' : 'http'}`)})`
 const sets = computed(() => source.value?.acceptedAttributeSets || [])
 const setKey = attributes => [...attributes].sort().join('|')
 const selectedSet = computed(() => setKey(row.value?.mappings.map(mapping => mapping.attribute) || []))
@@ -49,7 +51,7 @@ async function load() {
   finally { loading.value = false }
 }
 function modeChanged(event) {
-  if (!props.canUpdate || busy.value || conflict.value) return
+  if (!props.canUpdate || busy.value || conflict.value || (isDirectory.value && event.target.value === 'legacy')) return
   if (capability.value === 'profile' && row.value) {
     row.value.wireMode = event.target.value
     row.value.mappings = []
@@ -124,14 +126,15 @@ onMounted(load)
           </ul>
           <fieldset :disabled="!canUpdate || busy || conflict" class="min-w-0 space-y-4">
             <label class="block text-gray-700">{{ t('query-fields.mode') }}
-              <select data-test="query-mode" :value="isNeutral ? 'neutral-v2' : 'legacy'" class="query-control mt-1" @change="modeChanged"><option value="legacy">{{ t('query-fields.legacy') }}</option><option value="neutral-v2">{{ t('query-fields.neutral') }}</option></select>
+              <select data-test="query-mode" :value="isNeutral ? 'neutral-v2' : 'legacy'" class="query-control mt-1" @change="modeChanged"><option value="legacy" :disabled="isDirectory">{{ t('query-fields.legacy') }}</option><option value="neutral-v2">{{ t('query-fields.neutral') }}</option></select>
             </label>
             <p v-if="!isNeutral" class="text-gray-500">{{ t('query-fields.legacyHelp') }}</p>
             <template v-else>
               <p v-if="selectedRows.length > 1 && capability !== 'profile'" role="status" class="text-amber-700">{{ t('query-fields.multipleSources') }}</p>
               <label class="block text-gray-700">{{ t('query-fields.source') }}
-                <select data-test="query-source" :value="sourceIndex" class="query-control mt-1" @change="sourceChanged"><option :value="-1" disabled>{{ t('query-fields.chooseSource') }}</option><option v-for="(item, index) in sources" :key="index" :value="index" :disabled="!item.available">{{ item.sourceId }}{{ item.available ? '' : ` (${querySourceStatus(t, item)})` }}</option></select>
+                <select data-test="query-source" :value="sourceIndex" class="query-control mt-1" @change="sourceChanged"><option :value="-1" disabled>{{ t('query-fields.chooseSource') }}</option><option v-for="(item, index) in sources" :key="index" :value="index" :disabled="!item.available">{{ sourceLabel(item) }}{{ item.available ? '' : ` (${querySourceStatus(t, item)})` }}</option></select>
               </label>
+              <p v-if="isDirectory" data-test="directory-query-help" class="text-gray-600">{{ t('query-fields.directoryHelp') }}</p>
               <p v-if="capability === 'profile'" class="text-gray-500">{{ t('query-fields.profileSourcesHelp') }}</p>
               <p v-if="!sources.some(item => item.available)" class="text-gray-500">{{ t('query-fields.noSources') }}</p>
               <template v-if="row">

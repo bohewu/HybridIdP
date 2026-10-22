@@ -18,7 +18,7 @@ public sealed class ProviderNativeProfileClient(HttpClient httpClient, IOptions<
     public async Task<NeutralNativeProfileResult> FetchNeutralAsync(NeutralQueryContext context,
         CancellationToken cancellationToken = default)
     {
-        if (!options.Value.Enabled || context.Request.ContractType != "native-profile" ||
+        if (context.Transport is null || context.DirectoryTransport is not null || !options.Value.Enabled || context.Request.ContractType != "native-profile" ||
             !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) throw new ProfileSyncException("configuration_invalid");
         try
         {

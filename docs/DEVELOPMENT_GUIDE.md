@@ -64,6 +64,26 @@ tests for Native Profile, Profile, Metadata, Lifecycle, RIV and Password Sync;
 do not sum overlapping filtered test runs as distinct coverage. Joint product
 E2E, recording and deployment acceptance require their own observed evidence.
 
+### Direct AD manual-sync development setup
+
+The direct source is deployed through `DirectoryNativeProfile` (disabled and
+untrusted by default), independently of Stage 1 authentication. Read the
+[exact environment keys and protected transport setup](DEPLOYMENT_GUIDE.md#direct-ad-source-for-manual-profile-synchronization)
+before enabling it. The root `.env.example` contains defaults and commented input
+choices only. Host `dotnet run` uses process environment or local user-secrets;
+it does not automatically read that `.env`. Root development Compose only forwards
+its explicit environment whitelist: use a private override for the new source keys
+and include that override explicitly. Production modes use their selected env_file.
+
+Approve a deployed stored input and exact sAMAccountName semantics; never assume
+EmployeeId is populated or alias an absent AD output. Select directory source and
+property in the existing query/mapping dialogs. Saving only changes configuration;
+manual preview and explicit apply each perform fresh read-only AD lookup. No
+next-login AD data sync is scheduled. Existing Stage 1 login/binding, HTTP legacy/v2,
+field protections and the separate Proof fallback keep their existing boundaries.
+Focused product tests establish bounded behavior; connected AD, rendered recording
+and deployment behavior require their own observed evidence.
+
 ## 🚀 快速開始（新 Session）
 
 ### 1. 閱讀順序

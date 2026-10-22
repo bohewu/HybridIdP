@@ -117,7 +117,7 @@ public sealed class ProviderLifecycleClient : IProviderLifecycleClient
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_enabled || context.Request.ContractType != "lifecycle-status" ||
+        if (context.Transport is null || context.DirectoryTransport is not null || !_enabled || context.Request.ContractType != "lifecycle-status" ||
             !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return null;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(context.Transport.Timeout);

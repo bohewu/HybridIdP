@@ -105,7 +105,7 @@ public sealed class RecoveryIdentityVerificationClient : IRecoveryIdentityVerifi
         CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        if (!_enabled || context.Request.ContractType != "recovery-identity-verification" ||
+        if (context.Transport is null || context.DirectoryTransport is not null || !_enabled || context.Request.ContractType != "recovery-identity-verification" ||
             !NeutralQueryJson.TrySerializeRequest(context.Request, out var body)) return null;
         using var deadline = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         deadline.CancelAfter(context.Transport.Timeout);
