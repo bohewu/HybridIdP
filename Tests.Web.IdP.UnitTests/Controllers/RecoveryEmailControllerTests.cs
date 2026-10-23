@@ -17,6 +17,7 @@ public sealed class RecoveryEmailControllerTests
 {
     [Theory]
     [InlineData("UseDefault")]
+    [InlineData("UseCustom")]
     [InlineData("Disabled")]
     [InlineData("Legacy")]
     public async Task GetStatus_ReadOnlySelectionReturnsCurrentShapeWithoutLegacyLookup(string mode)
@@ -56,13 +57,60 @@ public sealed class RecoveryEmailControllerTests
         var response = await controller.GetStatus(default);
 
         if (authorized)
-            Assert.Equal(new RecoveryEmailStatusResponse(true, true, "o***@example.test"), Assert.IsType<OkObjectResult>(response).Value);
+            Assert.Equal(new RecoveryEmailStatusResponse(true, true, "o***@example.test") { Enabled = false }, Assert.IsType<OkObjectResult>(response).Value);
         else
         {
             Assert.Equal(403, Assert.IsType<ObjectResult>(response).StatusCode);
             legacy.VerifyNoOtherCalls();
         }
         authorizer.Verify(a => a.IsSelfServiceAuthorizedAsync(id, It.IsAny<CancellationToken>()), Times.Once);
+    }
+
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task GetStatus_LegacyDeniedReadReportsAvailabilityWithoutDisclosingAddress(bool enabled, bool hasData)
+    {
+        var id = Guid.NewGuid();
+        var legacy = new Mock<IRecoveryEmailService>(MockBehavior.Strict);
+        var authorizer = new Mock<IRecoveryProofAuthorizer>();
+        authorizer.Setup(a => a.IsSelfServiceAuthorizedAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        var preferences = new Mock<IRecoveryEmailPreferenceService>();
+        preferences.Setup(p => p.GetStatusAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecoveryPreferenceStatus(enabled, "unavailable", null, null, null, null, null, hasData));
+
+        var response = Assert.IsType<ObjectResult>(await CreateController(id, legacy.Object, authorizer.Object, preferences.Object).GetStatus(default));
+
+        Assert.Equal(403, response.StatusCode);
+        var body = Assert.IsType<RecoveryProofApiResponse>(response.Value);
+        Assert.Equal("highAssuranceRequired", body.Outcome);
+        Assert.Equal(enabled, body.Enabled);
+        Assert.Equal(hasData, body.HasRecoveryData);
+        Assert.DoesNotContain("Address", JsonSerializer.Serialize(body));
+        legacy.VerifyNoOtherCalls();
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task GetStatus_DisabledLegacyReturnsAuthorizedMaskedDataAndAvailability(bool hasData)
+    {
+        var id = Guid.NewGuid();
+        var legacy = new Mock<IRecoveryEmailService>();
+        legacy.Setup(s => s.GetStatusAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecoveryEmailStatus(hasData, hasData, hasData ? "o***@example.test" : null));
+        var authorizer = new Mock<IRecoveryProofAuthorizer>();
+        authorizer.Setup(a => a.IsSelfServiceAuthorizedAsync(id, It.IsAny<CancellationToken>())).ReturnsAsync(true);
+        var preferences = new Mock<IRecoveryEmailPreferenceService>();
+        preferences.Setup(p => p.GetStatusAsync(id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(new RecoveryPreferenceStatus(false, "unavailable", null, null, null, null, null, hasData));
+
+        var response = Assert.IsType<OkObjectResult>(await CreateController(id, legacy.Object, authorizer.Object, preferences.Object).GetStatus(default));
+
+        Assert.Equal(new RecoveryEmailStatusResponse(hasData, hasData, hasData ? "o***@example.test" : null)
+            { Enabled = false, HasRecoveryData = hasData }, response.Value);
     }
 
     [Theory]

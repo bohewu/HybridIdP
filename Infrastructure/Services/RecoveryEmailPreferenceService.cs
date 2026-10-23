@@ -25,8 +25,10 @@ public sealed class RecoveryEmailPreferenceService(ApplicationDbContext db, IRec
     public async Task<RecoveryPreferenceStatus> GetStatusAsync(Guid accountId, CancellationToken cancellationToken = default)
     {
         var preference = await db.RecoveryEmailPreferences.AsNoTracking().SingleOrDefaultAsync(p => p.LocalAccountId == accountId, cancellationToken);
+        var hasRecoveryData = preference is not null || await db.RecoveryEmails.AsNoTracking()
+            .AnyAsync(record => record.LocalAccountId == accountId, cancellationToken);
         if (!selection.Value.Enabled && preference is null)
-            return new(false, "unavailable", null, null, null, null, null);
+            return new(otpOptions.Value.RecoveryEmailEnabled, "unavailable", null, null, null, null, null, hasRecoveryData);
         var effective = await resolver.ResolveAsync(accountId, cancellationToken);
         var pending = await PendingAsync(accountId, cancellationToken);
         // Reading persisted intent must not depend on whether mutation/reauthentication is enabled.
@@ -45,7 +47,8 @@ public sealed class RecoveryEmailPreferenceService(ApplicationDbContext db, IRec
         return new(Enabled, preference?.Mode.ToString() ?? "Legacy", effective.Destination?.MaskedAddress,
             maskedDefault,
             isPending ? RecoveryProofSecurity.MaskAddress(pending!.Address) : null,
-            isPending ? pending!.ExpiresAtUtc : null, isPending ? pending!.NextSendAllowedAtUtc : null);
+            isPending ? pending!.ExpiresAtUtc : null, isPending ? pending!.NextSendAllowedAtUtc : null,
+            hasRecoveryData || pending is not null || effective.Destination is not null || maskedDefault is not null);
     }
 
     public async Task<RecoveryProofOutcome> BeginAsync(Guid accountId, string candidate, RecoveryPreferenceContext context, CancellationToken cancellationToken = default)

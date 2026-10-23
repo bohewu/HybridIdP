@@ -34,6 +34,61 @@ describe('RecoveryEmailSettings', () => {
     expect(wrapper.text()).toContain('mfa.recoveryEmail.verified')
   })
 
+  it.each([true, false])('hides disabled empty legacy status including denied reads (authorized=%s)', async authorized => {
+    fetch.mockResolvedValue(response({ enabled: false, hasRecoveryData: false, isConfigured: false,
+      outcome: authorized ? undefined : 'highAssuranceRequired' }, authorized, authorized ? 200 : 403))
+    const w = render(); await flushPromises()
+    expect(w.find('.recovery-email-settings').exists()).toBe(false)
+    expect(w.findAll('button')).toHaveLength(0)
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it.each([true, false])('keeps disabled existing legacy data read-only including denied reads (authorized=%s)', async authorized => {
+    fetch.mockResolvedValue(response({ enabled: false, hasRecoveryData: true, isConfigured: authorized,
+      isVerified: authorized, maskedAddress: authorized ? 'r***@example.test' : undefined,
+      outcome: authorized ? undefined : 'highAssuranceRequired' }, authorized, authorized ? 200 : 403))
+    const w = render(); await flushPromises()
+    expect(w.find('.recovery-email-settings').exists()).toBe(true)
+    expect(w.get('[data-testid="recovery-email-readonly"]').exists()).toBe(true)
+    expect(w.findAll('.recovery-email-actions button')).toHaveLength(0)
+    expect(w.find('[role="dialog"]').exists()).toBe(false)
+    if (authorized) expect(w.get('[data-testid="recovery-email-masked"]').text()).toContain('r***@example.test')
+    else {
+      expect(w.get('[role="alert"]').text()).toContain('highAssuranceRequired')
+      expect(w.find('[data-testid="recovery-email-masked"]').exists()).toBe(false)
+      expect(w.text()).not.toContain('notConfigured')
+    }
+    expect(fetch).toHaveBeenCalledTimes(1)
+  })
+
+  it('hides disabled empty selection policy without persisted intent', async () => {
+    fetch.mockResolvedValue(response(current({ mode: 'Legacy', enabled: false, hasRecoveryData: false,
+      maskedAddress: null, maskedDefaultAddress: null })))
+    const w = render(); await flushPromises()
+    expect(w.find('.recovery-email-settings').exists()).toBe(false)
+  })
+
+  it('preserves a persisted Disabled selection with no effective address as read-only', async () => {
+    fetch.mockResolvedValue(response(current({ mode: 'Disabled', enabled: false, hasRecoveryData: true,
+      maskedAddress: null, maskedDefaultAddress: null })))
+    const w = render(); await flushPromises()
+    expect(w.get('[data-testid="recovery-email-masked"]').text()).toContain('noEffectiveAddress')
+    expect(w.get('[data-testid="recovery-email-readonly"]').exists()).toBe(true)
+    expect(w.findAll('button')).toHaveLength(0)
+  })
+
+  it('removes an open mutation dialog when a reload reports disabled state', async () => {
+    fetch.mockResolvedValueOnce(response(current()))
+      .mockResolvedValueOnce(response({ outcome: 'unavailable' }, false, 503))
+      .mockResolvedValueOnce(response(current({ enabled: false, hasRecoveryData: true })))
+    const w = render(); await flushPromises()
+    await w.get('.recovery-email-actions .primary').trigger('click')
+    await w.get('#recovery-email-candidate').setValue('new@example.test')
+    await w.get('form').trigger('submit'); await flushPromises()
+    expect(w.find('[role="dialog"]').exists()).toBe(false)
+    expect(w.findAll('.recovery-email-actions button')).toHaveLength(0)
+  })
+
   it('requires destination verification after changing the recovery address', async () => {
     fetch
       .mockResolvedValueOnce(response({ isConfigured: false, isVerified: false, maskedAddress: null }))

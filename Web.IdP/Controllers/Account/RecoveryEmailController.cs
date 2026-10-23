@@ -46,20 +46,23 @@ public sealed class RecoveryEmailController : ControllerBase
             return Unauthorized(new RecoveryProofApiResponse("unauthorized"));
         }
 
+        RecoveryPreferenceStatus? preferenceStatus = null;
         if (_preferences is not null)
         {
-            var preferenceStatus = await _preferences.GetStatusAsync(accountId.Value, cancellationToken);
+            preferenceStatus = await _preferences.GetStatusAsync(accountId.Value, cancellationToken);
             if (preferenceStatus.Mode is "Legacy" or "UseDefault" or "UseCustom" or "Disabled")
                 return Ok(preferenceStatus);
         }
 
         if (!await _authorizer.IsSelfServiceAuthorizedAsync(accountId.Value, cancellationToken))
         {
-            return StatusCode(StatusCodes.Status403Forbidden, new RecoveryProofApiResponse("highAssuranceRequired"));
+            return StatusCode(StatusCodes.Status403Forbidden, new RecoveryProofApiResponse("highAssuranceRequired")
+            { Enabled = preferenceStatus?.Enabled, HasRecoveryData = preferenceStatus?.HasRecoveryData });
         }
 
         var status = await _recoveryEmailService.GetStatusAsync(accountId.Value, cancellationToken);
-        return Ok(new RecoveryEmailStatusResponse(status.IsConfigured, status.IsVerified, status.MaskedAddress));
+        return Ok(new RecoveryEmailStatusResponse(status.IsConfigured, status.IsVerified, status.MaskedAddress)
+        { Enabled = preferenceStatus?.Enabled, HasRecoveryData = preferenceStatus?.HasRecoveryData });
     }
 
     [HttpPost("change")]
@@ -202,5 +205,13 @@ public sealed record RecoveryEmailVerificationApiRequest(string Code)
 { public override string ToString() => nameof(RecoveryEmailVerificationApiRequest); }
 public sealed record RecoveryDefaultApiRequest(string Confirmation)
 { public override string ToString() => nameof(RecoveryDefaultApiRequest); }
-public sealed record RecoveryEmailStatusResponse(bool IsConfigured, bool IsVerified, string? MaskedAddress);
-public sealed record RecoveryProofApiResponse(string Outcome, int RetryAfterSeconds = 0);
+public sealed record RecoveryEmailStatusResponse(bool IsConfigured, bool IsVerified, string? MaskedAddress)
+{
+    public bool? Enabled { get; init; }
+    public bool? HasRecoveryData { get; init; }
+}
+public sealed record RecoveryProofApiResponse(string Outcome, int RetryAfterSeconds = 0)
+{
+    public bool? Enabled { get; init; }
+    public bool? HasRecoveryData { get; init; }
+}

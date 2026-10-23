@@ -38,6 +38,24 @@ vi.mock('../../../composables/useWebAuthn', () => ({
 vi.stubGlobal('fetch', vi.fn());
 
 describe('MfaSettings.vue', () => {
+    it.each([true, false].flatMap(enableEmailMfa => [true, false].map(hasRecoveryData => [enableEmailMfa, hasRecoveryData])))('keeps recovery visibility independent of Email OTP policy (%s, existing=%s)', async (enableEmailMfa, hasRecoveryData) => {
+        mockPolicyAccount('totp', false, { enableEmailMfa });
+        const otherFetch = fetch.getMockImplementation();
+        fetch.mockImplementation((url, options) => url === '/api/account/recovery-email'
+            ? Promise.resolve(jsonResponse({ enabled: false, hasRecoveryData, isConfigured: hasRecoveryData,
+                isVerified: hasRecoveryData, maskedAddress: hasRecoveryData ? 'r***@example.test' : null }))
+            : otherFetch(url, options));
+        const wrapper = mount(MfaSettings);
+        await flushPromises();
+        expect(wrapper.find('.email-mfa-section').exists()).toBe(enableEmailMfa);
+        expect(wrapper.find('.recovery-email-settings').exists()).toBe(hasRecoveryData);
+        if (hasRecoveryData) {
+            expect(wrapper.find('[data-testid="recovery-email-readonly"]').exists()).toBe(true);
+            expect(wrapper.findAll('.recovery-email-actions button')).toHaveLength(0);
+        }
+        wrapper.unmount();
+    });
+
     function mockPolicyAccount(factor, mandatory, overrides = {}) {
         fetch.mockImplementation(url => Promise.resolve(jsonResponse(
             url === '/api/account/mfa/status' ? {

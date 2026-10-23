@@ -151,6 +151,12 @@ existing MFA/hardware-key evidence and server-owned CSRF/context binding.
 Pending-mailbox OTP is not account reauthentication. When rollout flags are
 off, persisted selection remains accurately visible and read-only; legacy
 status/mutation behavior applies only where no selection policy/state exists.
+Disabled recovery self-service hides the section when no recovery data exists.
+Retained legacy data and persisted selection intent (including `Disabled`)
+remain visible without mutation controls. Legacy address reads still require
+the existing MFA/hardware-key assurance; denied reads retain their error and
+only expose availability/presence metadata for display. Recovery visibility
+and read-only state are independent of the Email OTP MFA policy.
 
 `RecoveryIdentityVerification.Enabled`, its Local/Directory requirement
 switches and all three `RecoveryEmailSelection` switches default to `false`.
