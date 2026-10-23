@@ -635,6 +635,46 @@ docker compose -f docker-compose.nginx.yml -f docker-compose.local-ports.yml --e
 
 `docker-compose.local-ports.yml` exposes the existing `mssql-service` (`1433`), `postgres-service` (`5432`), and `redis-service` (`6379`) on loopback only (`127.0.0.1`). It is an opt-in override, not a production default, and is not applicable to `docker-compose.splithost-nginx-nodb.yml`, which has no internal database services. Remove the override from the compose command to return to the default private posture. Do not delete or recreate volumes when adding or removing this override.
 
+### Nginx-only image upgrade
+
+The three Nginx modes pin the official multi-platform OCI index
+`nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60`.
+Nginx 1.31.8 was released on October 21, 2026 and includes the October 14
+1.31.7 security fixes for alias/rewrite and variable-expression buffer overflows,
+HTTP/3 request-body injection, TLS session-ticket key-rotation session forgery,
+and SSI with AIO use-after-free. See the official [release news](https://nginx.org/news.html)
+and [change log](https://nginx.org/en/CHANGES) for affected configurations and details.
+
+This image-only update needs no database migration or new environment key.
+Preserve the existing `.env`, database and Redis data, Data Protection keys,
+signing/encryption and TLS certificates, public origin, network settings and
+mounts. Do not rerun setup or regenerate keys. After approval, run the following
+from the existing deployment directory, selecting exactly the deployed mode:
+
+| Mode | Compose file | Nginx service |
+| --- | --- | --- |
+| `nginx` | `docker-compose.nginx.yml` | `nginx-service` |
+| `splithost-nginx` | `docker-compose.splithost-nginx.yml` | `nginx-gateway` |
+| `splithost-nginx-nodb` | `docker-compose.splithost-nginx-nodb.yml` | `nginx-gateway` |
+
+```bash
+# Set these to the matching file and service from the table above.
+compose_file=docker-compose.nginx.yml
+nginx_service=nginx-service
+docker compose --env-file .env -f "$compose_file" config --quiet
+docker compose --env-file .env -f "$compose_file" pull "$nginx_service"
+docker compose --env-file .env -f "$compose_file" up -d --no-deps --no-build --force-recreate "$nginx_service"
+docker compose --env-file .env -f "$compose_file" exec -T "$nginx_service" nginx -v
+docker compose --env-file .env -f "$compose_file" exec -T "$nginx_service" nginx -t
+```
+
+Retain the deployment's existing project selection, additional Compose files and
+private env-file selection when adapting these commands. Gateway recreation can
+interrupt requests. Verify public HTTPS discovery, login and MFA afterward;
+configuration checks alone do not establish browser or failover acceptance.
+The multi-instance observations above remain **EXPERIMENTAL**, bounded to isolated
+service failure, without VIP/VRRP or full-HA qualification or a recovery SLA.
+
 ### Image and Local-Source Deployments
 
 For GHCR, `deployment/docker-compose.ghcr-image.yml` requires `IDP_IMAGE` and sets `pull_policy: always`. Use the existing deployment flow with the exact approved release image, pinned by release tag or digest:
