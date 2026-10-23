@@ -599,6 +599,29 @@ was rolled back. After restoration, start from a confirmed healthy ceremony and
 repeat normal checks; see DEVELOPMENT_GUIDE.md section 10.4.3. Do not change keys,
 credentials or security lifetimes to diagnose an outage.
 
+### Multi-instance observations (EXPERIMENTAL)
+
+Isolated synthetic checks have observed the following HTTP authentication behavior.
+These are bounded experimental results, not a production-readiness guarantee.
+
+| Pattern | Observed coverage | Boundary |
+| --- | --- | --- |
+| Healthy nodes with cross-node request routing (EXPERIMENTAL) | Password verification on one node, TOTP completion on another, and protected profile access on both nodes without affinity. | Request-selected routing; no automatic service-failure test in that earlier check. |
+| Primary/backup service failover (EXPERIMENTAL) | Both nodes running, normal traffic on the primary, then automatic backup routing after the primary service was stopped. An existing login remained usable and a pending TOTP ceremony completed through the unchanged origin without restarting password sign-in. | One-host container service failure with passive upstream connection-failure handling; not physical-host or entry-point failover. |
+
+Both patterns require the same database, Redis instance/namespace, usable shared
+Data Protection keys and `Branding:AppName`, compatible cookies, shared signing
+and encryption certificates, and a consistent public issuer/origin. Verify the
+actual key mount's coherent visibility and cross-node file-handle locking as
+described above; local shared-volume evidence does not qualify remote filesystems.
+
+These checks do not establish a recovery SLA, automatic in-flight POST replay,
+real VIP/VRRP migration, or full HA. SignalR continuity without a Redis backplane
+was not verified; its affinity requirements remain separate. In-memory Quartz
+schedulers and other per-node background jobs can run concurrently on both
+nodes, with no scheduler-singleton guarantee. Rate-limit windows also remain
+per process; these observations do not establish a shared cluster-wide budget.
+
 ### Data-Service Network Exposure
 
 By default, MSSQL, PostgreSQL, and Redis are available only on their Docker networks: no database or Redis port is published on the host. Named `mssql-data`, `postgres-data`, `redis-data`, and (where used) `dataprotection-keys` volumes persist independently of this host-port choice.

@@ -37,6 +37,7 @@ public sealed class RecoveryEmailController : ControllerBase
     }
 
     [HttpGet]
+    [EnableRateLimiting("default")]
     public async Task<IActionResult> GetStatus(CancellationToken cancellationToken)
     {
         var accountId = CurrentAccountId();

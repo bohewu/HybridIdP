@@ -4,14 +4,66 @@ using System.Text;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc.Controllers;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using Web.IdP.Extensions;
 
 namespace Tests.SystemTests;
 
 public sealed class RateLimitingSystemTests
 {
+    [Fact]
+    public async Task RecoveryEmailStatus_ShouldUseReadBudget_WhenLoginBudgetIsExhausted()
+    {
+        var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Test" });
+        builder.WebHost.UseTestServer();
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["RateLimiting:Enabled"] = "true", ["RateLimiting:LoginPermitLimit"] = "5",
+            ["RateLimiting:LoginWindowSeconds"] = "60", ["RateLimiting:QueueLimit"] = "0"
+        });
+        builder.Services.AddCustomRateLimiting(builder.Configuration);
+        builder.Services.AddControllers().AddApplicationPart(typeof(Web.IdP.Controllers.Account.RecoveryEmailController).Assembly);
+        await using var app = builder.Build();
+        app.UseRouting();
+        app.UseRateLimiter();
+        var recoveryRequestsAfterLimiter = 0;
+        // Exercise real MVC endpoint metadata while isolating the limiter from the controller's security/services.
+        app.Use(async (context, next) =>
+        {
+            var action = context.GetEndpoint()?.Metadata.GetMetadata<ControllerActionDescriptor>();
+            if (action?.ControllerTypeInfo.AsType() == typeof(Web.IdP.Controllers.Account.RecoveryEmailController))
+            {
+                recoveryRequestsAfterLimiter++;
+                context.Response.StatusCode = StatusCodes.Status204NoContent;
+                return;
+            }
+            await next(context);
+        });
+        app.MapControllers();
+        var credentialChecks = 0;
+        app.MapPost("/Account/Login", () => { credentialChecks++; return Results.Ok(); }).RequireRateLimiting("login");
+        await app.StartAsync();
+        using var client = app.GetTestClient();
+        for (var index = 0; index < 5; index++)
+        {
+            using var response = await client.PostAsync("/Account/Login", new FormUrlEncodedContent([]));
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        using var status = await client.GetAsync("/api/account/recovery-email", deadline.Token);
+        Assert.Equal(HttpStatusCode.NoContent, status.StatusCode);
+        using var extraLogin = await client.PostAsync("/Account/Login", new FormUrlEncodedContent([]));
+        using var mutation = await client.PostAsync("/api/account/recovery-email/change", new StringContent("{}", Encoding.UTF8, "application/json"));
+        Assert.Equal(HttpStatusCode.TooManyRequests, extraLogin.StatusCode);
+        Assert.Equal(HttpStatusCode.TooManyRequests, mutation.StatusCode);
+        Assert.Equal(5, credentialChecks);
+        Assert.Equal(1, recoveryRequestsAfterLimiter);
+    }
+
     [Fact]
     public async Task ExternalLinkConfirmation_ShouldShareLoginSourceBudgetAcrossAccountNamesBeforeVerification()
     {
