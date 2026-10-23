@@ -56,6 +56,18 @@ public class SmtpDispatcherTests
     }
 
     [Fact]
+    public async Task SendConfirmedAsync_ShouldRejectMissingHost_InsteadOfReportingAcceptance()
+    {
+        _mockOptions.Setup(o => o.Value).Returns(new EmailOptions());
+        var dispatcher = new SmtpDispatcher(_mockOptions.Object, _mockLogger.Object);
+
+        var failure = await Assert.ThrowsAsync<EmailDeliveryException>(() =>
+            dispatcher.SendConfirmedAsync(new EmailMessage("to@example.test", "Subject", "Body")));
+
+        Assert.Equal("smtp_not_configured", failure.Code);
+    }
+
+    [Fact]
     public void EmailOptions_ShouldDefaultToOptionalTlsAndCertificateValidation()
     {
         var options = new EmailOptions();

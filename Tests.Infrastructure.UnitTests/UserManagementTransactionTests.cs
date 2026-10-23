@@ -122,7 +122,7 @@ public sealed class UserManagementTransactionTests
         Assert.True((await manager.AddLoginAsync(user, new UserLoginInfo("Legacy", "subject", "Legacy"))).Succeeded);
         var deliveries = new List<(string Destination, string Code)>();
         var email = new Mock<IEmailService>();
-        email.Setup(service => service.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
+        email.Setup(service => service.SendEmailWithConfirmationAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>(),
                 It.IsAny<bool>(), It.IsAny<CancellationToken>()))
             .Callback<string, string, string, bool, CancellationToken>((address, _, code, _, _) => deliveries.Add((address, code)))
             .Returns(Task.CompletedTask);

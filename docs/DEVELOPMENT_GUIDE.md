@@ -1012,9 +1012,44 @@ Production、Staging、空白/預設、未知及其他所有環境不會因為�
 2.  嘗試登入或操作
 
 **預期結果**：
--   ⚠️ 應降級到記憶體快取或直接查詢資料庫
--   ✅ 功能仍可正常運作（效能降低）
--   ⚠️ 記錄警告日誌
+- Redis is selected at startup; there is no runtime fallback to memory or DB.
+  `Redis:Enabled=false` selects process-local memory and is not shared session
+  storage for multiple nodes.
+- ASP.NET session includes enrollment, reauthentication, linking, consent,
+  device and password-change records. An unreadable store is different from a
+  successful read returning no record. Access explicitly loads the session and
+  each mutation confirms its write before returning to the caller. An unavailable
+  confirmation stops the affected step with HTTP 503 and localized retry guidance;
+  API and `/connect` responses remain JSON. A failed request is not recommitted
+  by session middleware after its response.
+- Each session load/write and Email MFA cooldown cache operation has a five-second
+  caller wait bound. This is an IO bound, not a whole-request SLA: preceding DB,
+  provider, email delivery and rendering work have separate timing. No security
+  lifetime changes. A timed-out remote write has an unknown outcome, not a proven
+  rollback; do not infer completion from an HTTP response, cookie or cache log.
+- Pending AMR is ceremony evidence: a confirmed missing/expired/mismatched record
+  still contributes no inherited methods. Temporary two-factor cookie identity
+  and DB security-stamp checks remain separate. The access-level confirmation
+  also stops callers that access only optional pending AMR during an outage;
+  this is a deliberate availability tradeoff, not a claim that missing AMR
+  bypasses authentication. Cookie completion that accesses session helpers is
+  therefore affected. Token/refresh, cookie validation
+  and logout paths without session access do not acquire a Redis preflight.
+- Email MFA cooldown is a send-rate gate, not OTP proof. Its read and 60-second
+  reservation must succeed before the pending code is changed or mail is sent.
+  A later delivery failure can retain that reservation until expiry. Cleanup
+  after durable OTP consumption remains best effort, bounded to five seconds;
+  cache failure cannot undo the successful verification. OTP lifetime is still
+  ten minutes. This cache gate does not claim atomic concurrent-send exclusion.
+- Restore Redis, return to the previous page and submit again. A retry must pass
+  ordinary account, stamp, purpose, nonce, factor and expiry checks. If the
+  ceremony expired or was consumed, restart sign-in. No automatic credential,
+  factor or write replay is added. Keep all nodes on the same shared Redis/DB/keys.
+
+Focused simulated coverage: `SessionAvailabilityTests` exercises the actual
+ASP.NET session implementation with injected cache read/write failures and slow
+IO; `MfaServiceTests` covers the independent send gate and nonfatal cleanup.
+These checks do not establish real Redis outage/recovery or multi-node acceptance.
 
 #### 10.5 UI/UX Failure Paths（UI/UX 失敗路徑）
 

@@ -41,6 +41,21 @@ describe('login email OTP sender', () => {
     input.dispatchEvent(new Event('input'))
   }
 
+  it('shows localized retry guidance for an unconfirmed send gate without enabling verification', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({
+      error: 'temporarily_unavailable', message: 'Wait a few seconds, then try again.'
+    }) }))
+    const { input, verify, send } = loadSender(false)
+    enterCode(input, '123456')
+    send.click()
+    await vi.waitFor(() => expect(document.getElementById('emailCodeSentMsg').textContent).toBe('Wait a few seconds, then try again.'))
+    expect(verify.disabled).toBe(true)
+    expect(send.disabled).toBe(true)
+    expect(send.querySelector('.countdown').textContent).toBe('(60)')
+    expect(document.getElementById('emailCodeSentMsg').getAttribute('role')).toBe('alert')
+  })
+
   it.each([true, false].flatMap(pending => [0, 12].map(seconds => [pending, seconds])))('hydrates pending=%s and cooldown=%s without sending or conflating verification state', async (pending, seconds) => {
     vi.useFakeTimers()
     const fetchMock = vi.fn()
@@ -67,7 +82,7 @@ describe('login email OTP sender', () => {
     expect(fetchMock).not.toHaveBeenCalled()
   })
 
-  it('requires a delivered challenge and six digits, then keeps verification locked during submission', async () => {
+  it('requires a pending challenge and six digits, then keeps verification locked during submission', async () => {
     vi.useFakeTimers()
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ success: true, hasPendingCode: true, remainingSeconds: 60 }) }))
     const { input, verify, send } = loadSender()
@@ -87,7 +102,7 @@ describe('login email OTP sender', () => {
 
   it('keeps an existing challenge usable after a validation error or resend cooldown', async () => {
     vi.useFakeTimers()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ remainingSeconds: 25, hasPendingCode: true }) }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({ remainingSeconds: 25, hasPendingCode: true }) }))
     const { input, verify, send } = loadSender(true)
     enterCode(input, '123456')
     expect(verify.disabled).toBe(false)
@@ -101,7 +116,7 @@ describe('login email OTP sender', () => {
 
   it.each([false, undefined])('does not unlock an absent or retired challenge from cooldown (%s)', async (hasPendingCode) => {
     vi.useFakeTimers()
-    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, json: async () => ({ remainingSeconds: 12, hasPendingCode }) }))
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 429, json: async () => ({ remainingSeconds: 12, hasPendingCode }) }))
     const { input, verify, send } = loadSender(true)
     enterCode(input, '123456')
     expect(verify.disabled).toBe(false)
@@ -138,6 +153,7 @@ describe('login email OTP sender', () => {
   })
 
   it('uses the configured antiforgery header and exposes delivery failures', async () => {
+    vi.useFakeTimers()
     document.body.innerHTML = `
       <form>
         <input name="__RequestVerificationToken" value="antiforgery-token">
@@ -178,6 +194,50 @@ describe('login email OTP sender', () => {
     expect(request.headers.RequestVerificationToken).toBeUndefined()
     expect(document.getElementById('emailCodeSentMsg').classList.contains('hidden')).toBe(false)
     expect(document.getElementById('emailCodeSentMsg').getAttribute('role')).toBe('alert')
-    expect(document.getElementById('sendEmailCodeBtn').disabled).toBe(false)
+    expect(document.getElementById('sendEmailCodeBtn').disabled).toBe(true)
+  })
+
+  it('shows failure instead of sent or rate-limit guidance while retaining the pending code and countdown', async () => {
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 503, json: async () => ({
+      success: false, error: 'email_delivery_unconfirmed', remainingSeconds: 47, hasPendingCode: true,
+      message: 'private-smtp-detail'
+    }) }))
+    const { input, verify, send } = loadSender()
+    enterCode(input, '123456')
+    send.click()
+    await vi.waitFor(() => expect(document.getElementById('emailCodeSentMsg').textContent).toBe('Failed'))
+    const message = document.getElementById('emailCodeSentMsg')
+    expect(message.getAttribute('role')).toBe('alert')
+    expect(message.classList.contains('text-green-600')).toBe(false)
+    expect(send.querySelector('.countdown').textContent).toBe('(47)')
+    expect(send.disabled).toBe(true)
+    expect(verify.disabled).toBe(false)
+    send.click()
+    expect(fetch).toHaveBeenCalledOnce()
+    await vi.advanceTimersByTimeAsync(47000)
+    expect(send.disabled).toBe(false)
+    expect(message.classList.contains('hidden')).toBe(false)
+    expect(fetch).toHaveBeenCalledOnce()
+    fetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ success: true, hasPendingCode: true, remainingSeconds: 60 }) })
+    send.click()
+    await vi.waitFor(() => expect(message.textContent).toBe('Sent'))
+    expect(message.getAttribute('role')).toBe('status')
+  })
+
+  it('keeps a conservative cooldown after a lost response without automatically retrying', async () => {
+    vi.useFakeTimers()
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Connection lost')))
+    const { send } = loadSender()
+    send.click()
+    await vi.waitFor(() => expect(document.getElementById('emailCodeSentMsg').textContent).toBe('Failed'))
+    expect(send.disabled).toBe(true)
+    expect(send.querySelector('.countdown').textContent).toBe('(60)')
+    await vi.advanceTimersByTimeAsync(59000)
+    expect(send.disabled).toBe(true)
+    await vi.advanceTimersByTimeAsync(1000)
+    expect(send.disabled).toBe(false)
+    expect(fetch).toHaveBeenCalledOnce()
   })
 })

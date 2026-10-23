@@ -428,15 +428,7 @@ public static class ServiceCollectionExtensions
 
     public static IServiceCollection AddCustomIdentityAndAccess(this IServiceCollection services, IConfiguration configuration, IWebHostEnvironment environment, string databaseProvider, string connectionString, bool migrateOnly = false)
     {
-        // Configure Data Protection to persist keys to a specific directory (for Docker deployments)
-        var keysDirectory = configuration["DataProtection:KeysDirectory"] ?? "/app/keys";
-        var appName = configuration["Branding:AppName"] ?? "HybridIdP";
-        if (Directory.Exists(keysDirectory) || !environment.IsDevelopment())
-        {
-            services.AddDataProtection()
-                .PersistKeysToFileSystem(new DirectoryInfo(keysDirectory))
-                .SetApplicationName(appName);
-        }
+        Startup.DataProtectionStartup.ConfigureServices(services, configuration, environment);
 
         // Add DbContext
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -869,12 +861,14 @@ public static class ServiceCollectionExtensions
             configuration.GetSection(Options.CookieOptions.Section).Bind(cookieOpts);
             
             options.IdleTimeout = TimeSpan.FromMinutes(5); // Short timeout for login sessions
+            options.IOTimeout = ConfirmedSessionStore.IoTimeout;
             options.Cookie.HttpOnly = true;
             options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
             options.Cookie.SameSite = SameSiteMode.Lax; // Consistent with Identity cookies
             options.Cookie.IsEssential = true;
             options.Cookie.Name = cookieOpts.GetSessionCookieName();
         });
+        services.AddTransient<Microsoft.AspNetCore.Session.ISessionStore, ConfirmedSessionStore>();
 
         // Antiforgery
         services.AddAntiforgery(options =>

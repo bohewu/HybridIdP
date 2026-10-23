@@ -23,6 +23,63 @@ namespace Tests.Web.IdP.UnitTests.Pages.Account;
 public sealed class LoginEmailOtpModelTests
 {
     [Theory]
+    [InlineData("smtp_not_configured")]
+    [InlineData("smtp_rejected")]
+    [InlineData("smtp_confirmation_unavailable")]
+    public async Task OnPostSendCodeAsync_ShouldReportUnconfirmedDeliveryWithCooldown_WithoutLeakingSmtpDetails(string failureCode)
+    {
+        var (model, user, mfa) = CreateModel();
+        user.EmailMfaCode = "HASHED_CODE";
+        user.EmailMfaCodeExpiry = DateTime.UtcNow.AddMinutes(10);
+        mfa.Setup(service => service.SendEmailMfaCodeAsync(user, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new EmailDeliveryException(failureCode, "private-smtp-detail"));
+        mfa.Setup(service => service.GetEmailMfaCooldownRemainingSecondsAsync(user, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(47);
+
+        var result = Assert.IsType<ObjectResult>(await model.OnPostSendCodeAsync());
+        var response = JsonSerializer.SerializeToElement(result.Value);
+
+        Assert.Equal(503, result.StatusCode);
+        Assert.False(response.GetProperty("success").GetBoolean());
+        Assert.Equal("email_delivery_unconfirmed", response.GetProperty("error").GetString());
+        Assert.Equal("SendEmailCodeFailed", response.GetProperty("message").GetString());
+        Assert.Equal(47, response.GetProperty("remainingSeconds").GetInt32());
+        Assert.True(response.GetProperty("hasPendingCode").GetBoolean());
+        Assert.DoesNotContain("private-smtp-detail", response.ToString());
+        Assert.False(model.Response.Headers.ContainsKey("Set-Cookie"));
+        Assert.IsType<PageResult>(await model.OnGetAsync());
+        Assert.True(model.EmailCodeSent); // Pending-code state, not delivery evidence.
+        Assert.Equal(47, model.EmailCodeRemainingSeconds);
+
+        mfa.Setup(service => service.SendEmailMfaCodeAsync(user, It.IsAny<CancellationToken>())).ReturnsAsync((false, 47));
+        Assert.Equal(429, Assert.IsType<ObjectResult>(await model.OnPostSendCodeAsync()).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task OnPostSendCodeAsync_ShouldFailClosed_WhenCooldownIsUnavailable(bool afterDeliveryFailure)
+    {
+        var (model, user, mfa) = CreateModel();
+        Exception failure = afterDeliveryFailure
+            ? new EmailDeliveryException("smtp_confirmation_unavailable", "private-smtp-detail")
+            : new EmailMfaCooldownUnavailableException(new IOException("Injected cache failure"));
+        mfa.Setup(service => service.SendEmailMfaCodeAsync(user, It.IsAny<CancellationToken>())).ThrowsAsync(failure);
+        mfa.Setup(service => service.GetEmailMfaCooldownRemainingSecondsAsync(user, It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new EmailMfaCooldownUnavailableException(new IOException("Injected cache failure")));
+
+        var result = Assert.IsType<ObjectResult>(await model.OnPostSendCodeAsync());
+        var response = JsonSerializer.SerializeToElement(result.Value);
+
+        Assert.Equal(503, result.StatusCode);
+        Assert.Equal("temporarily_unavailable", response.GetProperty("error").GetString());
+        Assert.Equal("SessionStateUnavailableRetry", response.GetProperty("message").GetString());
+        Assert.Equal("no-store", model.Response.Headers.CacheControl);
+        Assert.Equal("5", model.Response.Headers.RetryAfter);
+        Assert.False(model.Response.Headers.ContainsKey("Set-Cookie"));
+    }
+
+    [Theory]
     [InlineData(true, 45)]
     [InlineData(false, 45)]
     [InlineData(true, 0)]

@@ -46,6 +46,7 @@ public class MfaService : IMfaService
     private const string AuthenticatorUriFormat = "otpauth://totp/{0}:{1}?secret={2}&issuer={0}&digits=6";
     private const int EmailMfaCodeLifetimeMinutes = 10;
     private const int EmailMfaCooldownSeconds = 60;
+    private static readonly TimeSpan CooldownIoTimeout = TimeSpan.FromSeconds(5);
     private const int MaxEmailMfaVerificationAttempts = 5;
 
     public MfaService(
@@ -317,6 +318,20 @@ public class MfaService : IMfaService
             return (false, remainingSeconds);
         }
 
+        // Confirm the send throttle before changing the pending code or sending
+        // mail. An uncertain reservation may conservatively delay a later retry.
+        var cooldownExpiry = _timeProvider.GetUtcNow().AddSeconds(EmailMfaCooldownSeconds);
+        try
+        {
+            await _cache.SetStringAsync(GetEmailMfaCooldownKey(user.Id), cooldownExpiry.Ticks.ToString(),
+                new DistributedCacheEntryOptions { AbsoluteExpiration = cooldownExpiry }, ct)
+                .WaitAsync(CooldownIoTimeout, ct);
+        }
+        catch (Exception exception) when (!ct.IsCancellationRequested)
+        {
+            throw new EmailMfaCooldownUnavailableException(exception);
+        }
+
         // Generate a uniformly distributed 6-digit numeric code, including leading zeroes.
         var code = RandomNumberGenerator
             .GetInt32(0, 1_000_000)
@@ -334,22 +349,23 @@ public class MfaService : IMfaService
             code,
             EmailMfaCodeLifetimeMinutes,
             user.Locale);
-        await _emailService.SendEmailAsync(user.Email, subject, body, isHtml: true, ct);
+        await _emailService.SendEmailWithConfirmationAsync(user.Email, subject, body, isHtml: true, ct);
 
-        // Set Cooldown
-        var cooldownExpiry = _timeProvider.GetUtcNow().AddSeconds(EmailMfaCooldownSeconds);
-        await _cache.SetStringAsync(
-            GetEmailMfaCooldownKey(user.Id),
-            cooldownExpiry.Ticks.ToString(), 
-            new DistributedCacheEntryOptions { AbsoluteExpiration = cooldownExpiry }, 
-            ct);
-        
         return (true, EmailMfaCooldownSeconds);
     }
 
     public async Task<int> GetEmailMfaCooldownRemainingSecondsAsync(ApplicationUser user, CancellationToken ct = default)
     {
-        var cachedValue = await _cache.GetStringAsync(GetEmailMfaCooldownKey(user.Id), ct);
+        string? cachedValue;
+        try
+        {
+            cachedValue = await _cache.GetStringAsync(GetEmailMfaCooldownKey(user.Id), ct)
+                .WaitAsync(CooldownIoTimeout, ct);
+        }
+        catch (Exception exception) when (!ct.IsCancellationRequested)
+        {
+            throw new EmailMfaCooldownUnavailableException(exception);
+        }
         if (string.IsNullOrEmpty(cachedValue) || !long.TryParse(cachedValue, out var expireTicks))
         {
             return 0;
@@ -446,7 +462,7 @@ public class MfaService : IMfaService
     {
         try
         {
-            await _cache.RemoveAsync(GetEmailMfaCooldownKey(userId), ct);
+            await _cache.RemoveAsync(GetEmailMfaCooldownKey(userId), ct).WaitAsync(CooldownIoTimeout, ct);
         }
         catch (Exception exception)
         {

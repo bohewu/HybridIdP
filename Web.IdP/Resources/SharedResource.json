@@ -1,4 +1,5 @@
 {
+  "SessionStateUnavailableRetry": "We could not confirm the state needed for this step. Wait a few seconds, then return to the previous page and try again. If it has expired, start sign-in again.",
   "DataSourcesAndSync": "Data sources and sync",
   "EmailMfaAddressChangeRequiresRemoval": "Remove email MFA using the authorized security settings or administrator MFA reset before changing the email address or its confirmation status, then enroll again.",
   "Recovery.Identity.Identifier.Label": "Identity document number",
@@ -280,7 +281,7 @@
   "MfaSetupRequired": "Set up two-step verification",
   "SendEmailCode": "Send code to email",
   "EmailCodeSent": "Code sent to your email",
-  "EmailCodePendingGuidance": "Enter the latest code sent to your email.",
+  "EmailCodePendingGuidance": "If you received a code, enter the latest one. Otherwise, request a new code when resend is available.",
   "EmailCodeNeededGuidance": "Request a new code to verify your identity.",
   "EmailCodeUnavailableGuidance": "No active code is available. Wait for the countdown, then request a new code.",
   "UseEmailMfa": "Use email code",
@@ -290,7 +291,7 @@
   "Resend": "Resend",
   "PleaseWaitThenRetry": "Please wait before requesting a new code",
   "SendingEmailCode": "Sending...",
-  "SendEmailCodeFailed": "We couldn't send a verification code. Please try again.",
+  "SendEmailCodeFailed": "We couldn't confirm that the verification email was sent. If it arrives, use the latest code; otherwise, try again after the countdown.",
   "EmailVerification": "Email verification",
   "EnterEmailCodeDescription": "Send a verification code to your email, then enter it below",
   "InvalidMfaCode": "Invalid verification code",

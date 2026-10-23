@@ -549,6 +549,79 @@ Absent or empty required values fail compose validation before `deploy-idp.sh` c
 
 For an existing deployment, add the two public-origin values to the host-side `.env` before pulling or recreating the IdP service. Use the exact public URL already consumed by OIDC clients; changing it changes the token issuer and can break relying-party validation. This configuration update does not change the database schema and does not require a database reset, volume replacement, or credential change.
 
+### Shared Data Protection Keys at Startup
+
+Normal application startup coordinates the configured filesystem key repository
+before constructing application services. It holds an exclusive handle to
+`.hybrididp-keyring.lock` while the actual application Data Protection provider
+performs a protect/unprotect check. On an empty repository, ASP.NET Core creates
+the initial key before another node can build its cached key ring. No separate
+initialization command or new environment setting is required.
+
+All participating nodes must use the same physical `DataProtection:KeysDirectory`
+(environment variable `DataProtection__KeysDirectory`, default `/app/keys`) and
+`Branding:AppName` (`Branding__AppName`, default `HybridIdP`). The storage must
+provide cross-node exclusive file-handle locking and coherent file visibility;
+verify these semantics for the mounted filesystem before using multiple hosts.
+Process-local directories, asynchronous file replication and filesystems/mounts
+that ignore locks do not meet this requirement. Do not disable .NET file locking
+(`DOTNET_SYSTEM_IO_DISABLEFILELOCKING` / `System.IO.DisableFileLocking`). Each
+application identity needs read/write access to the key directory and lock file;
+restrict access to the same trusted identities that can already read the keys.
+
+Lock acquisition retries contention/I/O failures for at most 30 seconds, then
+startup exits unsuccessfully before serving requests. Directory/access failures
+or an unusable Data Protection provider also fail startup. No process-local key
+fallback is used for a configured shared repository. Investigate storage access
+and other starting nodes before retrying; do not delete keys or the lock file.
+The empty lock file remains on disk; the OS releases ownership when its handle
+closes or its process exits, so the file's existence is not a stale lock.
+
+Existing keys are retained, and ASP.NET Core continues to select, generate and
+rotate keys with its normal lifetimes and propagation/refresh behavior. Preserve
+the repository and its protection-at-rest configuration during upgrades. The
+schema-only `--migrate-only` path does not acquire this lock or initialize keys.
+Development retains its existing framework-default behavior when the configured
+key directory does not exist. This startup coordination addresses the empty-key
+cold-start gap. Session state confirmation now has bounded failure handling;
+actual shared-store outage/recovery still needs deployment verification. SignalR
+scale-out and background-job coordination remain separate work before full
+multi-instance qualification.
+
+ASP.NET session load/write confirmation and Email MFA cooldown cache operations
+have a five-second caller IO wait bound, with no new environment variable. Keep
+the existing `Redis__Enabled`, `Redis__ConnectionString` and `Redis__InstanceName`
+consistent across nodes. This does not change session/cookie/OTP/token lifetimes
+or add automatic memory failover. An affected state-dependent request returns
+503 with localized retry guidance; unrelated DB token and cookie validation
+paths do not gain a Redis preflight. A timeout does not prove the remote write
+was rolled back. After restoration, start from a confirmed healthy ceremony and
+repeat normal checks; see DEVELOPMENT_GUIDE.md section 10.4.3. Do not change keys,
+credentials or security lifetimes to diagnose an outage.
+
+### Multi-instance observations (EXPERIMENTAL)
+
+Isolated synthetic checks have observed the following HTTP authentication behavior.
+These are bounded experimental results, not a production-readiness guarantee.
+
+| Pattern | Observed coverage | Boundary |
+| --- | --- | --- |
+| Healthy nodes with cross-node request routing (EXPERIMENTAL) | Password verification on one node, TOTP completion on another, and protected profile access on both nodes without affinity. | Request-selected routing; no automatic service-failure test in that earlier check. |
+| Primary/backup service failover (EXPERIMENTAL) | Both nodes running, normal traffic on the primary, then automatic backup routing after the primary service was stopped. An existing login remained usable and a pending TOTP ceremony completed through the unchanged origin without restarting password sign-in. | One-host container service failure with passive upstream connection-failure handling; not physical-host or entry-point failover. |
+
+Both patterns require the same database, Redis instance/namespace, usable shared
+Data Protection keys and `Branding:AppName`, compatible cookies, shared signing
+and encryption certificates, and a consistent public issuer/origin. Verify the
+actual key mount's coherent visibility and cross-node file-handle locking as
+described above; local shared-volume evidence does not qualify remote filesystems.
+
+These checks do not establish a recovery SLA, automatic in-flight POST replay,
+real VIP/VRRP migration, or full HA. SignalR continuity without a Redis backplane
+was not verified; its affinity requirements remain separate. In-memory Quartz
+schedulers and other per-node background jobs can run concurrently on both
+nodes, with no scheduler-singleton guarantee. Rate-limit windows also remain
+per process; these observations do not establish a shared cluster-wide budget.
+
 ### Data-Service Network Exposure
 
 By default, MSSQL, PostgreSQL, and Redis are available only on their Docker networks: no database or Redis port is published on the host. Named `mssql-data`, `postgres-data`, `redis-data`, and (where used) `dataprotection-keys` volumes persist independently of this host-port choice.
@@ -561,6 +634,46 @@ docker compose -f docker-compose.nginx.yml -f docker-compose.local-ports.yml --e
 ```
 
 `docker-compose.local-ports.yml` exposes the existing `mssql-service` (`1433`), `postgres-service` (`5432`), and `redis-service` (`6379`) on loopback only (`127.0.0.1`). It is an opt-in override, not a production default, and is not applicable to `docker-compose.splithost-nginx-nodb.yml`, which has no internal database services. Remove the override from the compose command to return to the default private posture. Do not delete or recreate volumes when adding or removing this override.
+
+### Nginx-only image upgrade
+
+The three Nginx modes pin the official multi-platform OCI index
+`nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60`.
+Nginx 1.31.8 was released on October 21, 2026 and includes the October 14
+1.31.7 security fixes for alias/rewrite and variable-expression buffer overflows,
+HTTP/3 request-body injection, TLS session-ticket key-rotation session forgery,
+and SSI with AIO use-after-free. See the official [release news](https://nginx.org/news.html)
+and [change log](https://nginx.org/en/CHANGES) for affected configurations and details.
+
+This image-only update needs no database migration or new environment key.
+Preserve the existing `.env`, database and Redis data, Data Protection keys,
+signing/encryption and TLS certificates, public origin, network settings and
+mounts. Do not rerun setup or regenerate keys. After approval, run the following
+from the existing deployment directory, selecting exactly the deployed mode:
+
+| Mode | Compose file | Nginx service |
+| --- | --- | --- |
+| `nginx` | `docker-compose.nginx.yml` | `nginx-service` |
+| `splithost-nginx` | `docker-compose.splithost-nginx.yml` | `nginx-gateway` |
+| `splithost-nginx-nodb` | `docker-compose.splithost-nginx-nodb.yml` | `nginx-gateway` |
+
+```bash
+# Set these to the matching file and service from the table above.
+compose_file=docker-compose.nginx.yml
+nginx_service=nginx-service
+docker compose --env-file .env -f "$compose_file" config --quiet
+docker compose --env-file .env -f "$compose_file" pull "$nginx_service"
+docker compose --env-file .env -f "$compose_file" up -d --no-deps --no-build --force-recreate "$nginx_service"
+docker compose --env-file .env -f "$compose_file" exec -T "$nginx_service" nginx -v
+docker compose --env-file .env -f "$compose_file" exec -T "$nginx_service" nginx -t
+```
+
+Retain the deployment's existing project selection, additional Compose files and
+private env-file selection when adapting these commands. Gateway recreation can
+interrupt requests. Verify public HTTPS discovery, login and MFA afterward;
+configuration checks alone do not establish browser or failover acceptance.
+The multi-instance observations above remain **EXPERIMENTAL**, bounded to isolated
+service failure, without VIP/VRRP or full-HA qualification or a recovery SLA.
 
 ### Image and Local-Source Deployments
 

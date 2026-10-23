@@ -25,7 +25,13 @@ public partial class SmtpDispatcher : IEmailDispatcher
         _logger = logger;
     }
 
-    public Task SendAsync(EmailMessage message, CancellationToken ct = default)
+    public Task SendAsync(EmailMessage message, CancellationToken ct = default) =>
+        SendConfiguredAsync(message, requireConfirmation: false, ct);
+
+    public Task SendConfirmedAsync(EmailMessage message, CancellationToken ct = default) =>
+        SendConfiguredAsync(message, requireConfirmation: true, ct);
+
+    private Task SendConfiguredAsync(EmailMessage message, bool requireConfirmation, CancellationToken ct)
     {
         var mailSettings = _options.Value;
         var settings = new MailSettingsDto
@@ -39,7 +45,7 @@ public partial class SmtpDispatcher : IEmailDispatcher
             FromName = mailSettings.FromName
         };
 
-        return SendCoreAsync(message, settings, mailSettings, isTest: false, ct);
+        return SendCoreAsync(message, settings, mailSettings, isTest: false, ct, requireConfirmation);
     }
 
     public Task SendTestAsync(
@@ -56,11 +62,12 @@ public partial class SmtpDispatcher : IEmailDispatcher
         MailSettingsDto settings,
         EmailOptions policy,
         bool isTest,
-        CancellationToken ct)
+        CancellationToken ct,
+        bool requireConfirmation = false)
     {
         if (string.IsNullOrWhiteSpace(settings.Host))
         {
-            if (isTest)
+            if (isTest || requireConfirmation)
             {
                 throw new EmailDeliveryException(
                     "smtp_not_configured",
@@ -100,6 +107,9 @@ public partial class SmtpDispatcher : IEmailDispatcher
             }
 
             await client.SendAsync(mimeMessage, ct);
+            // SendAsync has received the final SMTP acceptance. Disposal closes this
+            // connection without allowing a later QUIT failure to change that outcome.
+            if (requireConfirmation) return;
             await client.DisconnectAsync(true, ct);
         }
         catch (SmtpCommandException ex) when (isTest)

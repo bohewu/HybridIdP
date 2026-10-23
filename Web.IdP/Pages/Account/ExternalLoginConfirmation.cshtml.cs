@@ -225,7 +225,7 @@ public class ExternalLoginConfirmationModel : PageModel
             await RecordSuccessfulLoginAsync(user.Id);
             return LocalRedirect(ReturnUrl);
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not SessionStateUnavailableException)
         {
              _logger.LogError(ex, "JIT Provisioning failed for {Provider}", info.LoginProvider);
              ModelState.AddModelError(string.Empty, "Error creating account: " + ex.Message);

@@ -164,7 +164,8 @@ We support three primary MFA methods to ensure account security:
 - **Standard**: 6-digit one-time code sent via email.
 - **Generation and storage**: Codes use a cryptographically secure random-number generator and are stored only as password hashes.
 - **Verification budget**: Each pending code permits at most five verification attempts. The fifth failed attempt invalidates that code; sending a replacement code starts a new budget.
-- **Features**: Background queue processing (non-blocking), send rate-limiting, and a 10-minute expiry.
+- **Sending**: Email MFA waits up to 15 seconds for SMTP acceptance instead of background enqueue acceptance. Missing SMTP configuration, rejection, connection failure or an unconfirmed reply does not report success. Acceptance is not proof of external inbox delivery. Ordinary notifications retain background queue processing; this MFA path has no automatic retry or queue fallback.
+- **State on failure**: The 60-second send cooldown and pending hashed code remain in place after failed or uncertain sending. The code retains its 10-minute expiry, five-attempt budget and single-consumption rules. A later-arriving code can still be used; retry requires the cooldown to expire. The login UI reports generic localized uncertainty, restores pending/cooldown state on refresh, and does not infer delivery from pending state. An unavailable cooldown store remains fail closed.
 
 Generic user updates reject an enrolled Email MFA account's email-address or
 confirmation-state change before writing any user or Person changes. Successful

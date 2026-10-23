@@ -119,7 +119,7 @@ public partial class LoginEmailOtpModel : PageModel
 
         try 
         {
-            var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user);
+            var (success, remainingSeconds) = await _mfaService.SendEmailMfaCodeAsync(user, HttpContext.RequestAborted);
             var hasPendingCode = EmailMfaChallenge.HasPendingCode(user);
             
             if (success)
@@ -130,6 +130,34 @@ public partial class LoginEmailOtpModel : PageModel
             {
                 // Rate limited
                 return StatusCode(429, new { success = false, remainingSeconds, hasPendingCode });
+            }
+        }
+        catch (EmailMfaCooldownUnavailableException)
+        {
+            Response.Headers.CacheControl = "no-store";
+            Response.Headers.RetryAfter = "5";
+            return StatusCode(503, new { error = "temporarily_unavailable", message = _localizer["SessionStateUnavailableRetry"].Value });
+        }
+        catch (EmailDeliveryException ex)
+        {
+            _logger.LogWarning(ex, "SMTP acceptance could not be confirmed for email MFA user {UserId}", user.Id);
+            Response.Headers.CacheControl = "no-store";
+            try
+            {
+                var remainingSeconds = await _mfaService.GetEmailMfaCooldownRemainingSecondsAsync(user, HttpContext.RequestAborted);
+                return StatusCode(503, new
+                {
+                    success = false,
+                    error = "email_delivery_unconfirmed",
+                    message = _localizer["SendEmailCodeFailed"].Value,
+                    remainingSeconds,
+                    hasPendingCode = EmailMfaChallenge.HasPendingCode(user)
+                });
+            }
+            catch (EmailMfaCooldownUnavailableException)
+            {
+                Response.Headers.RetryAfter = "5";
+                return StatusCode(503, new { error = "temporarily_unavailable", message = _localizer["SessionStateUnavailableRetry"].Value });
             }
         }
         catch (Exception ex)

@@ -20,15 +20,17 @@ namespace Tests.Web.IdP.UnitTests.Pages.Account;
 public class ExternalLoginConfirmationEmailAssuranceTests
 {
     [Theory]
-    [InlineData(AuthConstants.Providers.Google, "true", true)]
-    [InlineData(AuthConstants.Providers.Google, "false", false)]
-    [InlineData(AuthConstants.Providers.Google, null, false)]
-    [InlineData(AuthConstants.Providers.Microsoft, "true", true)]
-    [InlineData("CustomProvider", "true", false)]
+    [InlineData(AuthConstants.Providers.Google, "true", true, false)]
+    [InlineData(AuthConstants.Providers.Google, "false", false, false)]
+    [InlineData(AuthConstants.Providers.Google, null, false, false)]
+    [InlineData(AuthConstants.Providers.Microsoft, "true", true, false)]
+    [InlineData("CustomProvider", "true", false, false)]
+    [InlineData(AuthConstants.Providers.Google, "true", true, true)]
     public async Task OnPostCreateAsync_ShouldCarryOnlySupportedProviderEmailAssurance(
         string provider,
         string? assuranceValue,
-        bool expectedVerified)
+        bool expectedVerified,
+        bool sessionUnavailable)
     {
         var claims = new List<Claim>
         {
@@ -96,6 +98,10 @@ public class ExternalLoginConfirmationEmailAssuranceTests
                 user,
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(ExternalSignInCompletionResult.Succeeded());
+        if (sessionUnavailable)
+            externalSignInCoordinator.Setup(service => service.CompleteAsync(
+                It.IsAny<HttpContext>(), user, It.IsAny<CancellationToken>()))
+                .ThrowsAsync(new SessionStateUnavailableException());
 
         var model = new ExternalLoginConfirmationModel(
             userManager.Object,
@@ -117,6 +123,11 @@ public class ExternalLoginConfirmationEmailAssuranceTests
             }
         };
 
+        if (sessionUnavailable)
+        {
+            await Assert.ThrowsAsync<SessionStateUnavailableException>(() => model.OnPostCreateAsync("/"));
+            return;
+        }
         var result = await model.OnPostCreateAsync("/");
 
         Assert.IsType<LocalRedirectResult>(result);
