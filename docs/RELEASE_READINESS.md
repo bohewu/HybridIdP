@@ -1,8 +1,99 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-21 for 1.9.0 release preparation. Publishing a release does not
+Updated on 2026-10-23 for 1.10.0 release preparation. Publishing a release does not
 establish production acceptance or deploy the image. Older upgrade requirements
 below remain applicable to cumulative upgrades.
+
+## 1.10.0 release readiness
+
+The baseline is published [v1.9.0](https://github.com/bohewu/HybridIdP/releases/tag/v1.9.0).
+See the [1.10.0 changelog](CHANGELOG.md#1100---2026-10-23) for the cumulative
+neutral-query, source-administration, directory-sync and deployment fixes.
+Publication and production deployment are separate operations.
+
+### Migration and environment update
+
+There is **no new EF migration from 1.9.0 or 1.8.0**, for either database
+provider. Check the actual applied migration IDs; an already-current database
+needs no schema update for this release. Earlier installations retain the
+[historical migration requirements](#database-and-existing-deployment).
+SQL Server 2019 remains supported. Profile repair and account renaming are
+separate operator actions; this release does not perform either automatically.
+
+Preserve the original private `.env`, credentials, endpoints and exact source
+namespaces, database/Redis configuration, signing/encryption certificates and
+Data Protection keys. Do not rerun setup or replace the environment with an
+example. **Existing 1.9.0 deployments require no new environment key.** Keep
+`DatabaseMigration__ApplyOnStartup=false` for normal production startup.
+
+Optional activation is separate from upgrading:
+
+1. For neutral queries, agree the contract and allowed attribute sets with the
+   producer, then configure the selected capability's enabled/trusted
+   `QuerySources` ceiling privately. Follow the
+   [copyable neutral-query configuration](DEPLOYMENT_GUIDE.md#deployment-ceilings-and-a-copyable-example).
+   Existing legacy selections remain valid. Do not switch endpoints or modes
+   automatically, and do not treat query results as login/linking authority.
+2. For direct AD/LDAP manual sync, configure the independently default-off
+   `DirectoryNativeProfile` source, protected transport and least-privilege
+   read-only credentials using the [directory source instructions](DEPLOYMENT_GUIDE.md#direct-ad-source-for-manual-profile-synchronization).
+   This does not enable AD authentication or schedule next-login AD sync.
+3. Recreate the application container to load changed environment values.
+   Open **Data sources and sync > Sources and queries** to select approved
+   query inputs, then **Field mappings** for output targets/properties.
+   **Manual sync** requires account selection, read-only preview and explicit
+   apply. Reapprove inputs and obtain a fresh preview after applicable changes.
+
+AuthProxy is an optional producer; its version, source-read approvals and
+private service key are independently managed. See the
+[integration recipe](integrations/authproxy.md), including the separate receipt
+schema prerequisite only for v2 Password Sync writes. Read-only capabilities
+do not require a producer receipt database. No producer-specific deployment
+namespace or credentials belong in public configuration examples.
+
+### Image and proxy upgrade
+
+Use the approved immutable 1.10.0 image digest and the deployment's existing
+Compose mode. Retain a restorable backup, previous image and original
+configuration. If no schema changes are pending, omit schema migration:
+
+```bash
+cd deployment
+release_image='ghcr.io/<owner>/hybrididp-idp-service@sha256:<approved-64-hex-digest>'
+compose_file='<existing-mode-compose-file>'
+# Only when reviewed migrations are pending:
+bash ./migrate-db.sh --confirm-backup --source ghcr --image "$release_image" \
+  --compose "$compose_file" --env-file .env
+# Deploy only after confirming the database is current:
+bash ./deploy-idp.sh --source ghcr --image "$release_image" \
+  --compose "$compose_file" --env-file .env
+```
+
+The three repository Nginx templates now pin 1.31.8-alpine. Application image
+replacement alone does not recreate Nginx: follow the
+[Nginx-only upgrade commands](DEPLOYMENT_GUIDE.md#nginx-only-image-upgrade)
+for the existing mode, preserving certificates and the public origin.
+
+Nodes sharing session state must retain the same DB, Redis namespace, usable
+filesystem keys, application name and certificates. The
+[experimental deployment observations](DEPLOYMENT_GUIDE.md#multi-instance-observations-experimental)
+describe the bounded load-balanced and active/standby checks. They do not
+qualify real VIP migration, physical-host failure, full HA or a latency SLA.
+
+### Publication verification
+
+Before publication, build the candidate image locally and exercise an isolated
+deployment with a compatible producer. Bind results to the tested source and
+image IDs, and distinguish synthetic source data from live institutional data.
+Verify readiness/discovery, existing and new login behavior, configured query
+and manual-sync paths, Claims Preview and MFA. Keep all test credentials, source
+connections, recordings and operational repair scripts outside Git.
+
+The release workflow builds Linux amd64 and requires its source commit to equal
+current `origin/main`. After publication verify the tag, OCI version/revision
+labels and registry digest on that exact release source. A locally built image
+and the registry build have separate digests; do not claim byte equality without
+checking it. Publication does not modify a production deployment.
 
 ## 1.9.0 release readiness
 

@@ -4,6 +4,46 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-23
+
+### Added
+
+- Add the opt-in neutral query contract 2.0 across six non-login capabilities.
+  Approved stored query inputs are independent of authentication bindings and
+  native-field output mappings. Explicit legacy selections remain supported;
+  a failed query never retries another source or downgrades its contract.
+- Add the Admin-only **Data sources and sync** page, with separate Sources and
+  queries, Field mappings, and Manual sync areas, including mobile source cards.
+- Add an independently enabled and trusted, read-only AD/LDAP source for manual
+  profile synchronization. Administrators select approved lookup inputs and
+  output properties; existing field ownership and manual-value protections apply.
+
+### Fixed
+
+- Coordinate initialization of a shared filesystem Data Protection key ring
+  before serving requests, retaining existing keys and failing startup when the
+  shared repository cannot be used safely.
+- Bound required session and Email MFA cooldown store waits during Redis
+  outages. Affected operations return retry guidance without silently switching
+  to process-local state or relaxing MFA protections.
+- Report unconfirmed SMTP delivery when an Email MFA send fails, preserving
+  cooldown and verification limits.
+- Keep recovery Email status reads separate from the mutation rate limiter.
+- Update the three Nginx deployment image pins to 1.31.8-alpine with a fixed digest.
+
+### Upgrade requirements and evidence limits
+
+- No new EF migration relative to 1.9.0 or 1.8.0. Preserve the existing environment,
+  database, Redis namespace, certificates, keys and authentication bindings.
+- No new environment key is required for existing deployments. Neutral query and
+  direct directory synchronization are optional and default off; configure and
+  approve their sources explicitly before selecting them in the Admin page.
+- Multi-instance load balancing and active/standby observations remain
+  **EXPERIMENTAL**. Shared storage requirements and bounded tested scenarios do
+  not establish full HA, physical-host failover or a latency SLA.
+- Follow the [1.10.0 upgrade instructions](RELEASE_READINESS.md#1100-release-readiness)
+  for configuration, migration checks and image verification boundaries.
+
 ## [1.9.0] - 2026-10-21
 
 ### Added
