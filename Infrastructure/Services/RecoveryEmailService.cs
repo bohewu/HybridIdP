@@ -49,8 +49,7 @@ public sealed class RecoveryEmailService : IRecoveryEmailService
         Guid localAccountId,
         CancellationToken cancellationToken = default)
     {
-        if (!_options.RecoveryEmailEnabled ||
-            !await _authorizer.IsSelfServiceAuthorizedAsync(localAccountId, cancellationToken))
+        if (!await _authorizer.IsSelfServiceAuthorizedAsync(localAccountId, cancellationToken))
         {
             return new RecoveryEmailStatus(false, false);
         }

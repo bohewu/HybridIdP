@@ -25,7 +25,7 @@ function changeEditSource(event) {
 }
 const editSourceIndex = computed(() => availableSources.value.findIndex(s => s.source === editDraft.value?.source && s.providerNamespace === editDraft.value?.providerNamespace))
 const editValid = computed(() => editDraft.value && available(editDraft.value) && properties.value.includes(editDraft.value.sourceProperty) && fieldsFor(editDraft.value, editing.value).includes(editDraft.value.field))
-const supportsFallback = row => row.source === 'Proof' && row.field === 'FirstName' && row.sourceProperty === 'givenName' && available(row)
+const supportsFallback = row => ['Proof', 'NeutralQuery'].includes(row.source) && row.field === 'FirstName' && row.sourceProperty === 'givenName' && available(row)
 function changeFallback(row, event) {
   if (!props.canUpdate || saving.value || editing.value !== -1 || !supportsFallback(row)) return
   fallback.value = { providerNamespace: row.providerNamespace, enabled: event.target.checked }

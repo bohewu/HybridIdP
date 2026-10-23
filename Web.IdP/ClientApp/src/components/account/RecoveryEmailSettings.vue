@@ -1,5 +1,5 @@
 <template>
-  <section class="recovery-email-settings" aria-labelledby="recovery-email-title" :aria-busy="loading">
+  <section v-if="showSection" class="recovery-email-settings" aria-labelledby="recovery-email-title" :aria-busy="loading">
     <div class="recovery-email-header">
       <div class="recovery-email-icon" aria-hidden="true">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><path d="m4 7 8 6 8-6"/></svg>
@@ -14,8 +14,7 @@
             <p data-testid="recovery-email-mode"><strong>{{ t('mfa.recoveryEmail.currentMode') }}</strong> {{ t(`mfa.recoveryEmail.modes.${status.mode}`) }}</p>
             <p class="recovery-email-address" data-testid="recovery-email-masked">{{ t('mfa.recoveryEmail.effectiveAddress') }} {{ status.maskedAddress || t('mfa.recoveryEmail.noEffectiveAddress') }}</p>
             <p class="recovery-email-address">{{ t('mfa.recoveryEmail.defaultAddress') }} {{ status.maskedDefaultAddress || t('mfa.recoveryEmail.noDefault') }}</p>
-            <p v-if="!status.enabled" data-testid="recovery-email-readonly">{{ t('mfa.recoveryEmail.readOnly') }}</p>
-            <p v-else>{{ t('mfa.recoveryEmail.freshnessHelp') }}</p>
+            <p v-if="status.enabled">{{ t('mfa.recoveryEmail.freshnessHelp') }}</p>
           </template>
           <p v-else-if="status.isConfigured" class="recovery-email-address" data-testid="recovery-email-masked">
             {{ status.maskedAddress || t('mfa.recoveryEmail.maskedUnavailable') }}
@@ -24,6 +23,7 @@
           <p v-else>{{ t('mfa.recoveryEmail.notConfigured') }}</p>
         </template>
         <p v-if="statusError" class="recovery-message error" role="alert">{{ statusError }}</p>
+        <p v-if="status.enabled === false" data-testid="recovery-email-readonly">{{ t('mfa.recoveryEmail.readOnly') }}</p>
         <p v-if="actionError" class="recovery-message error" role="alert">{{ actionError }}</p>
         <p v-if="successMessage" class="recovery-message success" role="status">{{ successMessage }}</p>
         <p v-if="needsHelp"><a href="/Account/MfaSetup">{{ t('mfa.recoveryEmail.enrollmentHelp') }}</a> {{ t('mfa.recoveryEmail.adminHelp') }}</p>
@@ -35,7 +35,7 @@
         <button ref="changeButton" class="recovery-btn primary" type="button" :disabled="submitting" @click="openDialog('change', $event)">{{ t('mfa.recoveryEmail.changeTitle') }}</button>
         <button ref="defaultButton" class="recovery-btn secondary" type="button" :disabled="submitting || !status.maskedDefaultAddress" data-testid="recovery-use-default" @click="prepareDefault($event)">{{ t('mfa.recoveryEmail.useDefault') }}</button>
       </template>
-      <template v-else-if="!selectionStatus">
+      <template v-else-if="!selectionStatus && status.enabled !== false">
         <button ref="changeButton" class="recovery-btn primary" type="button" :disabled="submitting" @click="openDialog('change', $event)">{{ t(status.isConfigured ? 'mfa.recoveryEmail.change' : 'mfa.recoveryEmail.add') }}</button>
         <button v-if="status.isConfigured" class="recovery-btn danger" type="button" :disabled="submitting" @click="revoke">{{ t('mfa.recoveryEmail.remove') }}</button>
         <button v-if="status.isConfigured && !status.isVerified" class="recovery-btn secondary" type="button" @click="openDialog('verify', $event)">{{ t('mfa.recoveryEmail.verify') }}</button>
@@ -55,7 +55,7 @@
       </div>
     </div>
 
-    <div v-if="showDialog" class="recovery-modal-overlay" @click.self="closeDialog">
+    <div v-if="showDialog && status.enabled !== false" class="recovery-modal-overlay" @click.self="closeDialog">
       <div ref="dialog" class="recovery-modal" role="dialog" aria-modal="true" aria-labelledby="recovery-dialog-title" aria-describedby="recovery-dialog-description" :aria-busy="submitting" @keydown="dialogKeydown">
         <h2 id="recovery-dialog-title">{{ t(`mfa.recoveryEmail.${mode}Title`) }}</h2>
         <p id="recovery-dialog-description" class="recovery-modal-description">{{ t(`mfa.recoveryEmail.${mode}Help`) }}</p>
@@ -97,6 +97,7 @@ const props = defineProps({ csrfToken: { type: String, default: '' } })
 const { t, locale } = useI18n()
 const status = reactive({})
 const selectionStatus = computed(() => ['Legacy', 'UseDefault', 'UseCustom', 'Disabled'].includes(status.mode))
+const showSection = computed(() => status.enabled !== false || status.hasRecoveryData !== false)
 const loading = ref(true)
 const submitting = ref(false)
 const statusError = ref('')
@@ -132,7 +133,12 @@ async function loadStatus() {
   statusError.value = ''
   try {
     const result = await accountApi.getRecoveryEmailStatus(props.csrfToken)
-    if (!result.httpOk) { statusError.value = outcomeMessage(result.outcome); return false }
+    if (!result.httpOk) {
+      if (typeof result.enabled === 'boolean') status.enabled = result.enabled
+      if (typeof result.hasRecoveryData === 'boolean') status.hasRecoveryData = result.hasRecoveryData
+      statusError.value = outcomeMessage(result.outcome)
+      return false
+    }
     for (const key of Object.keys(status)) delete status[key]
     Object.assign(status, result)
     now.value = Date.now()
@@ -177,7 +183,7 @@ function dialogKeydown(event) {
   else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus() }
 }
 async function mutate(request, successKey, afterSuccess) {
-  if (submitting.value || (selectionStatus.value && !status.enabled)) return false
+  if (submitting.value || status.enabled === false) return false
   submitting.value = true
   dialogError.value = ''
   actionError.value = ''

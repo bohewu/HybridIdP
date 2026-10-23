@@ -229,7 +229,12 @@ Changing the configured Proof namespace does not transfer old saved mappings.
 
 An assured nonblank `givenName` retains the existing FirstName mapping. Only a
 missing, null, empty or whitespace-only `givenName` permits the same validated
-Proof response's assured `displayName` to fill a missing FirstName. The whole
+source response's assured `displayName` to fill a missing FirstName. This is a
+local mapping policy shared by Proof and independently trusted Native Profile
+query sources, including HTTP 2.0 and direct-directory manual synchronization;
+it is not selected by contract version. Query-source fallback is explicitly
+enabled for its exact namespace in the saved field mappings; legacy Proof
+fallback settings retain their existing behavior. The whole
 name is preserved without splitting or inventing LastName. Values over the
 existing 100-character FirstName limit are skipped, never truncated. This
 fallback is fill-only even when the field permits overwrite: populated names

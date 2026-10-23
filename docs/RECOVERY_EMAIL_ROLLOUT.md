@@ -38,6 +38,23 @@ intent. Only absence of that shape uses the legacy status API. A null effective
 mask means unavailable under current policy, not permission to show a retained
 historical address as active. Read-only GET does not create state or send mail.
 
+The settings section is hidden only when recovery self-service is disabled and
+the server reports no recovery data. A retained legacy address or persisted
+selection (including `Disabled` with no effective address) remains visible and
+read-only, with no recovery mutation controls. Legacy status includes `enabled`
+and `hasRecoveryData` metadata; a denied legacy address read keeps its
+`highAssuranceRequired` 403 outcome and contains only that presence/availability
+metadata, never a masked or raw address. Missing address data after a denied
+read is not an empty account. Selection status also reports `hasRecoveryData`
+so an enabled selection policy with self-service disabled and no saved or
+eligible destination does not leave an empty section visible.
+
+Legacy self-service availability follows `CredentialMigration.RecoveryEmailEnabled`
+when no selection policy/state exists. Selection self-service availability follows
+`RecoveryEmailSelection.Enabled` and `SelfServiceEnabled`; retained selection
+state takes precedence over the legacy setting. Neither visibility nor read-only
+state depends on the independent Email OTP MFA policy or `EmailMfaEnabled`.
+
 Changing or using default requires current-account authorization, existing
 MFA/hardware-key prerequisites, fresh authority-correct reauthentication,
 CSRF/context binding and a short-lived server step-up grant. Pending mailbox

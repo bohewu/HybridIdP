@@ -416,6 +416,142 @@ public sealed class AdminProfileSyncServiceTests
         Assert.Equal("Source display", (await f.Db.Users.AsNoTracking().SingleAsync()).FirstName);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task NeutralFirstNameFallback_ShouldUseOriginalAssuredDisplayOnlyWhenConfigured(string? givenName)
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        f.Source = f.Source with { Profile = f.Source.Profile with { GivenName = givenName, Surname = null } };
+        var off = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Equal("missing_source", off.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").Action);
+        var config = await f.Native.GetMappingsAsync();
+        var rows = config.Mappings.Select(x => x.Source == NativeFieldSource.NeutralQuery && x.Field == NativeField.Nickname
+            ? x with { SourceProperty = "givenName" } : x).ToArray();
+        await f.Native.SetMappingsAsync(new(config.Revision, rows, new("example.provider", true)));
+
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.False(f.Db.ChangeTracker.HasChanges());
+        Assert.Empty(f.Db.ChangeTracker.Entries<ApplicationUser>());
+        Assert.Empty(f.Db.ChangeTracker.Entries<Person>());
+        Assert.Equal("Source display", preview.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").ProposedValue);
+        Assert.Equal("Source display", preview.Changes.Single(x => x.Target == "Person" && x.Field == "FirstName").ProposedValue);
+        await f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!);
+        var user = await f.Db.Users.AsNoTracking().SingleAsync();
+        var person = await f.Db.Persons.AsNoTracking().SingleAsync();
+        Assert.Equal("Source display", user.FirstName);
+        Assert.Equal("Source display", person.FirstName);
+        Assert.Null(user.LastName);
+        Assert.Null(person.LastName);
+        Assert.Null(user.Nickname);
+    }
+
+    [Fact]
+    public async Task NeutralFirstNameFallback_ShouldPreferGivenNameAndPreserveExplicitMapping()
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        var config = await f.Native.GetMappingsAsync();
+        await f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, new("example.provider", true)));
+        var given = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Equal("Source first", given.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").ProposedValue);
+
+        f.Source = f.Source with { Profile = f.Source.Profile with { GivenName = null } };
+        config = await f.Native.GetMappingsAsync();
+        var rows = config.Mappings.Select(x => x.Source == NativeFieldSource.NeutralQuery && x.Field == NativeField.FirstName
+            ? x with { SourceProperty = "surname" } : x).ToArray();
+        await f.Native.SetMappingsAsync(new(config.Revision, rows, config.FirstNameFallback));
+        var remapped = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Equal("Source surname", remapped.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").ProposedValue);
+    }
+
+    [Fact]
+    public async Task NeutralFirstNameFallback_ShouldPreserveExistingAndManuallyFixedNames()
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        var config = await f.Native.GetMappingsAsync();
+        await f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, new("example.provider", true)));
+        var user = await f.Db.Users.SingleAsync();
+        user.FirstName = "Retained name";
+        var person = await f.Db.Persons.SingleAsync();
+        f.Native.ApplyManual(person, new Dictionary<NativeField, string?> { [NativeField.FirstName] = "" });
+        await f.Db.SaveChangesAsync();
+        await f.Native.UpdateAsync(NativeFieldTarget.User, f.UserId, NativeField.FirstName, new()
+        {
+            Operation = NativeFieldOperation.AssignSource, AllowOverwrite = true, ExpectedRevision = Guid.Empty,
+            SourceIdentity = new(NativeFieldSource.NeutralQuery, f.UserId, "example.provider", string.Empty, QuerySourceId: "source")
+        });
+        f.Db.ChangeTracker.Clear();
+        f.Source = f.Source with { Profile = f.Source.Profile with { GivenName = null } };
+
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Equal("preserve", preview.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").Action);
+        Assert.Equal("manual_fixed", preview.Changes.Single(x => x.Target == "Person" && x.Field == "FirstName").Action);
+        await f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!);
+        Assert.Equal("Retained name", (await f.Db.Users.AsNoTracking().SingleAsync()).FirstName);
+        Assert.Equal("", (await f.Db.Persons.AsNoTracking().SingleAsync()).FirstName);
+    }
+
+    [Fact]
+    public async Task NeutralFirstNameFallback_ShouldNotClaimSharedPersonFields()
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        f.Db.Users.Add(new() { Id = Guid.NewGuid(), PersonId = f.PersonId, UserName = "other-account" });
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var config = await f.Native.GetMappingsAsync();
+        await f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, new("example.provider", true)));
+        f.Source = f.Source with { Profile = f.Source.Profile with { GivenName = null } };
+
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.Equal("fill", preview.Changes.Single(x => x.Target == "User" && x.Field == "FirstName").Action);
+        Assert.Equal("shared_person", preview.Changes.Single(x => x.Target == "Person" && x.Field == "FirstName").Action);
+        await f.Service.ApplyAsync("actor", f.UserId, preview.PreviewToken!);
+        Assert.Equal("Source display", (await f.Db.Users.AsNoTracking().SingleAsync(x => x.Id == f.UserId)).FirstName);
+        Assert.Null((await f.Db.Persons.AsNoTracking().SingleAsync()).FirstName);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("oversized")]
+    public async Task NeutralFirstNameFallback_ShouldNotUseStoredOrOversizedDisplayName(string scenario)
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        var user = await f.Db.Users.SingleAsync();
+        user.Nickname = "Stored name";
+        await f.Db.SaveChangesAsync();
+        f.Db.ChangeTracker.Clear();
+        var config = await f.Native.GetMappingsAsync();
+        await f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, new("example.provider", true)));
+        f.Source = f.Source with { Profile = f.Source.Profile with
+        {
+            GivenName = null, DisplayName = scenario == "missing" ? null : new string('x', 101)
+        } };
+
+        var preview = await f.Service.PreviewAsync("actor", f.UserId);
+        Assert.All(preview.Changes.Where(x => x.Field == "FirstName"), change => Assert.Equal("missing_source", change.Action));
+    }
+
+    [Theory]
+    [InlineData("namespace")]
+    [InlineData("paused")]
+    public async Task NeutralFirstNameFallback_ShouldRequireAnAvailableExactNamespace(string scenario)
+    {
+        using var f = new Fixture(neutral: true);
+        await f.SeedAsync();
+        if (scenario == "paused") await f.Native.SetPausedAsync(NativeFieldSource.NeutralQuery, new(true, Guid.Empty));
+        var config = await f.Native.GetMappingsAsync();
+        var providerNamespace = scenario == "namespace" ? "EXAMPLE.PROVIDER" : "example.provider";
+        var error = await Assert.ThrowsAsync<NativeFieldPolicyException>(() =>
+            f.Native.SetMappingsAsync(new(config.Revision, config.Mappings, new(providerNamespace, true))));
+        Assert.Equal("source_unavailable", error.Code);
+    }
+
     private sealed class Clock : TimeProvider
     {
         public DateTimeOffset Now { get; set; } = DateTimeOffset.UtcNow;

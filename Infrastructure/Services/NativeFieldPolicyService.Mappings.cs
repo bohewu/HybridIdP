@@ -5,6 +5,7 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Core.Application.Ports;
+using Core.Domain;
 using Core.Domain.Constants;
 using Core.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -85,7 +86,7 @@ public sealed partial class NativeFieldPolicyService
                     x.Enabled && !x.Paused), "source_unavailable");
             }
             if (request.FirstNameFallback.Enabled && request.FirstNameFallback != current.FirstNameFallback)
-                Require(current.Sources.Any(x => x.Source == NativeFieldSource.Proof &&
+                Require(current.Sources.Any(x => (x.Source is NativeFieldSource.Proof or NativeFieldSource.NeutralQuery) &&
                     x.ProviderNamespace == request.FirstNameFallback.ProviderNamespace && x.Enabled && !x.Paused), "source_unavailable");
             var setting = await db.Settings.SingleOrDefaultAsync(x => x.Key == SettingKeys.NativeFieldMappings, cancellationToken);
             if (setting is null)
@@ -164,6 +165,26 @@ public sealed partial class NativeFieldPolicyService
         }
         Require(fallback!.ProviderNamespace is null || ValidNamespace(fallback.ProviderNamespace), code);
         Require(!fallback.Enabled || ValidNamespace(fallback.ProviderNamespace), code);
+    }
+
+    private static (IReadOnlyDictionary<NativeField, string?> Values, bool UsedFirstNameFallback) MapNativeSourceValues(
+        NativeFieldSourceIdentity identity, IReadOnlyDictionary<NativeField, string?> originalValues,
+        MappingDocument? document, NativeFieldMappingFallbackDto? fallback)
+    {
+        IReadOnlyDictionary<NativeField, string?> values = document is null ? originalValues : document.Mappings
+            .Where(x => x.Source == identity.Source && x.ProviderNamespace == identity.ProviderNamespace)
+            .ToDictionary(x => x.Field, x => originalValues.GetValueOrDefault(PropertyField(x.SourceProperty)));
+        // Inputs are fresh assured fields from this source, before any output remapping.
+        // Never use stored native values, Profile extras or another source's display name.
+        if ((identity.Source is NativeFieldSource.Proof or NativeFieldSource.NeutralQuery) &&
+            fallback is { Enabled: true } && fallback.ProviderNamespace == identity.ProviderNamespace &&
+            (document is null || document.Mappings.Any(x => x.Field == NativeField.FirstName &&
+                x.Source == identity.Source && x.ProviderNamespace == identity.ProviderNamespace && x.SourceProperty == "givenName")) &&
+            string.IsNullOrWhiteSpace(originalValues.GetValueOrDefault(NativeField.FirstName)) &&
+            originalValues.GetValueOrDefault(NativeField.Nickname) is { Length: <= 100 } displayName &&
+            !string.IsNullOrWhiteSpace(displayName))
+            return (new Dictionary<NativeField, string?>(values) { [NativeField.FirstName] = displayName }, true);
+        return (values, false);
     }
 
     private bool IsTrustedNamespace(NativeFieldSource source, string providerNamespace) => source switch

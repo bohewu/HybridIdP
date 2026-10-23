@@ -19,17 +19,12 @@ public sealed partial class NativeFieldPolicyService
         Require(await IsAvailableAsync(identity, cancellationToken), "source_unavailable");
         ValidateValues(values, user);
         var document = await ReadMappingDocumentAsync(cancellationToken);
-        if (document is not null)
-        {
-            var original = values;
-            values = document.Mappings.Where(x => x.Source == NativeFieldSource.NeutralQuery && x.ProviderNamespace == identity.ProviderNamespace)
-                .ToDictionary(x => x.Field, x => original.GetValueOrDefault(PropertyField(x.SourceProperty)));
-        }
+        var mapped = MapNativeSourceValues(identity, values, document, document?.FirstNameFallback);
         var decisions = new List<ProfileSyncChangeDto>();
-        ApplySource(user, identity, values, true, false, true, decisions);
+        ApplySource(user, identity, mapped.Values, true, mapped.UsedFirstNameFallback, true, decisions);
         // A person with several local accounts still needs explicit field ownership assignment.
         var soleAccount = await db.Users.CountAsync(x => x.PersonId == person.Id, cancellationToken) == 1;
-        ApplySource(person, identity, values, soleAccount, false, true, decisions);
+        ApplySource(person, identity, mapped.Values, soleAccount, mapped.UsedFirstNameFallback, true, decisions);
         return decisions;
     }
 

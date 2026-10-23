@@ -14,7 +14,10 @@ and sync shows deployment/trust and pause status; User row menus and
 Person row buttons open Native field policies. Existing target permissions
 protect reads/updates; source status and UI assignment additionally need `settings.read`
 and global pause needs local Admin authority plus `settings.update`.
-The UI cannot enable an untrusted source.
+The UI cannot enable an untrusted source. FirstName's optional exact-namespace
+givenName-to-displayName fallback is shared by Proof and trusted Native Profile
+query mappings, independently of wire version; it remains off by default and
+preserves existing names, manually fixed blanks and field ownership.
 
 Normal-login mappings use existing Proof and Stage 1 sources. Exact persisted bindings
 and field ownership prevent shared Person last-login-wins. Nonempty values are
@@ -148,6 +151,12 @@ existing MFA/hardware-key evidence and server-owned CSRF/context binding.
 Pending-mailbox OTP is not account reauthentication. When rollout flags are
 off, persisted selection remains accurately visible and read-only; legacy
 status/mutation behavior applies only where no selection policy/state exists.
+Disabled recovery self-service hides the section when no recovery data exists.
+Retained legacy data and persisted selection intent (including `Disabled`)
+remain visible without mutation controls. Legacy address reads still require
+the existing MFA/hardware-key assurance; denied reads retain their error and
+only expose availability/presence metadata for display. Recovery visibility
+and read-only state are independent of the Email OTP MFA policy.
 
 `RecoveryIdentityVerification.Enabled`, its Local/Directory requirement
 switches and all three `RecoveryEmailSelection` switches default to `false`.

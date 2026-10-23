@@ -172,6 +172,48 @@ public sealed class RecoveryProofFoundationTests
         }
     }
 
+    [Theory]
+    [InlineData(false, false, true)]
+    [InlineData(false, true, true)]
+    [InlineData(true, false, true)]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
+    public async Task GetStatus_DisabledLegacyPreservesMaskedReadAndMfaIndependence(bool configured, bool emailMfaEnabled, bool authorized)
+    {
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await using var context = CreateContext(connection);
+        await context.Database.EnsureCreatedAsync();
+        var id = await SeedUserAsync(context);
+        var user = await context.Users.SingleAsync(u => u.Id == id);
+        user.EmailMfaEnabled = emailMfaEnabled;
+        var time = new FixedTimeProvider();
+        if (configured)
+        {
+            var record = new RecoveryEmailRecord(id, "recovery@example.test", "RECOVERY@EXAMPLE.TEST", time.GetUtcNow());
+            record.MarkVerified(time.GetUtcNow()); context.RecoveryEmails.Add(record);
+        }
+        await context.SaveChangesAsync();
+        var mail = new CapturingEmailService();
+        var service = new RecoveryEmailService(context, new FixedAuthorizer(authorized, false), mail,
+            new PasswordHasher<ApplicationUser>(), new CapturingAudit(),
+            Options.Create(new CredentialMigrationOptions { RecoveryEmailEnabled = false }), time);
+
+        var status = await service.GetStatusAsync(id);
+
+        Assert.Equal(configured && authorized, status.IsConfigured);
+        Assert.Equal(configured && authorized, status.IsVerified);
+        Assert.Equal(configured && authorized ? "r***@example.test" : null, status.MaskedAddress);
+        Assert.Equal(RecoveryProofOutcome.Unavailable, (await service.BeginAuthenticatedChangeAsync(new(id, "new@example.test"))).Outcome);
+        Assert.Equal(RecoveryProofOutcome.Unavailable, await service.VerifyAuthenticatedAsync(new(id, "123456")));
+        Assert.Equal(RecoveryProofOutcome.Unavailable, await service.RevokeAuthenticatedAsync(id));
+        Assert.Equal(configured ? 1 : 0, await context.RecoveryEmails.CountAsync());
+        Assert.Empty(await context.RecoveryEmailPreferences.ToListAsync());
+        Assert.Empty(await context.RecoveryProofChallenges.ToListAsync());
+        Assert.Equal(emailMfaEnabled, (await context.Users.AsNoTracking().SingleAsync(u => u.Id == id)).EmailMfaEnabled);
+        Assert.Null(mail.LastCode);
+    }
+
     [Fact]
     public async Task RecoveryEmailAndMigrationOtp_AreIndependentSingleUseProofsWithoutMfaSideEffects()
     {

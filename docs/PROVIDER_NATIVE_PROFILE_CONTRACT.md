@@ -27,7 +27,10 @@ fields, lengths and Email assurance semantics as 1.0. NotFound/Ambiguous return
 no result; missing local inputs, source failure or invalid correlation block
 preview/apply. All User/Person native values remain fill-only and independently
 owned; populated/manual-fixed blanks, shared-Person restrictions, output mapping,
-MFA-protected Email and independent Email trust stay authoritative.
+MFA-protected Email and independent Email trust stay authoritative. The local
+exact-namespace FirstName fallback is shared with Proof mappings: when explicitly
+enabled, fresh assured displayName may fill a missing givenName target. This is
+a local field policy, not a wire-version feature or a source of write authority.
 
 Preview/apply binds the local account/Person, selected source, exact query/value
 sources/approvals, configuration revision and full fresh diff. Apply refetches

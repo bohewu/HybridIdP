@@ -20,7 +20,9 @@ public sealed record RecoveryPreferenceContext(string ContextHash, string CsrfHa
 
 // A valid Mode selects this status shape even when Enabled=false (read-only).
 // "unavailable" means no selection policy/state: the controller retains its legacy GET contract.
+// In that shape Enabled reports legacy self-service availability; HasRecoveryData is
+// presence metadata only and does not authorize reading an address or mutating state.
 public sealed record RecoveryPreferenceStatus(bool Enabled, string Mode, string? MaskedAddress,
     string? MaskedDefaultAddress, string? MaskedPendingAddress, DateTimeOffset? PendingExpiresAtUtc,
-    DateTimeOffset? NextSendAllowedAtUtc);
+    DateTimeOffset? NextSendAllowedAtUtc, bool? HasRecoveryData = null);
 public sealed record RecoveryDefaultConfirmation(string MaskedAddress, string Confirmation);

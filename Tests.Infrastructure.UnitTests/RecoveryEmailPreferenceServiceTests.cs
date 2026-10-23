@@ -26,13 +26,16 @@ public sealed class RecoveryEmailPreferenceServiceTests
     [InlineData(RecoveryEmailSelectionMode.UseDefault, false)]
     [InlineData(RecoveryEmailSelectionMode.UseDefault, true)]
     [InlineData(RecoveryEmailSelectionMode.Disabled, false)]
+    [InlineData(RecoveryEmailSelectionMode.Legacy, false)]
+    [InlineData(RecoveryEmailSelectionMode.UseCustom, false)]
     public async Task GetStatus_ReadOnlyPersistedModeNeverDisplaysDeselectedCustom(RecoveryEmailSelectionMode mode, bool bootstrap)
     {
         await using var f = await Fixture.CreateAsync();
         var context = await f.GrantAsync();
         Assert.Equal(RecoveryProofOutcome.Success, await f.Service.BeginAsync(f.User.Id, "pending@example.test", context));
         var preference = await f.Db.RecoveryEmailPreferences.SingleAsync();
-        Assert.True(preference.TrySelect(mode, preference.SelectionEpoch, f.Time.Now));
+        if (mode != RecoveryEmailSelectionMode.Legacy)
+            Assert.True(preference.TrySelect(mode, preference.SelectionEpoch, f.Time.Now));
         await f.Db.SaveChangesAsync();
         f.OptionsValue.Enabled = false;
         f.OptionsValue.SelfServiceEnabled = false;
@@ -42,9 +45,11 @@ public sealed class RecoveryEmailPreferenceServiceTests
         var status = await f.Service.GetStatusAsync(f.User.Id);
 
         Assert.False(status.Enabled);
+        Assert.True(status.HasRecoveryData);
         Assert.Equal(mode.ToString(), status.Mode);
-        Assert.Equal(mode == RecoveryEmailSelectionMode.UseDefault && bootstrap ? "d***@example.test" : null, status.MaskedAddress);
-        Assert.Equal(status.MaskedAddress, status.MaskedDefaultAddress);
+        Assert.Equal(mode is RecoveryEmailSelectionMode.Legacy or RecoveryEmailSelectionMode.UseCustom ? "o***@example.test" :
+            mode == RecoveryEmailSelectionMode.UseDefault && bootstrap ? "d***@example.test" : null, status.MaskedAddress);
+        Assert.Equal(mode == RecoveryEmailSelectionMode.UseDefault && bootstrap ? "d***@example.test" : null, status.MaskedDefaultAddress);
         Assert.Equal("p***@example.test", status.MaskedPendingAddress);
         Assert.NotNull(status.PendingExpiresAtUtc);
         Assert.Equal("old@example.test", (await f.Db.RecoveryEmails.SingleAsync()).Address);
@@ -68,21 +73,47 @@ public sealed class RecoveryEmailPreferenceServiceTests
         Assert.Empty(f.Mail.Messages);
     }
 
-    [Fact]
-    public async Task GetStatus_NoSelectionStateAndFlagsOffReturnsLegacySentinel()
+    [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task GetStatus_NoSelectionStateReportsLegacyAvailabilityWithoutWriting(bool legacyEnabled, bool hasData)
     {
         await using var f = await Fixture.CreateAsync();
         f.OptionsValue.Enabled = false;
         f.OptionsValue.SelfServiceEnabled = false;
         f.OptionsValue.TrustedDefaultFallbackEnabled = false;
+        f.LegacyOptions.RecoveryEmailEnabled = legacyEnabled;
+        if (!hasData) { f.Db.RecoveryEmails.RemoveRange(f.Db.RecoveryEmails); await f.Db.SaveChangesAsync(); }
 
         var status = await f.Service.GetStatusAsync(f.User.Id);
 
-        Assert.False(status.Enabled);
+        Assert.Equal(legacyEnabled, status.Enabled);
+        Assert.Equal(hasData, status.HasRecoveryData);
         Assert.Equal("unavailable", status.Mode);
         Assert.Null(status.MaskedAddress);
         Assert.Null(status.MaskedDefaultAddress);
         Assert.Empty(await f.Db.RecoveryEmailPreferences.ToListAsync());
+        Assert.Empty(await f.Db.RecoveryEmailChangeRequests.ToListAsync());
+        Assert.Empty(f.Mail.Messages);
+    }
+
+    [Fact]
+    public async Task GetStatus_SelfServiceDisabledWithoutDataReportsEmptySelectionWithoutWriting()
+    {
+        await using var f = await Fixture.CreateAsync();
+        f.OptionsValue.SelfServiceEnabled = false;
+        f.Default = null;
+        f.Db.RecoveryEmails.RemoveRange(f.Db.RecoveryEmails); await f.Db.SaveChangesAsync();
+
+        var status = await f.Service.GetStatusAsync(f.User.Id);
+
+        Assert.False(status.Enabled);
+        Assert.False(status.HasRecoveryData);
+        Assert.Equal("Legacy", status.Mode);
+        Assert.Empty(await f.Db.RecoveryEmailPreferences.ToListAsync());
+        Assert.Empty(f.Mail.Messages);
     }
 
     [Fact]
@@ -367,6 +398,7 @@ public sealed class RecoveryEmailPreferenceServiceTests
         public bool Authorized { get; set; } = true;
         public RecoveryDefaultDestination? Default { get; set; } = new("default@example.test", "default-fingerprint", 1, false);
         public RecoveryEmailSelectionOptions OptionsValue { get; } = new() { Enabled = true, SelfServiceEnabled = true, TrustedDefaultFallbackEnabled = true };
+        public CredentialMigrationOptions LegacyOptions { get; } = new();
         private readonly IDataProtectionProvider _protection = new EphemeralDataProtectionProvider();
         private readonly string _throttleKey = Guid.NewGuid().ToString("N");
         public ApplicationDbContext NewContext() => new(new DbContextOptionsBuilder<ApplicationDbContext>().UseSqlite(_connection.ConnectionString).Options);
@@ -383,7 +415,7 @@ public sealed class RecoveryEmailPreferenceServiceTests
             var defaults = new Mock<IRecoveryDefaultDestinationEvaluator>(); defaults.Setup(d => d.EvaluateDefaultAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>())).ReturnsAsync(() => Default);
             var resolver = new RecoveryDestinationResolver(db, defaults.Object, Options.Create(OptionsValue), Options.Create(new RecoveryVerificationPolicyOptions { Enabled = true }), Time);
             return new(db, auth.Object, StepUp(db), resolver, defaults.Object, Notifications(db), new PasswordHasher<ApplicationUser>(), _protection,
-                Options.Create(OptionsValue), Options.Create(new CredentialMigrationOptions()),
+                Options.Create(OptionsValue), Options.Create(LegacyOptions),
                 new RecoveryThrottleService(db, Options.Create(new RecoveryThrottleOptions { HashKey = _throttleKey }), Time), Time);
         }
         public async Task<RecoveryPreferenceContext> GrantAsync()

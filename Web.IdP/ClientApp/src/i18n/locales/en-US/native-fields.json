@@ -43,8 +43,8 @@
     "title": "FirstName fill strategy",
     "namespace": "Applies to source namespace",
     "label": "Use the full name to fill a missing first name",
-    "help": "Applies at next sign-in; keeps existing values and manually fixed blanks.",
-    "authority": "Saved only for this exact namespace. Deployment (.env) enablement and trust remain required; this setting cannot activate or trust a source. Changes apply during the next eligible sign-in synchronization; pausing synchronization keeps this selection.",
+    "help": "Applies during eligible synchronization; keeps existing values and manually fixed blanks.",
+    "authority": "Saved only for this exact namespace. Deployment (.env) enablement and trust remain required; this setting cannot activate or trust a source. Saving does not start synchronization; pausing synchronization keeps this selection.",
     "save": "Save settings",
     "mapping": "Off by default. Prefer assured givenName from this source. Only when givenName is missing, empty or whitespace, use this same source's assured whole displayName to fill a blank FirstName. Existing names and manually fixed blanks are preserved, even when source overwrite is allowed. Names are not split and LastName is not filled by this strategy."
   },
