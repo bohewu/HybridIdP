@@ -19,7 +19,7 @@ async function render(props = {}, locale = 'en-US') {
   wrapper = mount(ProfileMappingDialog, { props: { canUpdate: true, canSync: true, ...props }, global: { plugins: [createI18n({ legacy: false, locale, messages: { 'en-US': { 'native-fields': en, 'query-fields': queryEn }, 'zh-TW': { 'native-fields': zh, 'query-fields': queryZh } }, missingWarn: false })], stubs: { BaseModal: { template: '<div><slot name="body"/><slot name="footer"/></div>' } } } })
   await flushPromises()
 }
-beforeEach(() => { vi.resetAllMocks(); nativeFieldPolicyApi.mappings.mockResolvedValue(fixture()); nativeFieldPolicyApi.saveMappings.mockResolvedValue(fixture()) })
+beforeEach(() => { vi.resetAllMocks(); nativeFieldPolicyApi.mappings.mockResolvedValue(fixture()); nativeFieldPolicyApi.saveMappings.mockResolvedValue(fixture()); queryConfigurationApi.get.mockResolvedValue({ sources: [] }) })
 afterEach(() => wrapper?.unmount())
 describe('Profile mapping draft', () => {
   it('defaults to canonical naming and offers only the two supported strategies', async () => {
@@ -169,6 +169,32 @@ describe('Profile mapping draft', () => {
     expect(nativeFieldPolicyApi.saveMappings).not.toHaveBeenCalled()
     await wrapper.get('[data-test="save-mappings"]').trigger('click'); await flushPromises()
     expect(nativeFieldPolicyApi.saveMappings.mock.calls[0][0].firstNameFallback).toEqual({ providerNamespace: 'example.provider', enabled: true })
+  })
+  it('offers and saves the same fallback for an available neutral data source', async () => {
+    const data = fixture()
+    data.sources = [{ ...source, source: 'NeutralQuery', userNamePolicyAvailable: false }]
+    data.mappings = [{ ...row, source: 'NeutralQuery' }]
+    nativeFieldPolicyApi.mappings.mockResolvedValue(data)
+    await render()
+    await wrapper.get('[data-test="mapping-fallback"]').setValue(true)
+    expect(nativeFieldPolicyApi.saveMappings).not.toHaveBeenCalled()
+    await wrapper.get('[data-test="save-mappings"]').trigger('click'); await flushPromises()
+    expect(nativeFieldPolicyApi.saveMappings.mock.calls[0][0]).toMatchObject({
+      mappings: data.mappings,
+      firstNameFallback: { providerNamespace: 'example.provider', enabled: true }
+    })
+  })
+  it.each([
+    { source: 'NeutralQuery', enabled: false, paused: false },
+    { source: 'NeutralQuery', enabled: true, paused: true },
+    { source: 'Stage1', enabled: true, paused: false }
+  ])('does not offer fallback for an ineligible source %j', async state => {
+    const data = fixture()
+    data.sources = [{ ...source, ...state, userNamePolicyAvailable: false }]
+    data.mappings = [{ ...row, source: state.source }]
+    nativeFieldPolicyApi.mappings.mockResolvedValue(data)
+    await render()
+    expect(wrapper.find('[data-test="mapping-fallback"]').exists()).toBe(false)
   })
   it.each([{ providerNamespace: 'example.provider', enabled: true }, null])('offers a new Proof namespace fallback off until explicitly selected with stored fallback %j', async storedFallback => {
     const data = fixture()

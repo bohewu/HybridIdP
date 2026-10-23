@@ -14,7 +14,10 @@ and sync shows deployment/trust and pause status; User row menus and
 Person row buttons open Native field policies. Existing target permissions
 protect reads/updates; source status and UI assignment additionally need `settings.read`
 and global pause needs local Admin authority plus `settings.update`.
-The UI cannot enable an untrusted source.
+The UI cannot enable an untrusted source. FirstName's optional exact-namespace
+givenName-to-displayName fallback is shared by Proof and trusted Native Profile
+query mappings, independently of wire version; it remains off by default and
+preserves existing names, manually fixed blanks and field ownership.
 
 Normal-login mappings use existing Proof and Stage 1 sources. Exact persisted bindings
 and field ownership prevent shared Person last-login-wins. Nonempty values are

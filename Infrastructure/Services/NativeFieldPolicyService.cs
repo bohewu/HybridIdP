@@ -155,7 +155,6 @@ public sealed partial class NativeFieldPolicyService(
         if (identity.LocalAccountId != user.Id || !await IsAvailableAsync(identity, cancellationToken) ||
             !await IsBoundAsync(identity, NativeFieldTarget.User, user.Id, cancellationToken)) return false;
         ValidateValues(values, user);
-        var originalValues = values;
         MappingDocument? mappingDocument;
         try { mappingDocument = await ReadMappingDocumentAsync(cancellationToken); }
         catch (NativeFieldPolicyException exception) when (!fillOnly && exception.Code == "invalid_stored_state")
@@ -164,29 +163,19 @@ public sealed partial class NativeFieldPolicyService(
             // an authentication or claims-snapshot outage. Administrative reads still report it.
             return false;
         }
-        if (mappingDocument is not null)
-        {
-            values = mappingDocument.Mappings.Where(x => x.Source == identity.Source && x.ProviderNamespace == identity.ProviderNamespace)
-                .ToDictionary(x => x.Field, x => originalValues.GetValueOrDefault(PropertyField(x.SourceProperty)));
-        }
-        // Proof values have already passed contract assurance validation. Never use Profile
-        // snapshots, another source, or a stored nickname as fallback input.
-        var firstNameFallback = false;
-        if (identity.Source == NativeFieldSource.Proof &&
-            (mappingDocument is null || mappingDocument.Mappings.Any(x => x.Field == NativeField.FirstName &&
-                x.Source == identity.Source && x.ProviderNamespace == identity.ProviderNamespace && x.SourceProperty == "givenName")) &&
-            string.IsNullOrWhiteSpace(originalValues.GetValueOrDefault(NativeField.FirstName)) &&
-            originalValues.GetValueOrDefault(NativeField.Nickname) is { Length: <= 100 } displayName &&
+        var fallback = mappingDocument?.FirstNameFallback;
+        if (mappingDocument is null && identity.Source == NativeFieldSource.Proof &&
+            string.IsNullOrWhiteSpace(values.GetValueOrDefault(NativeField.FirstName)) &&
+            values.GetValueOrDefault(NativeField.Nickname) is { Length: <= 100 } displayName &&
             !string.IsNullOrWhiteSpace(displayName))
         {
             var policy = await db.NativeFieldSourcePolicies.AsNoTracking()
                 .SingleOrDefaultAsync(x => x.Source == identity.Source.ToString(), cancellationToken);
-            firstNameFallback = mappingDocument is null
-                ? policy?.FirstNameDisplayNameFallback == true && policy.FirstNameFallbackProviderNamespace == identity.ProviderNamespace
-                : mappingDocument.FirstNameFallback.Enabled && mappingDocument.FirstNameFallback.ProviderNamespace == identity.ProviderNamespace;
-            if (firstNameFallback)
-                values = new Dictionary<NativeField, string?>(values) { [NativeField.FirstName] = displayName };
+            fallback = new(policy?.FirstNameFallbackProviderNamespace, policy?.FirstNameDisplayNameFallback == true);
         }
+        var mapped = MapNativeSourceValues(identity, values, mappingDocument, fallback);
+        values = mapped.Values;
+        var firstNameFallback = mapped.UsedFirstNameFallback;
         var changed = ApplySource(user, identity, values, true, firstNameFallback, fillOnly, decisions);
         if (person is not null && user.PersonId == person.Id &&
             await IsBoundAsync(identity, NativeFieldTarget.Person, person.Id, cancellationToken))
