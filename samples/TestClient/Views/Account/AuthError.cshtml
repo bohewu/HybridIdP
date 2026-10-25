@@ -1,8 +1,10 @@
 @{
     ViewData["Title"] = "Sign-in result";
     var code = ViewData["ErrorMessage"]?.ToString() ?? "authentication_failed";
+    var parRejected = code == "par_request_rejected";
     var explanation = code switch
     {
+        "par_request_rejected" => "The IdP rejected this client's pushed authorization request (PAR) before sign-in. The client request settings may be incompatible with its registered policy. This sample uses Authorization Code + PKCE and response_mode=query. Check the registered client's allowed response mode, scopes and request settings with its administrator before retrying. This request did not complete sign-in.",
         "invalid_scope" => "The requested scope is not registered or allowed for this client. This is the expected result of the invalid-scope demo.",
         "login_required" => "Silent sign-in needs an authenticated IdP session. Start standard sign-in and then try again.",
         "consent_required" => "Silent sign-in cannot show consent. Approve access with an interactive request first.",
@@ -13,7 +15,18 @@
     };
 }
 <section class="demo-panel mx-auto mt-4 demo-result-panel">
-    <div class="demo-eyebrow">Protocol response</div><h1 class="mt-2">Sign-in needs attention.</h1>
+    <div class="demo-eyebrow">Protocol response</div><h1 class="mt-2">@(parRejected ? "Client request needs attention." : "Sign-in needs attention.")</h1>
     <div class="alert alert-warning mt-4" role="alert"><strong>@code</strong><p class="mb-0 mt-2">@explanation</p></div>
-    <div class="d-flex flex-wrap gap-2 mt-4"><a class="btn btn-primary" asp-controller="Account" asp-action="Login">Start standard sign-in</a><a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back to demo center</a></div>
+    <div class="d-flex flex-wrap gap-2 mt-4">
+        @if (parRejected)
+        {
+            <a class="btn btn-primary" asp-controller="Home" asp-action="Index">Back to demo center</a>
+            <a class="btn btn-outline-secondary" asp-controller="Account" asp-action="Login">Retry after checking settings</a>
+        }
+        else
+        {
+            <a class="btn btn-primary" asp-controller="Account" asp-action="Login">Start standard sign-in</a>
+            <a class="btn btn-outline-secondary" asp-controller="Home" asp-action="Index">Back to demo center</a>
+        }
+    </div>
 </section>

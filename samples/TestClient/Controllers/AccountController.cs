@@ -84,7 +84,7 @@ public class AccountController(OidcDemoService demo, IOptions<OidcDemoOptions> o
     public IActionResult AuthError(string? error)
     {
         ViewData["ErrorMessage"] = error is "invalid_scope" or "invalid_request" or "login_required" or
-            "consent_required" or "interaction_required" or "server_error" ? error : "authentication_failed";
+            "consent_required" or "interaction_required" or "server_error" or "par_request_rejected" ? error : "authentication_failed";
         return View();
     }
 }

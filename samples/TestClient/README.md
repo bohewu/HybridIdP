@@ -36,6 +36,16 @@ start sign-in: rejected authorize requests can remain on the IdP instead of
 returning through a client callback. Silent sign-in can return `login_required`, `consent_required` or
 `interaction_required`; these are expected protocol outcomes.
 
+Normal sign-in uses the framework's PAR support and `response_mode=query`.
+If the IdP rejects that pushed request because of incompatible client settings
+(for example, a registration allowing only `form_post`), the client shows
+`par_request_rejected` with a local explanation and a link back to the demo
+center. Check the registration and request settings before retrying. The IdP's
+original HTTP 400 OAuth JSON rejection is unchanged; the client does not retry
+without PAR or change its response mode. Upstream descriptions, response bodies
+and exception details are not included in the explanation. Transport failures
+and other unexpected faults retain normal error handling.
+
 The account links open the IdP's existing registration, recovery and profile
 pages. Passkey enrollment, TOTP/email MFA, recovery and external-provider options
 follow IdP policy and deployment configuration. This client does not enable those
