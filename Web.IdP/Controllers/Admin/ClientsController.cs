@@ -114,6 +114,9 @@ public class ClientsController : ControllerBase
             permissions = client.Permissions,
             supportedRoles = client.SupportedRoles,
             requirePkce = client.RequirePkce,
+            pkceMethodPolicy = client.PkceMethodPolicy,
+            tokenEndpointAuthMethod = client.TokenEndpointAuthMethod,
+            responseModePolicy = client.ResponseModePolicy,
             disableExternalProviders = client.DisableExternalProviders,
             enableTurnstile = client.EnableTurnstile,
             requireMfa = client.RequireMfa

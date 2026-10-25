@@ -88,6 +88,7 @@ const handleEdit = async (client) => {
     showAccessDenied.value = true
     return
   }
+  error.value = null
   try {
     // Fetch full client details for editing (redirect URIs, permissions, etc.)
     const response = await fetch(`/api/admin/clients/${client.id}`)
@@ -96,12 +97,12 @@ const handleEdit = async (client) => {
     }
     const full = await response.json()
     selectedClient.value = { ...client, ...full }
+    showForm.value = true
   } catch (e) {
     console.error('Failed to fetch client details:', e)
-    // Fall back to the partial object so the form still opens
-    selectedClient.value = client
-  } finally {
-    showForm.value = true
+    selectedClient.value = null
+    showForm.value = false
+    error.value = t('clients.detailsLoadFailed')
   }
 }
 

@@ -32,6 +32,9 @@ public record CreateClientRequest(
 )
 {
     public bool? RequirePkce { get; init; }
+    public string? PkceMethodPolicy { get; init; }
+    public string? TokenEndpointAuthMethod { get; init; }
+    public string? ResponseModePolicy { get; init; }
     public bool? DisableExternalProviders { get; init; }
     public bool? EnableTurnstile { get; init; }
     public bool? RequireMfa { get; init; }
@@ -53,6 +56,9 @@ public record UpdateClientRequest(
 )
 {
     public bool? RequirePkce { get; init; }
+    public string? PkceMethodPolicy { get; init; }
+    public string? TokenEndpointAuthMethod { get; init; }
+    public string? ResponseModePolicy { get; init; }
     public bool? DisableExternalProviders { get; init; }
     public bool? EnableTurnstile { get; init; }
     public bool? RequireMfa { get; init; }
@@ -74,6 +80,9 @@ public sealed class ClientDetail
     public List<string> Permissions { get; set; } = new();
     public List<string> SupportedRoles { get; set; } = new();
     public bool RequirePkce { get; set; }
+    public string PkceMethodPolicy { get; set; } = "inherit";
+    public string TokenEndpointAuthMethod { get; set; } = "inherit";
+    public string ResponseModePolicy { get; set; } = "inherit";
     public bool DisableExternalProviders { get; set; }
     public bool EnableTurnstile { get; set; }
     public bool RequireMfa { get; set; }

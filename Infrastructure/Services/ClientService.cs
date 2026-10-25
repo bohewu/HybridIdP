@@ -170,6 +170,8 @@ public class ClientService : IClientService
         var clientType = await _applicationManager.GetClientTypeAsync(application) ?? string.Empty;
         var properties = await _applicationManager.GetPropertiesAsync(application);
 
+        var protocolPolicy = ClientProtocolPolicy.Read(properties);
+
         return new ClientDetail
         {
             Id = await _applicationManager.GetIdAsync(application) ?? string.Empty,
@@ -183,6 +185,9 @@ public class ClientService : IClientService
             Permissions = permissions.ToList(),
             SupportedRoles = GetSupportedRoles(properties),
             RequirePkce = clientType == ClientTypes.Public || descriptor.Requirements.Contains(Requirements.Features.ProofKeyForCodeExchange),
+            PkceMethodPolicy = protocolPolicy.PkceMethodPolicy,
+            TokenEndpointAuthMethod = protocolPolicy.TokenEndpointAuthMethod,
+            ResponseModePolicy = protocolPolicy.ResponseModePolicy,
             DisableExternalProviders = GetDisableExternalProviders(properties),
             EnableTurnstile = GetEnableTurnstile(properties),
             RequireMfa = GetRequireMfa(properties)
@@ -248,6 +253,8 @@ public class ClientService : IClientService
         };
 
         ApplyPkceRequirement(descriptor, clientType, request.RequirePkce, defaultConfidentialRequirePkce: true);
+        ClientProtocolPolicy.Apply(descriptor.Properties, request.PkceMethodPolicy,
+            request.TokenEndpointAuthMethod, request.ResponseModePolicy, clientType == ClientTypes.Confidential);
 
         // Add Support Roles
         if (request.SupportedRoles != null && request.SupportedRoles.Any())
@@ -424,6 +431,8 @@ public class ClientService : IClientService
         }
 
         ApplyPkceRequirement(descriptor, descriptor.ClientType, effectiveRequirePkce, defaultConfidentialRequirePkce: true);
+        ClientProtocolPolicy.Apply(descriptor.Properties, request.PkceMethodPolicy,
+            request.TokenEndpointAuthMethod, request.ResponseModePolicy, descriptor.ClientType == ClientTypes.Confidential);
 
         // Validate Native app constraints
         if (descriptor.ApplicationType == ApplicationTypes.Native && descriptor.ClientType != ClientTypes.Public)

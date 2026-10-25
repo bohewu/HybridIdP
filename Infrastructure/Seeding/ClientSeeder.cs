@@ -211,6 +211,10 @@ public static class ClientSeeder
             ClientType = ClientTypes.Public,
             ConsentType = ConsentTypes.Explicit,
             DisplayName = "Test Client (Public)",
+            Requirements =
+            {
+                Requirements.Features.ProofKeyForCodeExchange
+            },
             RedirectUris = 
             {
                 new Uri("https://localhost:7001/signin-oidc"),
@@ -260,6 +264,10 @@ public static class ClientSeeder
             ClientType = ClientTypes.Public,
             ConsentType = ConsentTypes.Explicit,
             DisplayName = "Demo Client 1",
+            Requirements =
+            {
+                Requirements.Features.ProofKeyForCodeExchange
+            },
             RedirectUris = 
             {
                 new Uri("https://localhost:7001/signin-oidc")

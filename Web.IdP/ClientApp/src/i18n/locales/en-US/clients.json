@@ -24,6 +24,7 @@
     "confidential": "Confidential"
   },
   "loadingMessage": "Loading clients...",
+  "detailsLoadFailed": "Failed to load client details. Select Edit Client to try again.",
   "title": "Client Management",
   "createClient": "Create Client",
   "editClient": "Edit Client",
@@ -74,6 +75,19 @@
     "clientSecretPublicPlaceholder": "Not needed for public clients",
     "clientSecretHelp": "A new client secret will be generated after saving. Please save it securely as it will not be shown again.",
     "clientSecretAutoGenPlaceholder": "(Auto-generated after save)",
+    "protocolPolicies": {
+      "title": "Advanced protocol policies",
+      "inherit": "Inherit (no client restriction)",
+      "inheritHelp": "Inherit keeps the server-supported methods available without an additional client restriction.",
+      "pkceMethod": "Allowed PKCE challenge methods",
+      "s256Only": "S256 only (recommended)",
+      "pkceHelp": "Applies when a PKCE challenge is sent. Require PKCE above controls whether a challenge is required.",
+      "tokenAuthMethod": "Allowed token endpoint authentication",
+      "tokenAuthHelp": "Basic sends the secret in the Authorization header; Post sends it in the token request body.",
+      "publicAuthHelp": "Public clients do not use a client secret; Basic and Post restrictions are unavailable.",
+      "responseMode": "Allowed callback response modes",
+      "responseModeHelp": "query returns the code in the callback URL; form_post sends it in a browser form. This is separate from token authentication. Request form_post explicitly when restricted to form_post."
+    },
     "requirePkce": "PKCE",
     "requirePkceToggle": "Require PKCE for authorization code flow",
     "requirePkceHelp": "Public clients always require PKCE. You can toggle this for confidential clients.",
