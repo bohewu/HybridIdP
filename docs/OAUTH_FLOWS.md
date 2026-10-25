@@ -91,23 +91,72 @@ checkbox. New confidential clients default to requiring PKCE; an update omitting
 that field preserves their existing requirement. Native applications must be
 public. Application type `web` alone does not mean confidential.
 
+The editor places grant selection before callback addresses and PKCE settings.
+For confidential clients, selecting the authorization-code grant reveals the
+callback fields below that selection; toggling the grant retains entered URIs.
+Endpoint permissions remain a separate group. Selecting a client type does not
+automatically add grant or endpoint permissions.
+
+The public authorization-code test seeds (`testclient-public` and `demo-client-1`)
+also persist the PKCE requirement. This seed correction does not backfill existing
+production registrations or enable PKCE globally for confidential clients.
+
 The checkbox persists OpenIddict's `ProofKeyForCodeExchange` requirement. It
 does not select a challenge algorithm or enforce S256-only. Configure the
 downstream OAuth client to send `code_challenge_method=S256`, its derived
 `code_challenge`, and the matching `code_verifier` at code redemption. The admin
-authorization URL helper generates S256 requests. There is no per-client
-challenge-method selector in the current editor or DTO.
+authorization URL helper generates S256 requests. The separate optional
+`pkceMethodPolicy` selection can restrict challenges to S256 as described below.
 
 `client_secret_basic` authenticates a confidential client at `/connect/token`
 using HTTP Basic over HTTPS. Configure that method in the downstream client
 library and keep its registered secret on the server. PKCE is an additional
 code-redemption check, not a replacement for confidential-client authentication.
-There is no current per-client token authentication method selector or setting
-that restricts a client to Basic only. A registration with `type=public` and
+The optional `tokenEndpointAuthMethod` selection can restrict a client to Basic
+or POST authentication. A registration with `type=public` and
 `clientSecret=null` has no confidential secret to use for Basic. Changing the
 downstream method alone cannot convert that registration; any migration must
 be deliberate. The editor does not expose client-type changes on existing
 registrations.
+
+### Optional per-client protocol policies
+
+All three new editor selections default to `inherit`, including new clients.
+Existing registrations with absent properties retain their prior behavior. No
+global PKCE algorithm, token authentication method or response mode is changed.
+Only an explicit restricted selection constrains that client.
+
+| JSON field (create, update and detail) | Allowed values | Enforcement |
+|---|---|---|
+| `pkceMethodPolicy` | `inherit`, `S256` | S256 rejects `plain` or an omitted method when a challenge is provided. It does not require a challenge for a confidential client with Require PKCE disabled. |
+| `tokenEndpointAuthMethod` | `inherit`, `client_secret_basic`, `client_secret_post` | Restricts the actual credential transport at `/connect/token`, after native client authentication. Public clients must use `inherit`. |
+| `responseModePolicy` | `inherit`, `query`, `form_post` | Restricts the requested authorization response mode. Code requests omitting `response_mode` still mean `query`; a form-post-only client must send `response_mode=form_post`. |
+
+Create omissions or null values mean inherit. Update omissions or null values
+preserve saved selections; explicitly sending `inherit` clears the override.
+Unknown values, empty strings and confidential authentication restrictions on
+public clients return a clear HTTP 400 from the management API. Policies use
+existing application properties and require no schema migration, client
+recreation, identifier changes, secret rotation or mandatory configuration.
+Legacy confidential non-PKCE and inherited plain/S256 requests retain their
+existing native validation behavior. The existing Require PKCE control and
+public-client requirements are unchanged.
+
+Authorization checks run after native client, redirect, permission and PKCE
+validation, including pushed authorization requests at `/connect/par` and the
+restored request at `/connect/authorize`. Rejection does not silently change
+the requested callback transport. Token checks distinguish real HTTP Basic
+from body credentials after OpenIddict validates them; a request parameter
+cannot declare its authentication method. Malformed, duplicate authentication
+methods and invalid secrets remain subject to native rejection. Other client
+authentication endpoints retain their existing behavior.
+
+Backchannel policy errors use native OAuth JSON (`invalid_client` for token
+authentication restrictions, `invalid_request` for PAR authorization-policy
+conflicts). Authorization validation failures use native local error handling;
+successful authorization retains the validated redirect and requested mode.
+Discovery describes server-wide capabilities and is not changed to reflect a
+particular client's restrictions.
 
 | Setting | Server web application | Browser SPA |
 |---------|------------------------|-------------|

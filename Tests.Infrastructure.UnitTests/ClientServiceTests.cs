@@ -793,6 +793,113 @@ public class ClientServiceTests
         _mockEventPublisher.Verify(e => e.PublishAsync(It.IsAny<ClientDeletedEvent>()), Times.Once);
     }
 
+    [Theory]
+    [InlineData(null, null, null)]
+    [InlineData("inherit", "inherit", "inherit")]
+    [InlineData("S256", "client_secret_basic", "query")]
+    [InlineData("S256", "client_secret_post", "form_post")]
+    public async Task ProtocolPolicies_ShouldRoundTripAndPreserveOmittedUpdateFields(
+        string? pkce, string? tokenAuth, string? responseMode)
+    {
+        var id = Guid.NewGuid();
+        var application = new object();
+        OpenIddictApplicationDescriptor? saved = null;
+        _mockApplicationManager.Setup(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, CancellationToken>((d, _) => saved = d).ReturnsAsync(application);
+        _mockApplicationManager.Setup(m => m.GetIdAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(id.ToString());
+        var create = new CreateClientRequest("policy-client", "existing-secret", "Policy client", ApplicationTypes.Web,
+            ClientTypes.Confidential, ConsentTypes.Explicit, ["https://localhost/callback"], null, null, null)
+        {
+            RequirePkce = false, PkceMethodPolicy = pkce, TokenEndpointAuthMethod = tokenAuth, ResponseModePolicy = responseMode
+        };
+        await _service.CreateClientAsync(create);
+        Assert.NotNull(saved);
+        Assert.DoesNotContain(Requirements.Features.ProofKeyForCodeExchange, saved.Requirements);
+        var expected = new ClientProtocolPolicy(pkce ?? "inherit", tokenAuth ?? "inherit", responseMode ?? "inherit");
+        Assert.Equal(expected, ClientProtocolPolicy.Read(saved.Properties));
+
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(id.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _mockApplicationManager.Setup(m => m.GetClientTypeAsync(application, It.IsAny<CancellationToken>())).ReturnsAsync(ClientTypes.Confidential);
+        _mockApplicationManager.Setup(m => m.GetPropertiesAsync(application, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(() => saved.Properties.ToImmutableDictionary());
+        _mockApplicationManager.Setup(m => m.GetRedirectUrisAsync(application, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+        _mockApplicationManager.Setup(m => m.GetPostLogoutRedirectUrisAsync(application, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+        _mockApplicationManager.Setup(m => m.GetPermissionsAsync(application, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(ImmutableArray<string>.Empty);
+        saved.Properties["unrelated"] = JsonSerializer.SerializeToElement("preserved");
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), application, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, _) =>
+            {
+                d.ClientId = saved.ClientId;
+                d.ClientSecret = saved.ClientSecret;
+                d.ClientType = saved.ClientType;
+                d.ApplicationType = saved.ApplicationType;
+                foreach (var pair in saved.Properties) d.Properties[pair.Key] = pair.Value;
+            });
+        _mockApplicationManager.Setup(m => m.UpdateAsync(application, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()))
+            .Callback<object, OpenIddictApplicationDescriptor, CancellationToken>((_, d, _) => saved = d);
+
+        var detail = await _service.GetClientByIdAsync(id);
+        Assert.NotNull(detail);
+        Assert.Equal(expected, new ClientProtocolPolicy(detail.PkceMethodPolicy, detail.TokenEndpointAuthMethod, detail.ResponseModePolicy));
+        Assert.False(detail.RequirePkce);
+        // A legacy caller omits all three fields, including explicit null after JSON binding.
+        var update = new UpdateClientRequest(null, null, "Renamed", null, null, null, null, null, null);
+        await _service.UpdateClientAsync(id, update);
+        Assert.Equal(expected, ClientProtocolPolicy.Read(saved.Properties));
+        Assert.Equal("existing-secret", saved.ClientSecret);
+        Assert.Equal("preserved", saved.Properties["unrelated"].GetString());
+        Assert.DoesNotContain(Requirements.Features.ProofKeyForCodeExchange, saved.Requirements);
+
+        await _service.UpdateClientAsync(id, update with
+        {
+            PkceMethodPolicy = "inherit", TokenEndpointAuthMethod = "inherit", ResponseModePolicy = "inherit"
+        });
+        Assert.Equal(new ClientProtocolPolicy("inherit", "inherit", "inherit"), ClientProtocolPolicy.Read(saved.Properties));
+        Assert.DoesNotContain(ClientProtocolPolicy.PkceProperty, saved.Properties.Keys);
+        Assert.DoesNotContain(ClientProtocolPolicy.TokenAuthProperty, saved.Properties.Keys);
+        Assert.DoesNotContain(ClientProtocolPolicy.ResponseModeProperty, saved.Properties.Keys);
+        Assert.Equal("preserved", saved.Properties["unrelated"].GetString());
+
+        await _service.UpdateClientAsync(id, update with
+        {
+            PkceMethodPolicy = "S256", TokenEndpointAuthMethod = "client_secret_basic", ResponseModePolicy = "form_post"
+        });
+        Assert.Equal(new ClientProtocolPolicy("S256", "client_secret_basic", "form_post"), ClientProtocolPolicy.Read(saved.Properties));
+    }
+
+    [Theory]
+    [InlineData("plain", null, null, "confidential")]
+    [InlineData("s256", null, null, "confidential")]
+    [InlineData("", null, null, "confidential")]
+    [InlineData(null, "none", null, "confidential")]
+    [InlineData(null, "private_key_jwt", null, "confidential")]
+    [InlineData(null, null, "fragment", "confidential")]
+    [InlineData(null, null, "", "confidential")]
+    [InlineData(null, "client_secret_basic", null, "public")]
+    [InlineData(null, "client_secret_post", null, "public")]
+    public async Task ProtocolPolicies_ShouldRejectInvalidSelectionsBeforeCreateOrUpdate(
+        string? pkce, string? tokenAuth, string? responseMode, string type)
+    {
+        var create = new CreateClientRequest("policy-client", null, "Policy client", ApplicationTypes.Web,
+            type, ConsentTypes.Explicit, ["https://localhost/callback"], null, null, null)
+        { PkceMethodPolicy = pkce, TokenEndpointAuthMethod = tokenAuth, ResponseModePolicy = responseMode };
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.CreateClientAsync(create));
+        _mockApplicationManager.Verify(m => m.CreateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()), Times.Never);
+
+        var id = Guid.NewGuid();
+        var application = new object();
+        _mockApplicationManager.Setup(m => m.FindByIdAsync(id.ToString(), It.IsAny<CancellationToken>())).ReturnsAsync(application);
+        _mockApplicationManager.Setup(m => m.PopulateAsync(It.IsAny<OpenIddictApplicationDescriptor>(), application, It.IsAny<CancellationToken>()))
+            .Callback<OpenIddictApplicationDescriptor, object, CancellationToken>((d, _, _) => d.ClientType = type);
+        var update = new UpdateClientRequest(null, null, null, null, null, null, null, null, null)
+        { PkceMethodPolicy = pkce, TokenEndpointAuthMethod = tokenAuth, ResponseModePolicy = responseMode };
+        await Assert.ThrowsAsync<ArgumentException>(() => _service.UpdateClientAsync(id, update));
+        _mockApplicationManager.Verify(m => m.UpdateAsync(application, It.IsAny<OpenIddictApplicationDescriptor>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
     private static Mock<DbSet<T>> CreateMockDbSet<T>(List<T> sourceList) where T : class
     {
         var queryable = sourceList.AsQueryable();

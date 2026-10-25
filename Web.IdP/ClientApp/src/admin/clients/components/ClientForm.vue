@@ -5,6 +5,7 @@ import { z } from 'zod'
 import BaseModal from '@/components/common/BaseModal.vue'
 import SecretDisplayModal from './SecretDisplayModal.vue'
 import ClientScopeManager from './ClientScopeManager.vue'
+import ClientPermissionChecklist from './ClientPermissionChecklist.vue'
 import AuthUrlGenerator from './AuthUrlGenerator.vue'
 import { 
   useClientFormLogic, 
@@ -38,6 +39,9 @@ const formData = ref({
   requiredScopes: [],
   supportedRoles: [],
   requirePkce: true,
+  pkceMethodPolicy: 'inherit',
+  tokenEndpointAuthMethod: 'inherit',
+  responseModePolicy: 'inherit',
   disableExternalProviders: false,
   enableTurnstile: false,
   requireMfa: false
@@ -120,6 +124,9 @@ const resetForm = () => {
     requiredScopes: [],
     supportedRoles: [],
     requirePkce: true,
+    pkceMethodPolicy: 'inherit',
+    tokenEndpointAuthMethod: 'inherit',
+    responseModePolicy: 'inherit',
     disableExternalProviders: false,
     enableTurnstile: false,
     requireMfa: false
@@ -144,6 +151,9 @@ watch(() => props.client, async (newClient) => {
       requiredScopes: [],
       supportedRoles: newClient.supportedRoles || [],
       requirePkce: resolveRequirePkce(newClient.type === 'confidential' ? 'confidential' : 'public', newClient.requirePkce),
+      pkceMethodPolicy: newClient.pkceMethodPolicy ?? 'inherit',
+      tokenEndpointAuthMethod: newClient.tokenEndpointAuthMethod ?? 'inherit',
+      responseModePolicy: newClient.responseModePolicy ?? 'inherit',
       disableExternalProviders: newClient.disableExternalProviders === true,
       enableTurnstile: newClient.enableTurnstile === true,
       requireMfa: newClient.requireMfa === true
@@ -205,6 +215,9 @@ const handleSubmit = async () => {
       permissions: formData.value.permissions,
       supportedRoles: formData.value.supportedRoles,
       requirePkce: resolveRequirePkce(formData.value.clientType, formData.value.requirePkce),
+      pkceMethodPolicy: formData.value.pkceMethodPolicy,
+      tokenEndpointAuthMethod: formData.value.clientType === 'public' ? 'inherit' : formData.value.tokenEndpointAuthMethod,
+      responseModePolicy: formData.value.responseModePolicy,
       disableExternalProviders: formData.value.disableExternalProviders,
       enableTurnstile: formData.value.enableTurnstile,
       requireMfa: formData.value.requireMfa
@@ -466,20 +479,128 @@ const closeSecretModal = () => {
                       </div>
                     </div>
 
+                    <!-- Choose the flow before entering its callback addresses. -->
+                    <div>
+                      <ClientPermissionChecklist
+                        id="client-grant-types"
+                        :label="$t('clients.form.categories.grantTypes')"
+                        :permissions="permissionsByCategory.grantTypes"
+                        :selected="formData.permissions"
+                        @toggle="togglePermission"
+                      />
+                      <div v-if="fieldErrors.permissions" class="mt-2">
+                        <p v-for="(err, idx) in fieldErrors.permissions" :key="idx" class="text-sm text-red-600">{{ err }}</p>
+                      </div>
+                    </div>
+
+                    <!-- Redirect URIs -->
+                    <div class="mb-5" v-if="isInteractive">
+                      <label for="redirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('clients.form.redirectUris') }} <span v-if="isInteractive" class="text-red-500">*</span>
+                      </label>
+                      <textarea
+                        id="redirectUris"
+                        v-model="formData.redirectUris"
+                        :required="isInteractive"
+                        rows="3"
+                        :class="[
+                          'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
+                          fieldErrors.redirectUris
+                            ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
+                        ]"
+                        :placeholder="$t('clients.form.redirectUrisPlaceholder')"
+                      ></textarea>
+                      <p v-if="!fieldErrors.redirectUris" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.redirectUrisHelp') }}</p>
+                      <div v-if="fieldErrors.redirectUris" class="mt-1">
+                        <p v-for="(err, idx) in fieldErrors.redirectUris" :key="idx" class="text-sm text-red-600 flex items-start">
+                          <svg class="h-4 w-4 mr-1 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                          </svg>
+                          {{ err }}
+                        </p>
+                      </div>
+                    </div>
+
+                    <!-- Post Logout Redirect URIs -->
+                    <div class="mb-5" v-if="isInteractive">
+                      <label for="postLogoutRedirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
+                        {{ $t('clients.form.postLogoutRedirectUris') }}
+                      </label>
+                      <textarea
+                        id="postLogoutRedirectUris"
+                        v-model="formData.postLogoutRedirectUris"
+                        rows="2"
+                        :class="[
+                          'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
+                          fieldErrors.postLogoutRedirectUris
+                            ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
+                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
+                        ]"
+                        :placeholder="$t('clients.form.postLogoutRedirectUrisPlaceholder')"
+                      ></textarea>
+                      <p v-if="!fieldErrors.postLogoutRedirectUris" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.postLogoutRedirectUrisHelp') }}</p>
+                      <div v-if="fieldErrors.postLogoutRedirectUris" class="mt-1">
+                        <p v-for="(err, idx) in fieldErrors.postLogoutRedirectUris" :key="idx" class="text-sm text-red-600 flex items-start">
+                          <svg class="h-4 w-4 mr-1 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
+                          </svg>
+                          {{ err }}
+                        </p>
+                      </div>
+                    </div>
+
                     <div v-if="formData.clientType === 'confidential'" class="mb-5">
                       <label class="block text-sm font-medium text-gray-700 mb-1.5">
                         {{ $t('clients.form.requirePkce') }}
                       </label>
                       <label class="inline-flex items-center gap-2 text-sm text-gray-700">
                         <input
+                          id="require-pkce"
                           v-model="formData.requirePkce"
                           type="checkbox"
+                          aria-describedby="require-pkce-help"
                           class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
                         />
                         <span>{{ $t('clients.form.requirePkceToggle') }}</span>
                       </label>
-                      <p class="mt-1 text-xs text-gray-500">{{ $t('clients.form.requirePkceHelp') }}</p>
+                      <p id="require-pkce-help" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.requirePkceHelp') }}</p>
                     </div>
+
+                    <details class="rounded-md border border-gray-200" data-test-id="client-protocol-policies">
+                      <summary class="cursor-pointer px-3 py-3 text-sm font-medium text-gray-700 focus-visible:outline focus-visible:outline-2 focus-visible:outline-google-500">
+                        {{ $t('clients.form.protocolPolicies.title') }}
+                      </summary>
+                      <div class="space-y-4 border-t border-gray-200 p-3">
+                        <p class="text-xs text-gray-500">{{ $t('clients.form.protocolPolicies.inheritHelp') }}</p>
+                        <div>
+                          <label for="pkce-method-policy" class="mb-1.5 block text-sm font-medium text-gray-700">{{ $t('clients.form.protocolPolicies.pkceMethod') }}</label>
+                          <select id="pkce-method-policy" v-model="formData.pkceMethodPolicy" aria-describedby="pkce-method-policy-help" class="block h-10 w-full rounded-md border-gray-300 px-3 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm">
+                            <option value="inherit">{{ $t('clients.form.protocolPolicies.inherit') }}</option>
+                            <option value="S256">{{ $t('clients.form.protocolPolicies.s256Only') }}</option>
+                          </select>
+                          <p id="pkce-method-policy-help" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.protocolPolicies.pkceHelp') }}</p>
+                        </div>
+                        <div>
+                          <label for="token-endpoint-auth-method" class="mb-1.5 block text-sm font-medium text-gray-700">{{ $t('clients.form.protocolPolicies.tokenAuthMethod') }}</label>
+                          <select id="token-endpoint-auth-method" :value="formData.clientType === 'public' ? 'inherit' : formData.tokenEndpointAuthMethod" @change="formData.tokenEndpointAuthMethod = $event.target.value" :disabled="formData.clientType === 'public'" aria-describedby="token-endpoint-auth-method-help" class="block h-10 w-full rounded-md border-gray-300 px-3 shadow-sm focus:border-google-500 focus:ring-google-500 disabled:cursor-not-allowed disabled:bg-gray-100 sm:text-sm">
+                            <option value="inherit">{{ $t('clients.form.protocolPolicies.inherit') }}</option>
+                            <option value="client_secret_basic">client_secret_basic</option>
+                            <option value="client_secret_post">client_secret_post</option>
+                          </select>
+                          <p id="token-endpoint-auth-method-help" class="mt-1 text-xs text-gray-500">{{ $t(formData.clientType === 'public' ? 'clients.form.protocolPolicies.publicAuthHelp' : 'clients.form.protocolPolicies.tokenAuthHelp') }}</p>
+                        </div>
+                        <div>
+                          <label for="response-mode-policy" class="mb-1.5 block text-sm font-medium text-gray-700">{{ $t('clients.form.protocolPolicies.responseMode') }}</label>
+                          <select id="response-mode-policy" v-model="formData.responseModePolicy" aria-describedby="response-mode-policy-help" class="block h-10 w-full rounded-md border-gray-300 px-3 shadow-sm focus:border-google-500 focus:ring-google-500 sm:text-sm">
+                            <option value="inherit">{{ $t('clients.form.protocolPolicies.inherit') }}</option>
+                            <option value="query">query</option>
+                            <option value="form_post">form_post</option>
+                          </select>
+                          <p id="response-mode-policy-help" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.protocolPolicies.responseModeHelp') }}</p>
+                        </div>
+                      </div>
+                    </details>
 
                     <div class="mb-5">
                       <label class="block text-sm font-medium text-gray-700 mb-1.5">
@@ -564,108 +685,15 @@ const closeSecretModal = () => {
                       </p>
                     </div>
 
-                    <!-- Redirect URIs -->
-                    <div class="mb-5" v-if="isInteractive">
-                      <label for="redirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('clients.form.redirectUris') }} <span v-if="isInteractive" class="text-red-500">*</span>
-                      </label>
-                      <textarea
-                        id="redirectUris"
-                        v-model="formData.redirectUris"
-                        :required="isInteractive"
-                        rows="3"
-                        :class="[
-                          'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
-                          fieldErrors.redirectUris
-                            ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
-                        ]"
-                        :placeholder="$t('clients.form.redirectUrisPlaceholder')"
-                      ></textarea>
-                      <p v-if="!fieldErrors.redirectUris" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.redirectUrisHelp') }}</p>
-                      <div v-if="fieldErrors.redirectUris" class="mt-1">
-                        <p v-for="(err, idx) in fieldErrors.redirectUris" :key="idx" class="text-sm text-red-600 flex items-start">
-                          <svg class="h-4 w-4 mr-1 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                          </svg>
-                          {{ err }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <!-- Post Logout Redirect URIs -->
-                    <div class="mb-5" v-if="isInteractive">
-                      <label for="postLogoutRedirectUris" class="block text-sm font-medium text-gray-700 mb-1.5">
-                        {{ $t('clients.form.postLogoutRedirectUris') }}
-                      </label>
-                      <textarea
-                        id="postLogoutRedirectUris"
-                        v-model="formData.postLogoutRedirectUris"
-                        rows="2"
-                        :class="[
-                          'block w-full rounded-md shadow-sm sm:text-sm px-3 py-2',
-                          fieldErrors.postLogoutRedirectUris
-                            ? 'border-red-300 text-red-900 placeholder-red-300 focus:border-red-500 focus:ring-red-500'
-                            : 'border-gray-300 focus:border-google-500 focus:ring-google-500'
-                        ]"
-                        :placeholder="$t('clients.form.postLogoutRedirectUrisPlaceholder')"
-                      ></textarea>
-                      <p v-if="!fieldErrors.postLogoutRedirectUris" class="mt-1 text-xs text-gray-500">{{ $t('clients.form.postLogoutRedirectUrisHelp') }}</p>
-                      <div v-if="fieldErrors.postLogoutRedirectUris" class="mt-1">
-                        <p v-for="(err, idx) in fieldErrors.postLogoutRedirectUris" :key="idx" class="text-sm text-red-600 flex items-start">
-                          <svg class="h-4 w-4 mr-1 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                          </svg>
-                          {{ err }}
-                        </p>
-                      </div>
-                    </div>
-
-                    <!-- Permissions -->
+                    <!-- Endpoint permissions -->
                     <div>
-                      <label class="block text-sm font-medium text-gray-700 mb-2">
-                        {{ $t('clients.form.permissions') }} <span class="text-red-500">*</span>
-                      </label>
-                      <div v-if="fieldErrors.permissions" class="mb-2">
-                        <p v-for="(err, idx) in fieldErrors.permissions" :key="idx" class="text-sm text-red-600 flex items-start">
-                          <svg class="h-4 w-4 mr-1 mt-0.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd" />
-                          </svg>
-                          {{ err }}
-                        </p>
-                      </div>
-                      
-                      <!-- Grouped by category -->
-                      <div class="space-y-4">
-                        <div v-for="(permissions, category) in permissionsByCategory" :key="category">
-                          <h4 class="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-2">
-                            {{ $t(`clients.form.categories.${category}`) }}
-                          </h4>
-                          <div class="grid grid-cols-2 gap-2">
-                            <div
-                              v-for="permission in permissions"
-                              :key="permission.value"
-                              class="relative flex items-start"
-                            >
-                              <div class="flex h-5 items-center">
-                                <input
-                                  :id="permission.value"
-                                  type="checkbox"
-                                  :checked="formData.permissions.includes(permission.value)"
-                                  @change="togglePermission(permission.value)"
-                                  class="h-4 w-4 rounded border-gray-300 text-google-500 focus:ring-google-500"
-                                />
-                              </div>
-                              <div class="ml-3 text-sm">
-                                <label :for="permission.value" class="font-medium text-gray-700">
-                                  {{ $t(`clients.form.permissionLabels.${permission.labelKey}`) }}
-                                </label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      
+                      <ClientPermissionChecklist
+                        id="client-endpoint-permissions"
+                        :label="$t('clients.form.categories.endpoints')"
+                        :permissions="permissionsByCategory.endpoints"
+                        :selected="formData.permissions"
+                        @toggle="togglePermission"
+                      />
                       <p class="mt-3 text-xs text-gray-500 border-t pt-2" v-html="$t('clients.form.permissionsHelp')"></p>
                     </div>
 

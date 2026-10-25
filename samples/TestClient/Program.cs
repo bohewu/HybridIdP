@@ -44,6 +44,7 @@ builder.Services.AddAuthentication(options =>
     options.TokenValidationParameters.NameClaimType = "name";
     options.TokenValidationParameters.RoleClaimType = "role";
 
+    options.Events.OnPushAuthorization = PushedAuthorizationErrorMiddleware.MarkPushStartedAsync;
     options.Events.OnRemoteFailure = context =>
     {
         var message = context.Failure?.Message ?? string.Empty;
@@ -83,6 +84,7 @@ if (!app.Environment.IsDevelopment())
 }
 app.UseHttpsRedirection();
 app.UseRouting();
+app.UseMiddleware<PushedAuthorizationErrorMiddleware>();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapStaticAssets();

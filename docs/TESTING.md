@@ -77,6 +77,49 @@ When running in `Development` environment, the following additional data is seed
 
 ## 3. Automated Tests
 
+### Client PKCE requirements and editor ordering
+
+Run `ClientPkceRequirementTests` in `Tests.Web.IdP.UnitTests` for the public
+authorization-code seed requirements and the real OpenIddict requirement
+handler's missing-challenge rejection. Confidential clients with PKCE disabled
+remain covered. These are synthetic, in-process handler tests with mocked
+application lookup; they do not exercise a complete HTTP authorization or token
+exchange.
+
+The frontend `ClientForm.spec.js` and `useClientFormLogic.spec.js` checks cover
+flow selection before callback fields, retention of entered callback addresses,
+and saving the confidential client's non-PKCE choice. Component assertions do
+not establish rendered browser or production-client compatibility.
+
+`ClientServiceTests` in `Tests.Infrastructure.UnitTests` covers create/read/update
+policy roundtrips, absent-policy inheritance, omitted/null update preservation,
+explicit reset to inherit, invalid settings and public-client authentication
+restrictions. Its existing three Require PKCE cases remain part of verification.
+
+`ClientProtocolPolicyPipelineTests` in `Tests.SystemTests` runs the production
+`AddCustomIdentityAndAccess` registration through in-process ASP.NET TestServer
+and isolated EF InMemory OpenIddict stores. It checks Basic/Post allow/reject,
+invalid and mixed credentials, a spoofed method parameter, optional PKCE and
+inherited plain/S256, response-mode defaults/restrictions, PAR restoration,
+native redirect/permission checks and unchanged discovery capabilities. No
+external database or listening server is used. A 204 fixture endpoint means
+native validation passed; these checks do not establish interactive login,
+browser callbacks, token issuance or production interoperability.
+
+```powershell
+dotnet test Tests.Infrastructure.UnitTests --filter FullyQualifiedName~ClientServiceTests
+dotnet test Tests.Web.IdP.UnitTests --filter FullyQualifiedName~ClientPkceRequirementTests
+dotnet test Tests.SystemTests --filter FullyQualifiedName~ClientProtocolPolicyPipelineTests
+```
+
+Separate real browser E2E should create and reopen clients, change each policy,
+exercise code/PKCE and Basic/Post exchanges, inspect query/form-post callbacks,
+then demonstrate that legacy requests with inherited policies continue working.
+Explicitly include a confidential client with Require PKCE disabled, no policy
+properties and no challenge; inherited plain/S256; old update callers preserving
+all policies; and resetting each policy to inherit. Unit/component and TestServer
+results do not replace this browser E2E evidence.
+
 ### Stale local logout confirmation
 
 `LogoutModelTests` uses a bounded loopback Razor host with real automatic

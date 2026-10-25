@@ -3,6 +3,20 @@
 ## Overview
 HybridAuthIdP is committed to maintaining a high level of security. This document outlines our multi-factor authentication (MFA) implementations, security hardening practices, and how to report vulnerabilities.
 
+### Optional client protocol restrictions
+
+Client management retains its existing permissions, ownership and cookie CSRF
+checks when saving optional PKCE method, token credential transport and callback
+mode policies. All three default to inherit; absent existing settings keep their
+behavior and omitted update fields preserve overrides. The independent Require
+PKCE flag is unchanged. S256-only does not require a challenge when PKCE is
+optional. Restrictions run inside native OpenIddict validation, including PAR
+for authorization policies, without replacing redirect, secret, grant or scope
+validation. Token authentication provenance comes from the validated HTTP
+credential transport, never a client-supplied method parameter. Backchannel
+rejections remain machine-readable OAuth JSON. See [policy values and update
+semantics](OAUTH_FLOWS.md#optional-per-client-protocol-policies).
+
 ### Administrator native-profile synchronization
 
 The independently disabled [Provider Native Profile capability](PROVIDER_NATIVE_PROFILE_CONTRACT.md)

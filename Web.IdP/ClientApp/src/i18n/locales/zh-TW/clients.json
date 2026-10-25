@@ -24,6 +24,7 @@
     "confidential": "機密"
   },
   "loadingMessage": "載入用戶端中...",
+  "detailsLoadFailed": "無法載入用戶端詳細資料，請再次選擇「編輯用戶端」重試。",
   "title": "用戶端管理",
   "createClient": "新增用戶端",
   "editClient": "編輯用戶端",
@@ -74,6 +75,19 @@
     "clientSecretPublicPlaceholder": "公開用戶端不需要",
     "clientSecretHelp": "系統將於儲存後自動產生新的用戶端密鑰。請妥善保存，系統不會再次顯示。",
     "clientSecretAutoGenPlaceholder": "(儲存後自動產生)",
+    "protocolPolicies": {
+      "title": "進階通訊協定限制",
+      "inherit": "繼承（不另加用戶端限制）",
+      "inheritHelp": "繼承會保留伺服器支援的方法，不另外限制此用戶端。",
+      "pkceMethod": "允許的 PKCE 驗證方法",
+      "s256Only": "僅限 S256（建議）",
+      "pkceHelp": "僅在傳送 PKCE challenge 時套用。是否必須提供 challenge，仍由上方「要求 PKCE」決定。",
+      "tokenAuthMethod": "允許的 Token 端點驗證方式",
+      "tokenAuthHelp": "Basic 透過 Authorization 標頭傳送密鑰；Post 透過 Token 請求本文傳送密鑰。",
+      "publicAuthHelp": "公開用戶端不使用用戶端密鑰，無法選擇 Basic 或 Post 限制。",
+      "responseMode": "允許的回呼回應模式",
+      "responseModeHelp": "query 透過回呼網址傳回授權碼；form_post 透過瀏覽器表單傳送，與 Token 驗證方式不同。限制為 form_post 時，請求須明確指定 form_post。"
+    },
     "requirePkce": "PKCE",
     "requirePkceToggle": "授權碼流程需要 PKCE",
     "requirePkceHelp": "公開用戶端一律需要 PKCE。機密用戶端可自行切換。",
