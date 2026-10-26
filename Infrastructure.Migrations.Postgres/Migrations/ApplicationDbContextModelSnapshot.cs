@@ -1892,6 +1892,26 @@ namespace Infrastructure.Migrations.Postgres.Migrations
                     b.ToTable("Resources");
                 });
 
+            modelBuilder.Entity("Core.Domain.Entities.SamlStateRecord", b =>
+                {
+                    b.Property<string>("KeyHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ProtectedPayload")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("KeyHash");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.ToTable("SamlStates", (string)null);
+                });
+
             modelBuilder.Entity("Core.Domain.Entities.ScopeClaim", b =>
                 {
                     b.Property<int>("Id")

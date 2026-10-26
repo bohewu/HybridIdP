@@ -73,6 +73,15 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     {
         base.OnModelCreating(builder);
 
+        builder.Entity<SamlStateRecord>(entity =>
+        {
+            entity.ToTable("SamlStates");
+            entity.HasKey(state => state.KeyHash);
+            entity.Property(state => state.KeyHash).HasMaxLength(64);
+            entity.Property(state => state.ProtectedPayload).IsRequired();
+            entity.HasIndex(state => state.ExpiresAtUtc);
+        });
+
         builder.Entity<ApplicationUser>().Property(x => x.NativeFieldStateJson).IsConcurrencyToken();
         builder.Entity<Person>().Property(x => x.NativeFieldStateJson).IsConcurrencyToken();
         builder.Entity<NativeFieldSourcePolicy>(entity =>

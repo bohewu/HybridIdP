@@ -612,3 +612,10 @@ Turnstile 驗證服務實作於：
 
 ---
 **Last Updated**: 2025-12-19
+
+## Optional SAML federation
+
+Independent default-off SAML IdP and SP roles coexist with OIDC. See the
+[SAML guide](SAML.md) for the signed Redirect/POST profile, persistent subjects,
+local account/MFA policy, deployment requirements and two runnable sample journeys.
+

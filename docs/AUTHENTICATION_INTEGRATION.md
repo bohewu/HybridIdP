@@ -623,3 +623,11 @@ AD/LDAP validation. Relevant existing verification anchors are `LoginServiceTest
 The Phase 23 specification contains requirements and scenario traceability for
 this boundary. It does not authorize enabling deployment switches or a
 connected-directory operation.
+
+## Optional SAML external authentication and issuance
+
+See [SAML integration](SAML.md) for independently disabled IdP/SP roles. SAML SP
+uses the existing external ticket, explicit linking and local MFA boundaries;
+unassured email never selects an existing account. SAML IdP issuance also
+requires current local account/Person eligibility and performed local MFA.
+

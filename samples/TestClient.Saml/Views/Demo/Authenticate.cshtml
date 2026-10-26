@@ -1,0 +1,10 @@
+@model ProducerLoginModel
+@{ ViewData["Title"] = "Authenticate demo identity"; }
+<section class="panel result"><span class="eyebrow">Development identity provider</span><h1>Authenticate the demo identity</h1><p>Enter the username and password configured by your operator. This sends a persistent opaque subject back to HybridIdP.</p>
+<form action="/saml/idp/continue" method="post">
+    @Html.AntiForgeryToken()<input type="hidden" name="State" value="@Model.State" />
+    <div asp-validation-summary="All" class="error" role="alert"></div>
+    <label for="username">Demo username</label><input id="username" name="Username" value="@Model.Username" autocomplete="username" required maxlength="256" />
+    <label for="password">Demo password</label><input id="password" name="Password" type="password" autocomplete="current-password" required maxlength="1024" />
+    <button type="submit">Authenticate and return to HybridIdP</button>
+</form><p class="hint">Synthetic test identity only. No email, display name or roles are released. Requests expire after five minutes.</p></section>

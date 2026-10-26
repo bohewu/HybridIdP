@@ -622,3 +622,11 @@ preserve all state for accounts with no alternate primary authority, including
 accounts retaining backup codes. Local-password, external/contract-linked and
 directory/migration accounts retain their existing removal policy. Controller
 coverage checks the localized `alternateSignInRequired` response.
+
+## SAML counterparts
+
+The [SAML sample README](../samples/TestClient.Saml/README.md) documents both
+connected login directions. Use the [SAML acceptance notes](SAML.md#two-sample-journeys)
+for the independent-role matrix and OIDC coexistence checks. Sample unit tests
+use ephemeral fixtures; connected browser results require separate execution.
+

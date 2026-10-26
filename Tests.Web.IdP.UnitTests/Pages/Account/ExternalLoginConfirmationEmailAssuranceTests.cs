@@ -25,6 +25,7 @@ public class ExternalLoginConfirmationEmailAssuranceTests
     [InlineData(AuthConstants.Providers.Google, null, false, false)]
     [InlineData(AuthConstants.Providers.Microsoft, "true", true, false)]
     [InlineData("CustomProvider", "true", false, false)]
+    [InlineData("Saml", "true", false, false)]
     [InlineData(AuthConstants.Providers.Google, "true", true, true)]
     public async Task OnPostCreateAsync_ShouldCarryOnlySupportedProviderEmailAssurance(
         string provider,

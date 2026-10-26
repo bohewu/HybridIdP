@@ -458,6 +458,10 @@ public static class ServiceCollectionExtensions
             .AddDefaultTokenProviders()
             .AddErrorDescriber<LocalizedIdentityErrorDescriber>();
 
+        services.AddSamlFoundation(configuration);
+        services.AddSamlIdp(configuration);
+        services.AddSamlSp(configuration);
+
         // Configure External Logins
         var externalLoginOptions = new Core.Application.Options.ExternalLoginOptions();
         configuration.GetSection(Core.Application.Options.ExternalLoginOptions.Section).Bind(externalLoginOptions);

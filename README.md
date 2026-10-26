@@ -12,6 +12,7 @@ A robust, enterprise-ready Identity Provider (IdP) built on .NET 10+ and OpenIdd
 - [Getting Started](docs/DEVELOPMENT_GUIDE.md)
 - [Architecture Guide](docs/ARCHITECTURE.md)
 - [Authentication Integration Boundary](docs/AUTHENTICATION_INTEGRATION.md)
+- [Optional SAML IdP and SP](docs/SAML.md)
 - [Identity Source and Field Mapping](docs/IDENTITY_FIELD_MAPPING.md)
 - [Neutral Non-login Query Contract 2.0](docs/NEUTRAL_QUERY_CONTRACT.md)
 - [Optional AuthProxy Integration Recipe](docs/integrations/authproxy.md)
@@ -101,9 +102,10 @@ Clients displaying user names must request, be allowed, and be granted the OIDC 
 
 ## ⚖️ License
 
-Distributed under the **MIT License**. See `LICENSE` for more information.
+Distributed under the **MIT License**. See `LICENSE` and [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ---
 
 ## 🤖 AI-Assisted Development
 This project was developed with significant assistance from advanced AI coding agents. While following industry standards, we recommend a secondary human security audit for production environments. Code is provided "AS IS".
+

@@ -1,0 +1,20 @@
+@model SamlFederationOptions
+@{ ViewData["Title"] = "Demo center"; }
+<section class="hero"><span class="eyebrow">Integration demo</span><h1>Two ways to connect with SAML</h1><p>Use this app as an external service provider or as a development identity provider. Each journey has its own trust configuration.</p></section>
+<div class="journeys">
+    <section class="panel"><span class="eyebrow">01 / Consumer</span><h2>Sign in through HybridIdP</h2><p>This sample sends a signed request to HybridIdP, validates its response and opens a local session.</p>
+        <p class="status">Consumer: @(Model.Sp.Enabled ? "Enabled" : "Disabled")</p>
+        @if (Model.Sp.Enabled)
+        {
+            <form action="/saml/sp/login" method="post">@Html.AntiForgeryToken()<button type="submit">Sign in with HybridIdP</button></form>
+            <a class="secondary" href="/saml/sp/metadata">View consumer metadata</a>
+        }
+        else { <p>Enable <code>Saml:Sp:Enabled</code> and configure both signing keys and partner trust in private settings.</p> }
+    </section>
+    <section class="panel"><span class="eyebrow">02 / Producer</span><h2>Provide a demo identity</h2><p>Start at HybridIdP and choose its configured SAML login provider. You will return here to authenticate the configured synthetic identity.</p>
+        <p class="status">Producer: @(Model.Idp.Enabled ? "Enabled - Development/Test only" : "Disabled")</p>
+        @if (Model.Idp.Enabled) { <a class="secondary" href="/saml/idp/metadata">View producer metadata</a> }
+        else { <p>Requires <code>Saml:Idp:Enabled</code>, explicit synthetic identity opt-in and private demo credentials.</p> }
+    </section>
+</div>
+<aside><h2>What this demo proves</h2><p>A successful consumer session shows the validated issuer and persistent opaque subject. The producer releases only an opaque subject. Neither journey implements federated single logout.</p></aside>

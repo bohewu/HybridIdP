@@ -1470,3 +1470,13 @@ five minutes, zero means re-confirm each applicable issuance request. An unchang
 hash is not a freshness assertion. Profile failure omits dependent claims; existing
 JWTs remain valid until their ordinary expiration. Reverting the application may
 leave additive nullable columns in place; do not drop Person JSON for rollback.
+
+## Optional SAML deployment
+
+Both roles default off. Before enabling either, follow the [SAML guide](SAML.md)
+for the selected provider's additive SamlStates migration, actual patched
+ASP.NET Core/.NET 10.0.13+ runtime, exact HTTPS partner settings and offline
+certificate pins. Multiple instances require a shared database and Data
+Protection application name/key ring. Preserve the existing .env and explicitly
+forward new environment keys into containers. OIDC client configuration is unchanged.
+

@@ -24,6 +24,7 @@ public class ExternalLoginCallbackSecurityTests
     [InlineData(AuthConstants.Providers.Google, "false")]
     [InlineData(AuthConstants.Providers.Microsoft, "false")]
     [InlineData("CustomProvider", "true")]
+    [InlineData("Saml", "true")]
     public async Task OnGetAsync_UntrustedMatchingEmail_DoesNotAutoLinkOrSignIn(
         string provider,
         string? assuranceValue)
@@ -122,13 +123,15 @@ public class ExternalLoginCallbackSecurityTests
     }
 
     [Theory]
-    [InlineData(null, null)]
-    [InlineData("changed@example.com", "false")]
+    [InlineData(AuthConstants.Providers.Google, null, null)]
+    [InlineData(AuthConstants.Providers.Google, "changed@example.com", "false")]
+    [InlineData("Saml", "changed@example.com", "false")]
     public async Task OnGetAsync_ExistingProviderLink_SucceedsWithoutTrustedCurrentEmail(
+        string provider,
         string? email,
         string? assuranceValue)
     {
-        var info = CreateExternalLoginInfo(AuthConstants.Providers.Google, assuranceValue, email);
+        var info = CreateExternalLoginInfo(provider, assuranceValue, email);
         var user = new ApplicationUser { Id = Guid.NewGuid(), UserName = "linked-user" };
         var userManager = CreateUserManagerMock();
         userManager

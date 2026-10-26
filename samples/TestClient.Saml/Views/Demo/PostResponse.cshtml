@@ -1,0 +1,8 @@
+@model ProducerResponseModel
+@{ ViewData["Title"] = "Return to HybridIdP"; }
+<section class="panel result"><span class="eyebrow">Identity authenticated</span><h1>Return to HybridIdP</h1><p>Your signed response is ready. If you are not redirected automatically, use the button below.</p>
+<form id="saml-response" action="@Model.Destination" method="post">
+    <input type="hidden" name="SAMLResponse" value="@Model.Response" />
+    @if (Model.RelayState != null) { <input type="hidden" name="RelayState" value="@Model.RelayState" /> }
+    <button type="submit">Continue to HybridIdP</button>
+</form></section><script src="/post.js"></script>
