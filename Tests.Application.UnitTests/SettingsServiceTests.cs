@@ -186,6 +186,31 @@ public class SettingsServiceTests : IDisposable
     #region SetValueAsync Tests
 
     [Theory]
+    [InlineData("Saml.Attributes.v1.")]
+    [InlineData("saml.attributes.v1.")]
+    [InlineData("\uFF33aml.Attributes.v1.")]
+    public async Task SetValueAsync_ShouldRejectSamlPolicyKeysBeforeInsertOrUpdate(string prefix)
+    {
+        var suffix = new string('A', 64);
+        var key = prefix + suffix;
+        await Assert.ThrowsAsync<SystemManagedSettingException>(() => _service.SetValueAsync(key, "unvalidated"));
+        Assert.Empty(await _context.Settings.ToListAsync());
+
+        var original = new Setting
+        {
+            Id = Guid.NewGuid(), Key = SettingKeys.SamlAttributePolicyPrefix + suffix,
+            Value = "validated", UpdatedBy = "dedicated-admin"
+        };
+        await SeedData([original]);
+        await Assert.ThrowsAsync<SystemManagedSettingException>(() => _service.SetValueAsync(key, "unvalidated"));
+        var retained = await _context.Settings.AsNoTracking().SingleAsync();
+        Assert.Equal(original.Key, retained.Key);
+        Assert.Equal("validated", retained.Value);
+        Assert.Equal("dedicated-admin", retained.UpdatedBy);
+        Assert.False(_context.ChangeTracker.HasChanges());
+    }
+
+    [Theory]
     [InlineData("system.nativeFieldMappings")]
     [InlineData("SYSTEM.NATIVEFIELDMAPPINGS")]
     public async Task SetValueAsync_ShouldRejectNativeMappingConfiguration(string key)

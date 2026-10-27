@@ -1,5 +1,7 @@
 using System.Collections.Concurrent;
 using Core.Application.Interfaces;
+using Core.Domain;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
@@ -34,9 +36,14 @@ public sealed class SamlIdpFlowTests
         using var fixture = new SamlIdpFixture();
         var policy = new Mock<ISamlIdpAccountPolicy>();
         var user = Guid.NewGuid();
+        await using var db = SamlAttributeTests.CreateDb();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
+        db.Users.Add(new ApplicationUser { Id = user });
+        await db.SaveChangesAsync();
         policy.Setup(p => p.EvaluateAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SamlIdpAccountResult(user, DateTimeOffset.UtcNow.AddMinutes(-1)));
-        var flow = new SamlIdpFlow(fixture.Runtime, fixture.Protocol, new StateStore(), new EphemeralDataProtectionProvider(), policy.Object, TimeProvider.System);
+        var flow = new SamlIdpFlow(fixture.Runtime, fixture.Protocol, new StateStore(), new EphemeralDataProtectionProvider(), policy.Object, TimeProvider.System,
+            SamlAttributeTests.CreateService(fixture, db, cache));
         var beginHttp = fixture.Request().HttpContext;
         var redirect = Assert.IsType<RedirectResult>(await flow.BeginAsync(beginHttp, default));
         var state = QueryHelpers.ParseQuery(new Uri("https://hybrid.example" + redirect.Url).Query)["state"].ToString();
@@ -60,11 +67,14 @@ public sealed class SamlIdpFlowTests
         using var fixture = new SamlIdpFixture();
         var policy = new Mock<ISamlIdpAccountPolicy>();
         var user = Guid.NewGuid();
+        await using var db = SamlAttributeTests.CreateDb();
+        using var cache = new MemoryCache(new MemoryCacheOptions());
         policy.SetupSequence(p => p.EvaluateAsync(It.IsAny<HttpContext>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(new SamlIdpAccountResult(Guid.Empty, default, new ChallengeResult()))
             .ReturnsAsync(new SamlIdpAccountResult(user, DateTimeOffset.UtcNow))
             .ReturnsAsync(new SamlIdpAccountResult(Guid.Empty, default, new StatusCodeResult(403)));
-        var flow = new SamlIdpFlow(fixture.Runtime, fixture.Protocol, new StateStore(), new EphemeralDataProtectionProvider(), policy.Object, TimeProvider.System);
+        var flow = new SamlIdpFlow(fixture.Runtime, fixture.Protocol, new StateStore(), new EphemeralDataProtectionProvider(), policy.Object, TimeProvider.System,
+            SamlAttributeTests.CreateService(fixture, db, cache));
         var begin = fixture.Request().HttpContext;
         var redirect = Assert.IsType<RedirectResult>(await flow.BeginAsync(begin, default));
         var state = QueryHelpers.ParseQuery(new Uri("https://hybrid.example" + redirect.Url).Query)["state"].ToString();

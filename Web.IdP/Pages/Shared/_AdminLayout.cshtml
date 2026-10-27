@@ -165,6 +165,10 @@
                         <i class="bi bi-gear text-lg"></i>
                         <span>@Localizer["Settings"]</span>
                     </a>
+                    <a href="/Admin/SamlAttributes" data-test="nav-saml-attributes" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/SamlAttributes" ? "active bg-google-100 text-google-500 border-google-500" : "")">
+                        <i class="bi bi-list-check text-lg"></i>
+                        <span>@Localizer["SamlAttributes"]</span>
+                    </a>
                     @if (User.IsAdmin())
                     {
                         <a href="/Admin/DataSources" data-test="nav-data-sources" class="nav-link flex items-center gap-3 px-4 py-3 font-medium text-gray-600 border-l-4 border-transparent hover:bg-gray-50 hover:text-google-500 transition-colors @(ViewContext.RouteData.Values["page"]?.ToString() == "/Admin/DataSources" ? "active bg-google-100 text-google-500 border-google-500" : "")">

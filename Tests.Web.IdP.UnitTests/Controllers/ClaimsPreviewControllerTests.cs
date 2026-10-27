@@ -87,7 +87,8 @@ public sealed class ClaimsPreviewControllerTests
         finally { await app.StopAsync(); }
     }
 
-    private static WebApplication CreateApp(ApplicationDbContext db, IClaimsPreviewService preview)
+    internal static WebApplication CreateApp(ApplicationDbContext db, IClaimsPreviewService preview,
+        global::Web.IdP.Services.Saml.Idp.SamlAttributeService? samlAttributes = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Development" });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -101,6 +102,15 @@ public sealed class ClaimsPreviewControllerTests
             .AddScheme<AuthenticationSchemeOptions, FixtureAuthentication>(AdministrativeAuthorizationBoundary.BearerScheme, _ => { });
         builder.Services.AddAuthorization(o => o.AddPolicy(Permissions.Claims.Preview,
             p => p.AddRequirements(new PermissionRequirement(Permissions.Claims.Preview))));
+        if (samlAttributes is not null)
+        {
+            builder.Services.AddSingleton(samlAttributes);
+            builder.Services.AddAuthorization(o =>
+            {
+                o.AddPolicy(Permissions.Settings.Read, p => p.AddRequirements(new PermissionRequirement(Permissions.Settings.Read)));
+                o.AddPolicy(Permissions.Settings.Update, p => p.AddRequirements(new PermissionRequirement(Permissions.Settings.Update)));
+            });
+        }
         builder.Services.AddScoped<IAdministrativeAuthorizationBoundary, AdministrativeAuthorizationBoundary>();
         builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
         builder.Services.AddSingleton(new Mock<RoleManager<ApplicationRole>>(Mock.Of<IRoleStore<ApplicationRole>>(), null, null, null, null).Object);

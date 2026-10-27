@@ -5,6 +5,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Security.Cryptography.Xml;
 using System.Text;
+using System.Text.Json;
 using System.Xml;
 using System.Xml.Linq;
 
@@ -99,7 +100,40 @@ public sealed class SamlSpResponseValidator(SamlFederationRuntime runtime, TimeP
         var identity = new ClaimsIdentity(SamlProfile.AuthenticationScheme);
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, nameId.Value));
         return new SamlSpValidatedResponse(responseId, assertionId, requestId,
-            options.IdentityProvider.EntityId, new ClaimsPrincipal(identity));
+            options.IdentityProvider.EntityId, new ClaimsPrincipal(identity), ReadDisplayAttributes(assertion));
+    }
+
+    // Only called after BOTH signatures pass. Read direct children of the same assertion
+    // whose subject, conditions and signature shape were checked above; never library claims.
+    private static SamlAttributeDisplay ReadDisplayAttributes(XElement assertion)
+    {
+        var attributes = new List<SamlReceivedAttribute>();
+        var omitted = false;
+        foreach (var attribute in assertion.Elements(Assertion + "AttributeStatement").Elements(Assertion + "Attribute"))
+        {
+            var name = Value(attribute, "Name");
+            var values = attribute.Elements(Assertion + "AttributeValue").ToArray();
+            if (attributes.Count >= SamlAttributeDisplay.MaximumAttributes ||
+                string.IsNullOrWhiteSpace(name) || name.Length > SamlAttributeDisplay.MaximumNameLength ||
+                values.Length is 0 or > SamlAttributeDisplay.MaximumValuesPerAttribute ||
+                values.Any(value => value.HasElements || value.Value.Length > SamlAttributeDisplay.MaximumValueLength))
+            {
+                omitted = true;
+                continue;
+            }
+
+            attributes.Add(new(name, values.Select(value => value.Value).ToArray()));
+            // Count serialized UTF-8, including JSON escaping, rather than just string lengths.
+            // Reserve the (slightly longer) false flag even when an earlier entry was omitted.
+            if (JsonSerializer.SerializeToUtf8Bytes(new SamlAttributeDisplay(attributes, false)).Length >
+                SamlAttributeDisplay.MaximumPayloadBytes)
+            {
+                attributes.RemoveAt(attributes.Count - 1);
+                omitted = true;
+            }
+        }
+
+        return new(attributes, omitted);
     }
 
     private static void ValidateSignatureShape(XElement signed, string id)
@@ -160,6 +194,19 @@ public sealed class SamlSpResponseValidator(SamlFederationRuntime runtime, TimeP
 }
 
 public sealed record SamlSpValidatedResponse(string ResponseId, string AssertionId, string RequestId,
-    string Issuer, ClaimsPrincipal Principal);
+    string Issuer, ClaimsPrincipal Principal, SamlAttributeDisplay AttributeDisplay);
+
+// Display-only data in protected authentication properties, never local identity/role/AMR claims.
+public sealed record SamlAttributeDisplay(IReadOnlyList<SamlReceivedAttribute> Attributes, bool HasOmittedAttributes)
+{
+    public const string TicketProperty = "saml.received-attributes.v1";
+    public const int MaximumAttributes = 32;
+    public const int MaximumNameLength = 256;
+    public const int MaximumValuesPerAttribute = 8;
+    public const int MaximumValueLength = 1024;
+    public const int MaximumPayloadBytes = 2048;
+}
+
+public sealed record SamlReceivedAttribute(string Name, IReadOnlyList<string> Values);
 
 

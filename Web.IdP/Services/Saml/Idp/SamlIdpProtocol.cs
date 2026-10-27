@@ -86,12 +86,31 @@ public sealed class SamlIdpProtocol(SamlFederationRuntime runtime, TimeProvider 
             force != null && XmlConvert.ToBoolean(force.Value));
     }
 
-    public string CreateResponse(SamlIdpRequest request, Guid userId, DateTimeOffset authenticatedAt)
+    public string CreateResponse(SamlIdpRequest request, Guid userId, DateTimeOffset authenticatedAt,
+        IReadOnlyList<SamlAttributeValueDto>? attributes = null)
     {
         if (request.ExpiresAt <= clock.GetUtcNow() || userId == Guid.Empty) throw InvalidRequest();
         var config = runtime.CreateIdpConfiguration(request.Partner);
         var partner = runtime.Options.Idp.ServiceProviders.Single(p => p.EntityId == request.Partner);
         var subject = userId.ToString("N");
+        var claims = new List<Claim> { new(ClaimTypes.NameIdentifier, subject), new(SamlAttributePolicy.SubjectName, subject) };
+        if (attributes is not null)
+        {
+            if (attributes.Count > 17) throw InvalidRequest();
+            var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var attribute in attributes)
+            {
+                if (!names.Add(attribute.Name)) throw InvalidRequest();
+                if (attribute.Name == SamlAttributePolicy.SubjectName)
+                {
+                    if (attribute.Value != subject) throw InvalidRequest();
+                    continue;
+                }
+                SamlAttributePolicy.ValidateName(attribute.Name);
+                SamlAttributePolicy.ValidateValue(attribute.Value);
+                claims.Add(new(attribute.Name, attribute.Value));
+            }
+        }
         var response = new Saml2AuthnResponse(config)
         {
             InResponseTo = new Saml2Id(request.RequestId), Status = Saml2StatusCodes.Success,
@@ -101,9 +120,8 @@ public sealed class SamlIdpProtocol(SamlFederationRuntime runtime, TimeProvider 
                 NameQualifier = runtime.Options.Idp.EntityId, SPNameQualifier = request.Partner
             },
             SessionIndex = Guid.NewGuid().ToString("N"),
-            // Fixed minimal disclosure. Never copy cookie, roles, email, or security claims.
-            ClaimsIdentity = new ClaimsIdentity([
-                new Claim(ClaimTypes.NameIdentifier, subject), new Claim("urn:hybrididp:claims:subject", subject)])
+            // Only the shared local-source resolver may add explicitly selected profile attributes.
+            ClaimsIdentity = new ClaimsIdentity(claims)
         };
         var token = response.CreateSecurityToken(request.Partner,
             authnContext: new Uri("urn:oasis:names:tc:SAML:2.0:ac:classes:unspecified"),

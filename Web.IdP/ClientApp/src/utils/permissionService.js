@@ -191,6 +191,9 @@ export const Permissions = {
     Read: 'settings.read',
     Update: 'settings.update'
   },
+  Claims: {
+    Preview: 'claims.preview'
+  },
   Localization: {
     Read: 'localization.read',
     Create: 'localization.create',

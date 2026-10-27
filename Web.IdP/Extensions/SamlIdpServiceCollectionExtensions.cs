@@ -6,6 +6,7 @@ public static class SamlIdpServiceCollectionExtensions
 {
     public static IServiceCollection AddSamlIdp(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddScoped<SamlAttributeService>();
         if (configuration.GetValue<bool>("Saml:Idp:Enabled"))
         {
             services.AddScoped<SamlIdpProtocol>();

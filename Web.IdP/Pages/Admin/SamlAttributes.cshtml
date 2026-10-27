@@ -1,0 +1,12 @@
+@page
+@inject Microsoft.Extensions.Localization.IStringLocalizer<Web.IdP.SharedResource> Localizer
+@model Web.IdP.Pages.Admin.SamlAttributesModel
+@{
+    ViewData["Title"] = Localizer["SamlAttributes"].Value;
+    ViewData["Breadcrumb"] = Localizer["SamlAttributes"].Value;
+    Layout = "_AdminLayout";
+}
+<div id="app" class="vue-app-container"></div>
+@section Scripts {
+    <script type="module" vite-src="~/src/admin/saml-attributes/main.js"></script>
+}

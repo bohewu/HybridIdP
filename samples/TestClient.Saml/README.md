@@ -3,7 +3,7 @@
 A standalone ASP.NET Core MVC app with two independently disabled roles:
 
 - Consumer (SP): sign in through HybridIdP and display its validated issuer and
-  persistent opaque subject in a local sample session.
+  persistent opaque subject and bounded received attributes in a local sample session.
 - Producer (IdP): authenticate one operator-configured synthetic identity, then
   return a signed response to HybridIdP's external-login callback.
 
@@ -126,14 +126,47 @@ Configure HybridIdP's `Saml:Idp` role separately:
 2. Open the sample `/` demo center and select **Sign in with HybridIdP**.
 3. Complete HybridIdP's normal local login and any required local MFA.
 4. Return to the sample `/session`. **Identity validated** shows the trusted
-   issuer, persistent subject and validation time. It never renders raw
-   assertions, tokens, all claims, email or roles.
+   issuer, persistent subject and validation time. **Received SAML attributes**
+   shows bounded names and values from the validated assertion, HTML-encoded
+   for inspection only. Raw assertions and tokens are not displayed.
 5. **Sign out of this sample** clears only the sample cookie; the HybridIdP
    session may remain active. A subsequent sign-in may reuse that IdP session.
 
 HybridIdP releases its local user ID in N format as persistent NameID and one
 fixed `urn:hybrididp:claims:subject` attribute. The sample does not reinterpret
 that subject as an email or use presentation claims to bind identities.
+
+To inspect additional attributes, open HybridIdP's `/Admin/SamlAttributes` as an
+authorized operator, select the configured sample SP, save its selection, then
+preview an account. The page requires `settings.read`, saving requires
+`settings.update`, and account search/preview separately requires
+`claims.preview`. Preview uses saved policy only; save or discard edits first.
+The [SAML integration guide](../../docs/SAML.md#outgoing-attribute-selection-and-preview)
+lists the 16 local account/Person fields, output naming rules, value limits and
+permissions. With unchanged account/source data and saved policy, compare the
+preview to a fresh sample sign-in after allowing up to five minutes for existing
+Settings caches on other instances. No new environment keys or migration are
+needed for attribute selection; deployment-owned partner trust setup is still
+required. An absent or empty policy keeps the fixed-subject-only release.
+
+The sample extracts attributes only from the same assertion after both
+signatures and protocol checks pass. After browser correlation and replay
+reservations succeed, the display data is retained in protected authentication
+properties, separate from the local identity claims. Received role-, permission-
+or MFA-shaped names grant no local roles, permissions or MFA assurance. The
+sample session identity remains the persistent subject, validated issuer and
+validation time.
+
+Display limits are 32 attributes, 256 UTF-16 code units per name, 8 values per
+attribute, 1024 UTF-16 code units per value, and 2048 bytes for serialized UTF-8
+JSON display data including escaping. Entries with nested XML, missing names or
+values, or exceeded limits are omitted as whole attributes; an explicit notice
+marks omissions. These display limits do not change the validated identity or
+relax signed-response validation. HybridIdP can release values up to 2048 code
+units, so a valid issued value may exceed the sample's smaller display limit.
+An older session without attribute display data asks you to sign out and sign
+in again. The bounded display is not a full assertion dump or evidence of every
+released value when omissions are marked.
 
 ### HybridIdP service provider -> sample identity provider
 
@@ -172,7 +205,7 @@ configured password, including a ForceAuthn request.
 | `GET /` | Demo center and independent role status |
 | `POST /saml/sp/login` | Antiforgery-protected consumer sign-in |
 | `POST /saml/sp/acs` | Signed POST response validation; browser correlation replaces form antiforgery |
-| `GET /session` | Validated consumer identity |
+| `GET /session` | Validated consumer identity and bounded received attributes |
 | `POST /logout` | Antiforgery-protected local consumer logout |
 | `GET /saml/sp/metadata` | Consumer public signing certificate and ACS |
 | `GET /saml/idp/metadata` | Producer public signing certificate and SSO URL |
@@ -212,7 +245,19 @@ dotnet test samples/TestClient.Saml.Tests/TestClient.Saml.Tests.csproj
 ```
 
 The tests exercise the sample's actual signed protocol primitives, tamper/key
-rejection and one-use browser state using ephemeral test keys. They do not
+rejection, one-use browser state, protected-cookie attribute display, encoded
+rendering, display limits and display-only claim semantics using ephemeral test
+keys. These automated checks and builds do not
 establish connected-browser success, HybridIdP account policy acceptance,
 rendered UI quality, runtime patch status or OIDC compatibility. Those require
 separate connected journeys against the configured applications.
+
+Connected checks passed in an isolated, single-node SQL Server 2019 environment:
+per-application save/reopen and isolation, absent/empty-policy fallback, and
+saved-preview equality with the Sample's validated signed attributes, preserving
+NameID, qualifiers and fixed subject. The unchanged OIDC sample completed PAR,
+authorization-code/token exchange and protected-session reload. Current assets
+were checked at 390x844 and 1440x1000. Two private browser clips were played to
+the end; functional footage predates the final mobile CSS correction, whose
+current assets were checked separately. This evidence does not establish
+production, multi-instance cache, performed-MFA or full role off/on acceptance.

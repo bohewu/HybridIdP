@@ -30,6 +30,7 @@ export default defineConfig(({ command }) => ({
         'admin-dashboard': './src/admin/dashboard/main.js',
         'admin-clients': './src/admin/clients/main.js',
         'admin-scopes': './src/admin/scopes/main.js',
+        'admin-saml-attributes': './src/admin/saml-attributes/main.js',
         'admin-claims-preview': './src/admin/claims-preview/main.js',
         'admin-claims': './src/admin/claims/main.js',
         'admin-users': './src/admin/users/main.js',

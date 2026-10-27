@@ -1,9 +1,42 @@
+@model SamlAttributeDisplay
 @{ ViewData["Title"] = "Consumer session"; }
 <section class="panel result"><span class="eyebrow">Consumer result</span><h1>@(User.Identity?.IsAuthenticated == true ? "Identity validated" : "No active consumer session")</h1>
 @if (User.Identity?.IsAuthenticated == true)
 {
     <p>The response and assertion signatures, pinned issuer, audience, recipient, request correlation and lifetime passed validation.</p>
     <dl><dt>Trusted identity provider</dt><dd>@User.FindFirstValue("validated_issuer")</dd><dt>Persistent subject</dt><dd>@User.FindFirstValue(ClaimTypes.NameIdentifier)</dd><dt>Validated at (UTC)</dt><dd>@User.FindFirstValue("validated_at")</dd><dt>Session scope</dt><dd>This sample app only</dd></dl>
+    <h2>Received SAML attributes</h2>
+    <p class="hint">Names and values from the validated assertion, for inspection only. These attributes do not grant local roles, permissions or MFA assurance.</p>
+    @if (Model == null)
+    {
+        <p>Attribute display is unavailable for this older session. Sign out and sign in again to inspect the received attributes.</p>
+    }
+    else
+    {
+        @if (Model.HasOmittedAttributes)
+        {
+            <p class="hint">Some attributes were omitted from this display. Only complete plain-text entries within the display limits are shown: 32 attributes, 256 characters per name, 8 values per attribute, 1024 characters per value and 2 KiB of total display data. Sign-in validation still applies to the entire response.</p>
+        }
+        @if (Model.Attributes.Count == 0)
+        {
+            <p>No received attributes are available within the display limits.</p>
+        }
+        else
+        {
+            <dl>
+            @foreach (var attribute in Model.Attributes)
+            {
+                <dt><code>@(attribute.Name)</code></dt>
+                <dd>
+                @foreach (var value in attribute.Values)
+                {
+                    <div>@value</div>
+                }
+                </dd>
+            }
+            </dl>
+        }
+    }
     <form action="/logout" method="post">@Html.AntiForgeryToken()<button type="submit">Sign out of this sample</button></form><p class="hint">Local sign-out clears this session. Your HybridIdP session may remain active.</p>
 }
 else { <p>Start a new sign-in from the demo center to see a validated identity here.</p><a class="button" href="/">Go to demo center</a> }

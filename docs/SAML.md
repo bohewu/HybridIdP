@@ -4,7 +4,9 @@ HybridIdP can independently act as a SAML identity provider (IdP) and service
 provider (SP), alongside existing OIDC. Both roles default to disabled. Enabling
 one does not enable the other or change existing OIDC client settings, scopes,
 redirect URIs, consent or authentication defaults. SAML partners are deployment
-configuration, separate from OIDC clients; there is no partner administration UI.
+configuration, separate from OIDC clients. Partner creation and trust setup remain
+deployment-owned; `/Admin/SamlAttributes` edits outgoing attributes for already
+configured applications only.
 
 ## Supported profile
 
@@ -45,7 +47,7 @@ Saml__Sp__Enabled=false
 Saml__Idp__EntityId=https://identity.example/idp
 Saml__Idp__SingleSignOnUrl=https://identity.example/saml/idp/sso
 Saml__Idp__SigningCertificate__PfxPath=/run/secrets/idp-signing.pfx
-Saml__Idp__SigningCertificate__Password=<inject-private-pfx-password>
+Saml__Idp__SigningCertificate__Password=<password>
 Saml__Idp__ServiceProviders__0__EntityId=https://consumer.example/sp
 Saml__Idp__ServiceProviders__0__AssertionConsumerServiceUrl=https://consumer.example/saml/sp/acs
 Saml__Idp__ServiceProviders__0__SigningCertificatePaths__0=/run/secrets/consumer-signing.cer
@@ -55,7 +57,7 @@ Saml__Sp__EntityId=https://identity.example/sp
 Saml__Sp__AssertionConsumerServiceUrl=https://identity.example/saml/sp/acs
 Saml__Sp__DisplayName=SAML
 Saml__Sp__SigningCertificate__PfxPath=/run/secrets/sp-signing.pfx
-Saml__Sp__SigningCertificate__Password=<inject-private-pfx-password>
+Saml__Sp__SigningCertificate__Password=<password>
 Saml__Sp__IdentityProvider__EntityId=https://upstream.example/idp
 Saml__Sp__IdentityProvider__SingleSignOnUrl=https://upstream.example/saml/idp/sso
 Saml__Sp__IdentityProvider__SigningCertificatePaths__0=/run/secrets/upstream-signing.cer
@@ -104,8 +106,11 @@ are required; sticky routing alone is insufficient.
 As IdP, HybridIdP emits `ApplicationUser.Id` in GUID `N` format (32 hexadecimal
 characters) as persistent NameID, with IdP/SP entity qualifiers. This stable
 subject is **not pairwise**: the same local account ID is disclosed to configured
-SPs. One fixed `urn:hybrididp:claims:subject` attribute repeats it. Email, names,
-roles, permissions and upstream MFA claims are not released. Existing local
+SPs. One fixed `urn:hybrididp:claims:subject` attribute repeats it. With no saved
+attribute policy or an empty selection, this remains the only attribute. An
+application can additionally receive explicitly selected local profile fields
+through the editor below. Roles, permissions and upstream MFA claims remain
+excluded. Existing local
 login, current account/Person eligibility, session/security stamp, lifecycle,
 required password-change and performed local MFA checks apply before issuance.
 
@@ -126,6 +131,91 @@ cannot grant local MFA assurance or authorization. An existing durable binding
 takes precedence. Linking requires the existing locally protected account-link
 flow. Existing client restrictions on external providers remain effective.
 
+## Outgoing attribute selection and preview
+
+Open **SAML attributes** in the admin navigation, at `/Admin/SamlAttributes`.
+Select an already configured application, add profile fields and outgoing names,
+then **Save selection**. Reopen the application to inspect its saved choices.
+Each exact configured partner entity ID has its own policy; changing one does
+not change another. Switching applications discards unsaved changes. This page
+does not create partners, edit ACS endpoints or certificates, or enable a role.
+If the IdP is disabled or no partners are configured, follow deployment setup
+first. The editor adds no environment keys or database migration; the existing
+SAML deployment and `SamlStates` migration requirements above still apply.
+
+The catalog contains exactly 16 case-sensitive local sources:
+
+| Account profile (`ApplicationUser`) | Linked `Person` profile |
+| --- | --- |
+| `FirstName` | `Person.FirstName` |
+| `MiddleName` | `Person.MiddleName` |
+| `LastName` | `Person.LastName` |
+| `Nickname` | `Person.Nickname` |
+| `Email` | `Person.Email` |
+| `EmployeeId` | `Person.EmployeeId` |
+| `Department` | `Person.Department` |
+| `JobTitle` | `Person.JobTitle` |
+
+Unprefixed sources read the account; `Person.*` reads only its linked Person.
+There is no fallback between them, transformation, upstream query or profile
+refresh. The default outgoing name equals the source key. Credentials, national
+IDs, confirmation flags, lifecycle state, roles, permissions and MFA/recovery
+information are not selectable.
+
+A policy accepts at most 16 mappings. A source may appear once. Outgoing names
+must start with an ASCII letter and contain only ASCII letters, digits,
+underscore, dot, colon or hyphen, with a maximum of 128 characters. Names must
+be unique ignoring case. Identity and protected security/authorization names
+are reserved ignoring case: `NameID`, `subject`, `id`, `personid`,
+`urn:hybrididp:claims:subject`, `permission`, `active_role`, `role`, `app_role`,
+`idp_admin_application`, `sub`, `scope`, `scp`, `client_id`, `azp`, `amr`, `acr`,
+`auth_time`, `iss`, `aud`, `exp`, `iat`, `nbf`, `jti`, `nonce`, `sid`, `at_hash`,
+`c_hash`, `cnf`, `email_verified`, `phone_number_verified`, and names beginning
+with `oi_`. Fixed subject and persistent NameID/qualifiers are read-only.
+
+Values preserve stored text. Null, empty or whitespace-only values are omitted;
+preview lists them with `missing_value`. Other values must be XML-safe and at
+most 2048 UTF-16 code units. An invalid value denies preview/issuance instead of
+silently changing it. An invalid or stale stored policy also denies release.
+Saving an empty selection restores the fixed-subject-only attribute release.
+
+To preview, save or discard edits, choose an account by local username, and
+select **Preview attributes**. Preview always reads the saved policy and
+current local account/Person data. It shows outgoing names/values, omissions,
+persistent NameID and qualifiers. Edits, account changes and application changes
+clear prior results; preview is blocked while edits are unsaved. For the same
+account, saved policy and unchanged local data, the shared resolver supplies the
+same attributes to preview and actual signed issuance. Preview does not sign in
+the account, prove login eligibility or MFA, or freeze data; actual issuance
+still enforces the existing local gates. It does not modify OIDC settings,
+scopes, consent, issuance or incoming SP bindings.
+
+Administration uses the local `Identity.Application` cookie. Permissions are
+separate:
+
+| Action | Permission |
+| --- | --- |
+| Open page/navigation; read configured partners, catalog and saved policy | `settings.read` |
+| Save an application's policy | `settings.update` |
+| Search accounts or preview their attribute values | `claims.preview` |
+
+The page requires read access in addition to the relevant action permission.
+Settings permissions do not grant preview of personal data. Dedicated endpoints
+under `/api/admin/saml-attributes` enforce these checks and reject bearer-only
+access. Mutating requests use the existing antiforgery flow (`X-XSRF-TOKEN` in
+the admin helper). Page/API responses use no-store; audits record targets and
+counts rather than attribute values. Generic Settings writes reject the
+reserved `Saml.Attributes.v1.` prefix, so they cannot bypass cookie-only policy
+administration.
+
+Policies use the existing Settings store, keyed by SHA256 of the exact partner
+entity ID and verified against the entity ID in the stored payload. The
+existing in-process Settings cache means another instance can retain a previous
+policy for up to five minutes. Preview and issuance on different instances can
+therefore differ during that cache window; allow propagation before comparing.
+No distributed cache invalidation was added. Partner trust, private `.env`
+configuration, keys and recordings remain deployment-owned and outside Git.
+
 ## Two sample journeys
 
 Use the [standalone counterpart README](../samples/TestClient.Saml/README.md)
@@ -134,7 +224,11 @@ Configure reciprocal entity IDs, exact endpoints and public signing pins first.
 
 1. **Sample SP -> HybridIdP IdP:** enable the sample consumer and HybridIdP IdP;
    start at the sample home page, sign in through HybridIdP's local login/MFA,
-   and inspect the validated opaque subject on the sample session page.
+   and inspect the validated opaque subject and received attributes on the sample
+   session page. Use the attribute editor to save and preview the sample partner's
+   policy before sign-in; compare unchanged data after cache propagation. The
+   sample marks display omissions, so its bounded display may show fewer values
+   than the signed release.
 2. **HybridIdP SP -> sample IdP:** enable HybridIdP SP and the sample producer;
    select SAML on HybridIdP's login page, authenticate the explicitly configured
    synthetic demo identity, then complete HybridIdP's normal external-account
@@ -153,7 +247,14 @@ For acceptance, separately exercise both off, IdP only, SP only and both on;
 confirm disabled-role endpoints cannot authenticate. Run both connected sample
 journeys, then verify existing OIDC discovery, authorization-code/PKCE and token
 behavior with SAML off and on. Unit tests and publish inspection do not establish
-connected-browser interoperability or deployment acceptance.
+connected-browser interoperability or deployment acceptance. In an isolated,
+single-node SQL Server 2019 environment, connected checks passed per-application
+save/reopen, partner isolation, absent/empty-policy fallback, and saved-preview
+equality with the validated signed Sample attributes while preserving NameID,
+qualifiers and fixed subject. The unchanged OIDC sample completed PAR,
+authorization-code/token exchange and protected-session reload. Current assets
+were rendered at 390x844 and 1440x1000. These results do not establish production,
+multi-instance cache, performed-MFA or the full role off/on acceptance matrix.
 
 The project remains MIT. Retain the [third-party notices](../THIRD_PARTY_NOTICES.md)
 and full ITfoxtec BSD license in source and binary distributions.

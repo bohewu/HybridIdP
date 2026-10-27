@@ -168,7 +168,8 @@ public class SettingsService : ISettingsService
         {
             await using var command = connection.CreateCommand();
             command.CommandText =
-                "SELECT CASE WHEN @candidate = @reserved OR @candidate = @mappings THEN 1 ELSE 0 END";
+                "SELECT CASE WHEN @candidate = @reserved OR @candidate = @mappings " +
+                "OR @candidate LIKE @samlPattern THEN 1 ELSE 0 END";
             command.Transaction = dbContext.Database.CurrentTransaction?.GetDbTransaction();
 
             var candidateParameter = command.CreateParameter();
@@ -185,6 +186,12 @@ public class SettingsService : ISettingsService
             mappingsParameter.ParameterName = "@mappings";
             mappingsParameter.Value = SettingKeys.NativeFieldMappings;
             command.Parameters.Add(mappingsParameter);
+
+            // Use the database's comparison rules before either inserting or updating a policy alias.
+            var samlParameter = command.CreateParameter();
+            samlParameter.ParameterName = "@samlPattern";
+            samlParameter.Value = SettingKeys.SamlAttributePolicyPrefix + "%";
+            command.Parameters.Add(samlParameter);
 
             var result = await command.ExecuteScalarAsync(ct);
             return Convert.ToInt32(result, CultureInfo.InvariantCulture) == 1;

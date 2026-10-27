@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Xml.Linq;
 using ITfoxtec.Identity.Saml2;
 using ITfoxtec.Identity.Saml2.Schemas;
@@ -63,13 +64,24 @@ public sealed class DemoController(SamlFederationRuntime runtime, BrowserStateSt
         identity.AddClaim(new Claim(ClaimTypes.NameIdentifier, proof.Principal.FindFirstValue(ClaimTypes.NameIdentifier)!));
         identity.AddClaim(new Claim("validated_issuer", proof.Issuer));
         identity.AddClaim(new Claim("validated_at", DateTimeOffset.UtcNow.ToString("u")));
+        var properties = new AuthenticationProperties { IsPersistent = false, AllowRefresh = false };
+        properties.Items[SamlAttributeDisplay.TicketProperty] = JsonSerializer.Serialize(proof.AttributeDisplay);
         await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity),
-            new AuthenticationProperties { IsPersistent = false, AllowRefresh = false });
+            properties);
         return Redirect("/session");
     }
 
     [HttpGet("/session")]
-    public IActionResult Session() => !runtime.Options.Sp.Enabled ? NotFound() : View();
+    public async Task<IActionResult> SessionAsync()
+    {
+        if (!runtime.Options.Sp.Enabled) return NotFound();
+        var ticket = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        SamlAttributeDisplay? display = null;
+        if (ticket.Succeeded && ticket.Properties?.Items.TryGetValue(SamlAttributeDisplay.TicketProperty, out var payload) == true &&
+            payload != null)
+            display = JsonSerializer.Deserialize<SamlAttributeDisplay>(payload);
+        return View("Session", display);
+    }
 
     [HttpPost("/logout"), ValidateAntiForgeryToken]
     public async Task<IActionResult> LogoutAsync()

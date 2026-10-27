@@ -11,7 +11,8 @@ using Microsoft.AspNetCore.WebUtilities;
 namespace Web.IdP.Services.Saml.Idp;
 
 public sealed class SamlIdpFlow(SamlFederationRuntime runtime, SamlIdpProtocol protocol,
-    ISamlStateStore states, IDataProtectionProvider protection, ISamlIdpAccountPolicy accountPolicy, TimeProvider clock)
+    ISamlStateStore states, IDataProtectionProvider protection, ISamlIdpAccountPolicy accountPolicy, TimeProvider clock,
+    SamlAttributeService attributes)
 {
     private const string CookiePrefix = "__Secure-HybridIdP.Saml.Idp.";
     private sealed record Continuation(SamlIdpRequest Request, string BrowserNonce);
@@ -64,7 +65,8 @@ public sealed class SamlIdpFlow(SamlFederationRuntime runtime, SamlIdpProtocol p
         http.Response.Cookies.Delete(CookiePrefix + token, Cookie(continuation.Request.ExpiresAt));
         var current = await accountPolicy.EvaluateAsync(http, ContinueUrl(token), ct);
         if (current.RequiredAction != null || current.UserId != account.UserId) return new StatusCodeResult(403);
-        var response = protocol.CreateResponse(continuation.Request, current.UserId, current.AuthenticatedAt);
+        var release = await attributes.ResolveAsync(continuation.Request.Partner, current.UserId, ct);
+        var response = protocol.CreateResponse(continuation.Request, current.UserId, current.AuthenticatedAt, release.Attributes);
         var destination = runtime.Options.Idp.ServiceProviders.Single(p => p.EntityId == continuation.Request.Partner)
             .AssertionConsumerServiceUrl;
         // Add a stricter response-local policy. It composes with the existing CSP; no global relaxation.

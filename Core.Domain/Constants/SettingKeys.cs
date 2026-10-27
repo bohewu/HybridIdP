@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Core.Domain.Constants;
 
 /// <summary>
@@ -9,6 +11,7 @@ public static class SettingKeys
     public const string NeutralQueryApprovalPrefix = "system.neutralQuery.approval.";
     public const string NeutralMetadataEvidencePrefix = "neutralQuery.metadataEvidence.";
     public const string NativeFieldMappings = "system.nativeFieldMappings";
+    public const string SamlAttributePolicyPrefix = "Saml.Attributes.v1.";
     public const string OperationalAdminBootstrapCompleted =
         "system.operationalAdminBootstrap.completed";
 
@@ -17,6 +20,8 @@ public static class SettingKeys
         return string.Equals(key, NeutralQueryConfiguration, StringComparison.OrdinalIgnoreCase) ||
             key.StartsWith(NeutralQueryApprovalPrefix, StringComparison.OrdinalIgnoreCase) ||
             key.StartsWith(NeutralMetadataEvidencePrefix, StringComparison.OrdinalIgnoreCase) ||
+            CultureInfo.InvariantCulture.CompareInfo.IsPrefix(key, SamlAttributePolicyPrefix,
+                CompareOptions.IgnoreCase | CompareOptions.IgnoreWidth) ||
             string.Equals(key, NativeFieldMappings, StringComparison.OrdinalIgnoreCase) || string.Equals(
             key,
             OperationalAdminBootstrapCompleted,
