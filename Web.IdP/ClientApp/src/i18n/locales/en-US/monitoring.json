@@ -5,11 +5,12 @@
   "noPermission": "You do not have permission to view monitoring data.",
   "activityDashboard": {
     "title": "Activity Dashboard",
-    "activeSessions": "Active Sessions",
-    "totalLogins": "Total Logins",
+    "activeSessions": "Effective application sessions",
+    "totalLogins": "Successful logins",
     "failedLogins": "Failed Logins",
     "riskScore": "Risk Score",
-    "noActivity": "No activity recorded."
+    "noActivity": "No activity recorded.",
+    "scopeHint": "Current OIDC application authorizations; portal-only sign-ins excluded. Login counts: past 24 hours (UTC)."
   },
   "securityMetrics": {
     "title": "Security Metrics",
@@ -17,7 +18,7 @@
     "counters": "Counter Metrics",
     "histograms": "Histogram Metrics",
     "loginAttempts": "Login Attempts",
-    "activeSessions": "Active Sessions",
+    "activeSessions": "Daily successful logins",
     "failedLogins": "Failed Logins",
     "noGauges": "No gauge metrics available",
     "noCounters": "No counter metrics available"

@@ -20,20 +20,23 @@ public class MonitoringService : IMonitoringService
 
     public static HttpClientHandler CreatePrimaryHandler() => new() { AllowAutoRedirect = false };
 
-    private readonly IApplicationDbContext _db;
+    private readonly ApplicationDbContext _db;
+    private readonly TimeProvider _timeProvider;
     private readonly IDomainEventPublisher _eventPublisher;
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly IHubContext<Infrastructure.Hubs.MonitoringHub> _hubContext;
     private readonly ObservabilityOptions _options; // Changed
 
     public MonitoringService(
-        IApplicationDbContext db, 
+        ApplicationDbContext db,
         IDomainEventPublisher eventPublisher, 
         IHttpClientFactory httpClientFactory, 
         IHubContext<Infrastructure.Hubs.MonitoringHub> hubContext, 
-        IOptions<ObservabilityOptions> options) // Changed
+        IOptions<ObservabilityOptions> options,
+        TimeProvider? timeProvider = null)
     {
         _db = db;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _eventPublisher = eventPublisher;
         _httpClientFactory = httpClientFactory;
         _hubContext = hubContext;
@@ -42,28 +45,14 @@ public class MonitoringService : IMonitoringService
 
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
     {
-        // Get real data from database
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var last24Hours = now.AddHours(-24);
-
-        // Active sessions - count of successful logins in last 24 hours
-        var activeSessions = await _db.LoginHistories
-            .Where(l => l.IsSuccessful && l.LoginTime >= last24Hours)
-            .CountAsync();
-
-        // Total logins in last 24 hours
-        var totalLogins = await _db.LoginHistories
-            .Where(l => l.IsSuccessful && l.LoginTime >= last24Hours)
-            .CountAsync();
-
-        // Failed logins in last 24 hours
-        var failedLogins = await _db.LoginHistories
-            .Where(l => !l.IsSuccessful && l.LoginTime >= last24Hours)
-            .CountAsync();
+        var activeSessions = await ActivityStatisticsReader.EffectiveAuthorizations(_db, now).CountAsync();
+        var (totalLogins, failedLogins) = await ActivityStatisticsReader.ReadLoginCountsAsync(_db, last24Hours, now);
 
         // Average risk score from recent logins
         var riskScores = await _db.LoginHistories
-            .Where(l => l.LoginTime >= last24Hours)
+            .Where(l => l.LoginTime >= last24Hours && l.LoginTime < now)
             .Select(l => (decimal)l.RiskScore)
             .ToListAsync();
         var avgRiskScore = riskScores.Count > 0 ? riskScores.Average() : 0;
@@ -77,39 +66,8 @@ public class MonitoringService : IMonitoringService
         };
     }
 
-    public async Task<SecurityMetricsDto> GetSecurityMetricsAsync()
-    {
-        var now = DateTime.UtcNow;
-        var metrics = new SecurityMetricsDto();
-
-        // Get data for last 7 days
-        for (int i = 6; i >= 0; i--)
-        {
-            var date = now.AddDays(-i).Date;
-            var nextDate = date.AddDays(1);
-
-            // Login attempts (all login events)
-            var loginAttempts = await _db.LoginHistories
-                .Where(l => l.LoginTime >= date && l.LoginTime < nextDate)
-                .CountAsync();
-
-            // Active sessions (successful logins)
-            var activeSessions = await _db.LoginHistories
-                .Where(l => l.IsSuccessful && l.LoginTime >= date && l.LoginTime < nextDate)
-                .CountAsync();
-
-            // Failed logins
-            var failedLogins = await _db.LoginHistories
-                .Where(l => !l.IsSuccessful && l.LoginTime >= date && l.LoginTime < nextDate)
-                .CountAsync();
-
-            metrics.LoginAttempts.Add(loginAttempts);
-            metrics.ActiveSessions.Add(activeSessions);
-            metrics.FailedLogins.Add(failedLogins);
-        }
-
-        return metrics;
-    }
+    public Task<SecurityMetricsDto> GetSecurityMetricsAsync() =>
+        ActivityStatisticsReader.ReadSecurityMetricsAsync(_db, _timeProvider.GetUtcNow().UtcDateTime);
 
     public async Task<IEnumerable<SecurityAlertDto>> GetRealTimeAlertsAsync()
     {

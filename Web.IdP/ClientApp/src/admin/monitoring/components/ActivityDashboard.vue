@@ -95,6 +95,7 @@ onUnmounted(() => {
       <span v-if="hasData">{{ t('monitoring.stale') }}</span>
     </div>
 
+    <p v-if="hasData" class="mb-3 text-sm text-gray-500">{{ t('monitoring.activityDashboard.scopeHint') }}</p>
     <p v-if="hasData && Object.values(stats).every(value => value === 0)" class="mb-3 text-sm text-gray-500">{{ t('monitoring.activityDashboard.noActivity') }}</p>
     <div v-if="hasData" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="stat-card">

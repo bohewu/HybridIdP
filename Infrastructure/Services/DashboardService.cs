@@ -15,6 +15,7 @@ namespace Infrastructure.Services;
 public class DashboardService : IDashboardService
 {
     private readonly ApplicationDbContext _dbContext;
+    private readonly TimeProvider _timeProvider;
     private readonly IOpenIddictApplicationManager _applicationManager;
     private readonly IOpenIddictScopeManager _scopeManager;
     private readonly IOpenIddictAuthorizationManager _authorizationManager;
@@ -23,9 +24,11 @@ public class DashboardService : IDashboardService
         ApplicationDbContext dbContext,
         IOpenIddictApplicationManager applicationManager,
         IOpenIddictScopeManager scopeManager,
-        IOpenIddictAuthorizationManager authorizationManager)
+        IOpenIddictAuthorizationManager authorizationManager,
+        TimeProvider? timeProvider = null)
     {
         _dbContext = dbContext;
+        _timeProvider = timeProvider ?? TimeProvider.System;
         _applicationManager = applicationManager;
         _scopeManager = scopeManager;
         _authorizationManager = authorizationManager;
@@ -59,23 +62,10 @@ public class DashboardService : IDashboardService
     /// <inheritdoc />
     public async Task<ActivityStatsDto> GetActivityStatsAsync()
     {
-        var now = DateTime.UtcNow;
+        var now = _timeProvider.GetUtcNow().UtcDateTime;
         var last24Hours = now.AddHours(-24);
-
-        // Active sessions - count of successful logins in last 24 hours (approximation)
-        var activeSessions = await _dbContext.LoginHistories
-            .Where(l => l.IsSuccessful && l.LoginTime >= last24Hours)
-            .CountAsync();
-
-        // Total logins in last 24 hours
-        var totalLogins = await _dbContext.LoginHistories
-            .Where(l => l.IsSuccessful && l.LoginTime >= last24Hours)
-            .CountAsync();
-
-        // Failed logins in last 24 hours
-        var failedLogins = await _dbContext.LoginHistories
-            .Where(l => !l.IsSuccessful && l.LoginTime >= last24Hours)
-            .CountAsync();
+        var activeSessions = await ActivityStatisticsReader.EffectiveAuthorizations(_dbContext, now).CountAsync();
+        var (totalLogins, failedLogins) = await ActivityStatisticsReader.ReadLoginCountsAsync(_dbContext, last24Hours, now);
 
         var riskScore = await CalculateRiskScoreAsync();
 
@@ -89,37 +79,8 @@ public class DashboardService : IDashboardService
     }
 
     /// <inheritdoc />
-    public async Task<SecurityMetricsDto> GetSecurityMetricsAsync()
-    {
-        // Get last 7 days data
-        var endDate = DateTime.UtcNow;
-        var startDate = endDate.AddDays(-7);
-
-        var loginAttempts = new List<int>();
-        var failedLogins = new List<int>();
-        var activeSessions = new List<int>();
-
-        for (int i = 6; i >= 0; i--)
-        {
-            var dayStart = startDate.AddDays(i);
-            var dayEnd = dayStart.AddDays(1);
-
-            var attempts = await _dbContext.LoginHistories.CountAsync(lh => lh.LoginTime >= dayStart && lh.LoginTime < dayEnd);
-            var failed = await _dbContext.LoginHistories.CountAsync(lh => lh.LoginTime >= dayStart && lh.LoginTime < dayEnd && !lh.IsSuccessful);
-            var sessions = await _dbContext.LoginHistories.CountAsync(lh => lh.LoginTime >= dayStart && lh.LoginTime < dayEnd && lh.IsSuccessful); // Approximation
-
-            loginAttempts.Add(attempts);
-            failedLogins.Add(failed);
-            activeSessions.Add(sessions);
-        }
-
-        return new SecurityMetricsDto
-        {
-            LoginAttempts = loginAttempts,
-            FailedLogins = failedLogins,
-            ActiveSessions = activeSessions
-        };
-    }
+    public Task<SecurityMetricsDto> GetSecurityMetricsAsync() =>
+        ActivityStatisticsReader.ReadSecurityMetricsAsync(_dbContext, _timeProvider.GetUtcNow().UtcDateTime);
 
     /// <inheritdoc />
     public Task<IEnumerable<SessionDto>> GetActiveSessionsAsync()

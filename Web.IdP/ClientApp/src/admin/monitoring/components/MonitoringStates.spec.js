@@ -46,6 +46,25 @@ describe.each(cases)('%s monitoring request states', (component, empty, emptyKey
     plugins: [createI18n({ legacy: false, locale, messages: { 'en-US': { monitoring: en }, 'zh-TW': { monitoring: zh } } })]
   } })
 
+  if (component === ActivityDashboard) {
+    it.each(['en-US', 'zh-TW'])('keeps current sessions and login counts distinct through live updates in %s', async locale => {
+      const messages = locale === 'en-US' ? en : zh
+      fetch.mockResolvedValue(response({ activeSessions: 2, totalLogins: 15, failedLogins: 4, riskScore: 8 }))
+      wrapper = mountWidget(locale)
+      await flushPromises()
+      expect(wrapper.findAll('.stat-value').map(node => node.text())).toEqual(['2', '15', '4', '8'])
+      expect(wrapper.findAll('.stat-label').map(node => node.text())).toEqual([
+        messages.activityDashboard.activeSessions, messages.activityDashboard.totalLogins,
+        messages.activityDashboard.failedLogins, messages.activityDashboard.riskScore
+      ])
+      expect(wrapper.text()).toContain(messages.activityDashboard.scopeHint)
+      expect(wrapper.text()).not.toContain(messages.securityMetrics.activeSessions)
+      hubs[0].handlers[event]({ activeSessions: 1, totalLogins: 16, failedLogins: 5, riskScore: 9 })
+      await flushPromises()
+      expect(wrapper.findAll('.stat-value').map(node => node.text())).toEqual(['1', '16', '5', '9'])
+    })
+  }
+
   it('shows one initial placeholder then successful empty data', async () => {
     let resolve
     fetch.mockReturnValue(new Promise(done => { resolve = done }))
