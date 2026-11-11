@@ -13,7 +13,7 @@ COPY Web.IdP/Views/ /src/Web.IdP/Views/
 RUN npm run build
 RUN test -f /src/Web.IdP/wwwroot/dist/.vite/manifest.json
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS backend-publish
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:fe0fd4e93bd2fbb47c883b7a6369e5c8d3db8bf01cdc5981f6ee35fbdf3ff4fb AS backend-publish
 
 WORKDIR /src
 COPY Core.Domain/Core.Domain.csproj Core.Domain/
@@ -30,7 +30,7 @@ RUN test -f /src/Web.IdP/wwwroot/dist/.vite/manifest.json
 
 RUN dotnet publish Web.IdP/Web.IdP.csproj -c Release -o /app/publish --no-restore
 
-FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:d5633778c754e89a386882eddf8dbee6942447a8a4b8267c19cf1e1158d0b0ac AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0@sha256:bfd912c83295ce66d4b706ebb8541b9f14259b0e76fbb88b2751f58ce2399d2e AS final
 
 WORKDIR /app
 COPY --from=backend-publish /app/publish ./
