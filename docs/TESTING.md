@@ -77,6 +77,44 @@ When running in `Development` environment, the following additional data is seed
 
 ## 3. Automated Tests
 
+### Activity dashboard statistics
+
+Read the [metric definitions](MAINTENANCE_GUIDE.md#activity-dashboard-metric-definitions)
+before interpreting current sessions, login counts or the legacy seven-day
+`ActiveSessions` array. Focused existing product facilities can be run with:
+
+```powershell
+dotnet test Tests.Application.UnitTests/Tests.Application.UnitTests.csproj --filter 'FullyQualifiedName~FailedLoginAuditReaderTests|FullyQualifiedName~ActivityStatisticsTests|FullyQualifiedName~DashboardServiceTests|FullyQualifiedName~MonitoringServiceTests'
+```
+
+From `Web.IdP/ClientApp`, run the monitoring component checks and frontend build:
+
+```powershell
+npm test -- --run src/admin/monitoring/components/MonitoringStates.spec.js src/admin/monitoring/MonitoringApp.spec.js
+npm run build
+```
+
+Failure fixtures cover supported text/JSON and impersonation attribution,
+unknown users, malformed/successful/unrelated events, distinct same-timestamp
+rows and half-open UTC boundaries. Service fixtures distinguish current
+authorizations from repeated login history, cookie-only sign-ins, revoked or
+expired states, null token expiry, missing legacy ledgers and token/ledger
+identity disagreement. In-memory semantics and offline SQL generation (SQL
+Server compatibility level 150 and PostgreSQL) do not establish live database
+execution. Component checks exercise bilingual numeric rendering, SignalR
+updates, loading/retry/stale states and the permission guard; they do not prove
+rendered layout, endpoint authorization or browser interoperability.
+
+After independent review, real E2E should use an isolated synthetic local
+database and real OIDC client. Observe a newly failed sign-in and its refreshed
+count, identify prepared historical audit fixtures separately, and compare
+effective-session counts before/after revocation or expiry. A portal-only sign-in
+must not create an effective application session. Check both locales and retain
+observed timestamps/counts. Distinguish browser-driven actions from prepared
+history/expiry fixtures, and stop owned app/client/browser/database resources.
+These checks are local evidence, not production, all-provider or cross-database
+acceptance. No migration or new setting is needed for the metric correction.
+
 ### Client PKCE requirements and editor ordering
 
 Run `ClientPkceRequirementTests` in `Tests.Web.IdP.UnitTests` for the public
