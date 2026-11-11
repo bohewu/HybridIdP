@@ -76,6 +76,66 @@ docker compose -f docker-compose.xxx.yml up -d
 
 ## Log 管理
 
+### Activity dashboard metric definitions
+
+The monitoring Activity Dashboard and dashboard activity API use the same
+current-session and login-count definitions. Their numeric wire fields remain
+`activeSessions`, `totalLogins`, `failedLogins` and `riskScore`.
+
+- **Effective application sessions** (`activeSessions`,
+  **有效應用程式工作階段**) counts each OpenIddict authorization once, at the
+  current UTC instant, when its status is `valid`, its application exists and
+  its subject identifies an existing local user. It must have at least one
+  associated `valid` access or refresh token with matching subject/application
+  and a non-null expiration strictly later than now. Multiple tokens, refresh
+  rotation, repeated logins or browsers sharing an authorization do not multiply
+  the count. Authorization codes, ID/device tokens and expired, redeemed or
+  revoked tokens do not qualify.
+- A linked `UserSession` vetoes that authorization if it has any revocation
+  timestamp, an absolute or sliding expiry at or before now, or a user/client
+  identity mismatch. A missing legacy ledger or null ledger expiry bounds do
+  not impose another expiry; a qualifying token is still required. An orphan
+  ledger cannot create a session. Null token expiration is excluded because it
+  supplies no positive future-expiry evidence under the existing finite token
+  lifetimes; no guessed TTL is used. This metric does not change token validity
+  or issuance policy.
+- **Successful logins** (`totalLogins`) counts only successful `LoginHistories`
+  in UTC **[now - 24 hours, now)**. **Failed logins** (`failedLogins`) adds failed
+  histories and each retained supported failed audit in that same interval.
+  The start is included; now and future records are excluded. Each activity
+  calculation captures one UTC instant for these counts and current sessions.
+
+Supported failed audit formats are case-sensitive: `LoginAttempt` text shaped
+as `Login attempt for user 'sample-user': failed (reason)`, or that text in the
+JSON `details` string with an `impersonation` object; and `UserLogin` JSON with
+the boolean `"Success": false`. Missing/malformed details, unrelated events,
+successful audit copies and failure words only inside a username are excluded.
+Null or empty audit `UserId` values still count, including unknown-account
+attempts. Current writers have no evidenced overlapping failure representation:
+abnormal-policy-block histories are separate from credential/status and
+password-grant failure audits. Without a common correlation key, no fuzzy
+username/time deduplication is applied. Distinct event IDs at the same timestamp
+remain distinct attempts. Retention-deleted audits cannot be recovered; this
+read does not backfill or rewrite historical records.
+
+The seven-day `SecurityMetricsDto` series uses UTC calendar days, oldest first,
+from midnight six days ago through now exclusive; today's bucket is partial.
+`FailedLogins` uses the combined failure sources; `LoginAttempts` adds successful
+histories to those failures. Its **legacy `ActiveSessions` array means daily
+successful login events**, not historical effective sessions. Mutable token and
+ledger state cannot reconstruct historical session snapshots. The separate
+system-metrics UI displays Prometheus gauges/counters/histograms.
+
+Effective sessions exclude IdP-cookie-only sign-ins and do not enumerate online
+people, browsers or devices, prove cookie validity, or guarantee remote resource
+servers reject a previously issued JWT. Risk models are unchanged: Monitoring
+averages existing history risk scores over the same 24-hour interval; Dashboard
+retains its one-hour failed-history calculation. Added failure audits do not
+introduce risk scores. Separate alerts, session/failed-login lists and termination
+operations retain their existing behavior. No migration or new configuration is
+required. See [bounded verification](TESTING.md#activity-dashboard-statistics)
+for the distinction between fixture, SQL translation and real-browser evidence.
+
 ### Log Rotation 設定
 
 所有 Docker Compose 檔案已設定自動 log rotation：
