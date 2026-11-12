@@ -76,7 +76,7 @@ services:
         max-file: "10"
 
   postgres-service:
-    image: postgres:17@sha256:ae69c452f483507a6b99fb654cf93aad7fe156ffd2c56247707eef4e36d3c12b
+    image: postgres:18@sha256:74935e72241653ca55e0414067e6d8763aceb8a810eb51b452253ec3dcfc4336
     environment:
       POSTGRES_DB: hybridauth_idp
       POSTGRES_USER: ${POSTGRES_USER:-user}
