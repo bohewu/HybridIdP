@@ -196,7 +196,11 @@ public sealed class SessionAvailabilityTests(ITestOutputHelper output)
                             case "/api/begin":
                             case "/connect/begin":
                                 MfaEnrollmentSession.Begin(http.Session, _userId, securityStamp: "fixture-stamp");
-                                http.Response.Cookies.Append("fixture-auth", "completion");
+                                http.Response.Cookies.Append("fixture-auth", "completion", new CookieOptions
+                                {
+                                    Secure = true,
+                                    HttpOnly = true
+                                });
                                 http.Response.Redirect("/complete");
                                 break;
                             case "/complete":
@@ -206,7 +210,11 @@ public sealed class SessionAvailabilityTests(ITestOutputHelper output)
                                     new Claim("AspNet.Identity.SecurityStamp", http.Request.Query.ContainsKey("invalid") ? "wrong" : "fixture-stamp")
                                 }, "fixture"));
                                 // A queued cookie must also be discarded if a later required write fails.
-                                http.Response.Cookies.Append("fixture-auth", "completion");
+                                http.Response.Cookies.Append("fixture-auth", "completion", new CookieOptions
+                                {
+                                    Secure = true,
+                                    HttpOnly = true
+                                });
                                 if (!MfaEnrollmentSession.CompletePending(http.Session, principal))
                                     http.Response.StatusCode = 403;
                                 else await http.Response.WriteAsync("confirmed");
