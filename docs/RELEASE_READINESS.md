@@ -1,16 +1,29 @@
 # Release readiness and upgrade notes
 
-Publishing a release does not
-establish production acceptance or deploy the image. Older upgrade requirements
-below remain applicable to cumulative upgrades.
+Image publication and production deployment are separate operations. Older
+upgrade requirements below remain applicable to cumulative upgrades.
 
-## Unreleased Nginx security update
+## 1.10.1 release readiness
+
+The baseline is published [1.10.0](https://github.com/bohewu/HybridIdP/releases/tag/v1.10.0).
+See the [changelog](CHANGELOG.md#1101---2026-11-20) for the security updates and
+compatibility fixes included since that release.
+
+Both EF migration assemblies are unchanged from 1.10.0. Check the actual
+database's applied migration IDs before upgrading. An up-to-date installation
+can keep its existing schema, environment settings, Redis namespace,
+certificates and Data Protection keys. Existing clients keep their inherited
+protocol defaults unless an administrator explicitly sets a policy.
 
 The three repository Nginx deployment templates pin the official 1.31.9-alpine
 image by its multi-platform digest. Follow the
 [Nginx-only upgrade commands](DEPLOYMENT_GUIDE.md#nginx-only-image-upgrade)
-for the existing mode. The image update requires no database migration or new
-environment key.
+if the deployment uses one of those modes. For an independently managed
+reverse proxy, follow that proxy's upgrade procedure.
+
+Use the published application image digest with the
+[existing Compose deployment procedure](DEPLOYMENT_GUIDE.md). Verify OIDC
+discovery and sign-in through the existing proxy after deployment.
 
 ## 1.10.0 release readiness
 
