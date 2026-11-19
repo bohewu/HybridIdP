@@ -4,10 +4,35 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-11-20
+
 ### Security
 
 - Pin the three Nginx deployment images to 1.31.9-alpine by digest for the
   November 18, 2026 upstream security fixes.
+- Update Vue I18n, Vite, Vitest, Happy DOM and Zod, plus the Redis and .NET 10
+  deployment image digests.
+
+### Fixed
+
+- Apply the configured given-name fallback consistently across trusted native
+  profile sources, preserving existing field ownership.
+- Hide an empty recovery Email section when disabled and show existing data
+  read-only, independently of Email OTP.
+- Enforce required PKCE for authorization-code clients. Support optional
+  per-client PKCE method, token authentication transport and callback mode
+  policies. Existing clients inherit the previous defaults.
+- Show a clear protocol incompatibility message in TestClient when the IdP
+  rejects a pushed authorization request.
+- Count existing failed-login audit events and valid application sessions
+  correctly in the activity dashboard.
+- Align the Claims Preview search and pagination test with the current API.
+
+### Upgrade
+
+- An up-to-date 1.10.0 database needs no new EF migration, and existing
+  deployments require no new environment key. See the
+  [1.10.1 upgrade instructions](RELEASE_READINESS.md#1101-release-readiness).
 
 ## [1.10.0] - 2026-10-23
 
