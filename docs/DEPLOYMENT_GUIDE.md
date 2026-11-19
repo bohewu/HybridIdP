@@ -638,12 +638,12 @@ docker compose -f docker-compose.nginx.yml -f docker-compose.local-ports.yml --e
 ### Nginx-only image upgrade
 
 The three Nginx modes pin the official multi-platform OCI index
-`nginx:1.31.8-alpine@sha256:1ef7ca94d7879df82421428ce13bd1eaa412404953859cf7a5b6512c25e67a60`.
-Nginx 1.31.8 was released on October 21, 2026 and includes the October 14
-1.31.7 security fixes for alias/rewrite and variable-expression buffer overflows,
-HTTP/3 request-body injection, TLS session-ticket key-rotation session forgery,
-and SSI with AIO use-after-free. See the official [release news](https://nginx.org/news.html)
-and [change log](https://nginx.org/en/CHANGES) for affected configurations and details.
+`nginx:1.31.9-alpine@sha256:90b6bd2aec278b16b98221d64deb1d6d35d164567f507ab0716e6053878315aa`.
+Nginx released 1.31.9 on November 18, 2026 with security fixes across its
+resolver, HTTP/2 and HTTP/3 implementations, TLS 1.3 request handling, and
+other modules. See the official [release news](https://nginx.org/news.html)
+and [security advisories](https://nginx.org/en/security_advisories.html)
+for the full list and affected versions.
 
 This image-only update needs no database migration or new environment key.
 Preserve the existing `.env`, database and Redis data, Data Protection keys,
