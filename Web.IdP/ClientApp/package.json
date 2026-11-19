@@ -12,23 +12,22 @@
   "dependencies": {
     "@microsoft/signalr": "^10.0.11",
     "@tailwindcss/vite": "^4.3.3",
-    "@vee-validate/zod": "^4.13.2",
     "chart.js": "^4.5.1",
     "exceljs": "^4.4.0",
     "vee-validate": "^4.13.2",
     "vue": "^3.5.43",
-    "vue-i18n": "^11.4.12",
-    "zod": "^3.23.8"
+    "vue-i18n": "^11.4.22",
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.3.3",
     "@vitejs/plugin-vue": "^6.0.9",
     "@vue/test-utils": "^2.5.1",
-    "happy-dom": "^20.14.5",
+    "happy-dom": "^21.0.4",
     "postcss": "^8.5.28",
     "tailwindcss": "^4.3.3",
-    "vite": "^7.3.6",
-    "vitest": "^4.1.11"
+    "vite": "^7.3.8",
+    "vitest": "^4.1.12"
   },
   "overrides": {
     "exceljs@^4.4.0": {

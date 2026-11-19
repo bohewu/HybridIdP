@@ -1,8 +1,16 @@
 # Release readiness and upgrade notes
 
-Updated on 2026-10-23 for 1.10.0 release preparation. Publishing a release does not
+Publishing a release does not
 establish production acceptance or deploy the image. Older upgrade requirements
 below remain applicable to cumulative upgrades.
+
+## Unreleased Nginx security update
+
+The three repository Nginx deployment templates pin the official 1.31.9-alpine
+image by its multi-platform digest. Follow the
+[Nginx-only upgrade commands](DEPLOYMENT_GUIDE.md#nginx-only-image-upgrade)
+for the existing mode. The image update requires no database migration or new
+environment key.
 
 ## 1.10.0 release readiness
 
@@ -69,7 +77,7 @@ bash ./deploy-idp.sh --source ghcr --image "$release_image" \
   --compose "$compose_file" --env-file .env
 ```
 
-The three repository Nginx templates now pin 1.31.8-alpine. Application image
+The three repository Nginx templates pinned 1.31.8-alpine for 1.10.0. Application image
 replacement alone does not recreate Nginx: follow the
 [Nginx-only upgrade commands](DEPLOYMENT_GUIDE.md#nginx-only-image-upgrade)
 for the existing mode, preserving certificates and the public origin.

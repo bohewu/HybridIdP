@@ -4,6 +4,11 @@ This file tracks notable changes and releases for HybridAuth IdP.
 
 ## [Unreleased]
 
+### Security
+
+- Pin the three Nginx deployment images to 1.31.9-alpine by digest for the
+  November 18, 2026 upstream security fixes.
+
 ## [1.10.0] - 2026-10-23
 
 ### Added
