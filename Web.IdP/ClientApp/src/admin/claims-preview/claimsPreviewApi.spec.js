@@ -16,8 +16,8 @@ describe('Claims preview transport', () => {
   it('encodes lookup inputs and bounds pages to 50', async () => {
     await api.accounts('a&b', 50)
     expect(fetch).toHaveBeenLastCalledWith('/api/admin/claims-preview/accounts?search=a%26b&skip=50&take=50', expect.objectContaining({ cache: 'no-store' }))
-    await api.clients(100)
-    expect(fetch).toHaveBeenLastCalledWith('/api/admin/claims-preview/clients?skip=100&take=50', expect.anything())
+    await api.clients('client&1', 100)
+    expect(fetch).toHaveBeenLastCalledWith('/api/admin/claims-preview/clients?search=client%261&skip=100&take=50', expect.anything())
     await api.scopes('client&1')
     expect(fetch).toHaveBeenLastCalledWith('/api/admin/claims-preview/scopes?clientId=client%261', expect.anything())
   })
