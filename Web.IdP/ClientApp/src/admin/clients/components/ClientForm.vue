@@ -332,7 +332,7 @@ const closeSecretModal = () => {
   >
     <template #body>
       <form @submit.prevent="handleSubmit">
-        <div class="max-h-[calc(100vh-300px)] overflow-y-auto">
+        <div class="max-h-[calc(100vh-300px)] overflow-y-auto p-1">
 
                   <!-- Error Alert -->
                   <div v-if="error" class="mb-4 bg-red-50 border-l-4 border-red-400 p-4">
